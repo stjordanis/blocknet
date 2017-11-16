@@ -139,7 +139,7 @@ void CBudgetManager::SubmitFinalBudget()
     if (nBlockStart - nCurrentHeight > ((GetBudgetPaymentCycleBlocks() / 30) * 2)) return;
 
     std::vector<CBudgetProposal*> vBudgetProposals = budget.GetBudget();
-    std::string strBudgetName = "main";
+    std::string strBudgetName = "superblock-" + std::to_string(nBlockStart);
     std::vector<CTxBudgetPayment> vecTxBudgetPayments;
 
     for (unsigned int i = 0; i < vBudgetProposals.size(); i++) {
