@@ -248,6 +248,7 @@ boost::filesystem::path CoinValidator::getExplPath() {
  */
 bool CoinValidator::addLine(std::string &line, std::map<std::string, std::vector<InfractionData>> &map) {
     std::stringstream os(line);
+    os.imbue(std::locale::classic());
     std::string t;
     std::string a;
     CAmount amt = 0;
@@ -256,6 +257,9 @@ bool CoinValidator::addLine(std::string &line, std::map<std::string, std::vector
 
     if (t.empty() || a.empty() || amt == 0 || amtd == 0)
         return false;
+
+    // Make sure parsed line matches expected
+    assert(line == t + "\t" + a + "\t" + std::to_string(amt) + "\t" + CoinValidator::AmountToString(amtd));
 
     const InfractionData inf(t, a, amt, amtd);
     std::vector<InfractionData> &infs = map[inf.txid];
@@ -270,6 +274,7 @@ bool CoinValidator::addLine(std::string &line, std::map<std::string, std::vector
  */
 int CoinValidator::getBlockHeight(std::string &line) {
     std::stringstream os(line);
+    os.imbue(std::locale::classic());
     int t = 0; os >> t;
     if (t > 0)
         return t;
@@ -297,6 +302,18 @@ bool CoinValidator::downloadList(std::list<std::string> &lst, std::string &err) 
 }
 
 /**
+ * Returnt the string representation of the amount.
+ * @param amount
+ * @return
+ */
+std::string CoinValidator::AmountToString(double amount) {
+    std::ostringstream os;
+    os.imbue(std::locale::classic());
+    os << std::fixed << amount;
+    return os.str();
+}
+
+/**
  * Singleton
  * @return
  */
@@ -310,5 +327,5 @@ CoinValidator& CoinValidator::instance() {
  * @return
  */
 std::string InfractionData::ToString() const {
-    return txid + "\t" + address + "\t" + std::to_string(amount) + "\t" + std::to_string(amountH);
+    return txid + "\t" + address + "\t" + std::to_string(amount) + "\t" + CoinValidator::AmountToString(amountH);
 }
