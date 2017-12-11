@@ -110,12 +110,12 @@ contract ACCT {
      *
      * \param hashedSecret   Hash of the initiator's secret
      * \param responder      Address of the responder on this blockchain
-     * \param refundDuration From when the initiator can get its coins back
+     * \param escrowDuration Escrow period, in seconds (from now)
      */
     function initiate(
         bytes20 hashedSecret,
         address responder,
-        uint256 refundDuration
+        uint256 escrowDuration
     )
         public
         payable
@@ -127,7 +127,7 @@ contract ACCT {
         swap.initiator = msg.sender;
         swap.responder = responder;
         swap.value = msg.value;
-        swap.refundTimePoint = now + refundDuration;
+        swap.refundTimePoint = now + escrowDuration;
         Initiated(hashedSecret, swap.initiator, swap.responder, swap.value, swap.refundTimePoint);
     }
 
@@ -135,12 +135,12 @@ contract ACCT {
      *
      * \param hashedSecret   Hash of the initiator's secret
      * \param initiator      Address of the initiator on this blockchain
-     * \param refundDuration From when the responder can get its coins back
+     * \param escrowDuration Escrow period, in seconds (from now)
      */
     function respond(
         bytes20 hashedSecret,
         address initiator,
-        uint256 refundDuration
+        uint256 escrowDuration
     )
         public
         payable
@@ -152,7 +152,7 @@ contract ACCT {
         swap.initiator = initiator;
         swap.responder = msg.sender;
         swap.value = msg.value;
-        swap.refundTimePoint = now + refundDuration;
+        swap.refundTimePoint = now + escrowDuration;
         Responded(hashedSecret, swap.initiator, swap.responder, swap.value, swap.refundTimePoint);
     }
 
