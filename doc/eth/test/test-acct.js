@@ -1,6 +1,6 @@
 var ACCT = artifacts.require("ACCT");
 
-contract('ACCT', function(accounts) {
+contract("ACCT", function(accounts) {
     it("Should swap 10 Ether (initiator)", function() {
         var acct;
         var secret = "zzz";
@@ -20,15 +20,17 @@ contract('ACCT', function(accounts) {
             return web3.eth.getBalance(initiator);
             
         }).then(function(balance) {
-            initiator_balance_before = new BigNumber(balance);
+            initiator_balance_before = balance;
             return web3.eth.getBalance(responder);
 
         }).then(function(balance) {
-            responder_balance_before = new BigNumber(balance);
+            responder_balance_before = balance;
+            console.log("XXX balance:", balance);
             return acct.initiate(hash, responder, 60,
                     {from: initiator, value: amount});
 
         }).then(function(result) {
+            console.log("XXX got result from 'initiate'");
             for (var i = 0; (i < result.logs.length) && !hasEvInitiated; i++) {
                 var log = result.logs[i];
                 if (    (log.event == "Initiated")
@@ -46,7 +48,7 @@ contract('ACCT', function(accounts) {
             return web3.eth.getBalance(initiator);
 
         }).then(function(balance) {
-            initiator_balance_after = new BigNumber(balance);
+            initiator_balance_after = balance;
             return acct.redeem(hash, secret, {from: responder});
 
         }).then(function(result) {
@@ -65,11 +67,12 @@ contract('ACCT', function(accounts) {
             return web3.eth.getBalance(responder);
 
         }).then(function(balance) {
-            responder_balance_after = new BigNumber(balance);
+            responder_balance_after = balance;
+            assert.isTrue(hasEvInitiated, "XXX No 'Initiated' event received");
         });
 
         assert.isTrue(hasEvInitiated, "No 'Initiated' event received");
-        assert.isTrue(hasEvRedeemed, "No 'Redemmed' event received");
+        assert.isTrue(hasEvRedeemed, "No 'Redeemed' event received");
         assert.isAtMost(initiator_balance_after,
                 initiator_balance_before - amount,
                 "Initiator balance did not decrease");

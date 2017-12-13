@@ -131,7 +131,7 @@ contract ACCT {
         Initiated(hashedSecret, swap.initiator, swap.responder, swap.value, swap.refundTimePoint);
     }
 
-    /** Repond to an atomic swap from another blockchain
+    /** Respond to an atomic swap from another blockchain
      *
      * \param hashedSecret   Hash of the initiator's secret
      * \param initiator      Address of the initiator on this blockchain

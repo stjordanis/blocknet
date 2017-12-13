@@ -1,5 +1,5 @@
-var Acct = artifacts.require("ACCT");
+var ACCT = artifacts.require("ACCT");
 
 module.exports = function(deployer) {
-    deployer.deploy(Acct);
+    deployer.deploy(ACCT);
 };

@@ -1,0 +1,571 @@
+Manual tests
+============
+
+In one terminal, run:
+
+    $ cd /path/to/BlockDX/doc/eth
+    $ truffle develop --log
+
+In another terminal, run:
+
+    $ cd /path/to/BlockDX/doc/eth
+    $ truffle console
+    truffle(development)> compile
+    truffle(development)> deploy
+
+Then run the below tests manually.
+NB: `truffle develop` creates 10 accounts, always at the same
+    addresses, all initially loaded with 100 Ether.
+
+1. Test swap 10 Ether from initiator
+====================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(10, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 600, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 10 Ether less (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 10 Ether more (less gas costs)
+
+2. Test swap 7 Ether from responder
+===================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(7, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 600, {from: responder, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // Should be a "Responded" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: initiator});}).then(function(res) { result = res; });
+result.logs[0]; // Should be a "Redeemed" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 7 Ether more (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 7 Ether less (less gas costs)
+
+3. Test refund by initiator
+===========================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+amount=web3.toWei(5, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 60, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+// Wait for at least one minute, then:
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: initiator});}).then(function(res) { result = res; });
+// Transaction should have succeeded
+result.logs[0]; // should be a "Refunded" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be the same (less gas costs)
+
+4. Test refund by initiator
+===========================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+amount=web3.toWei(3, "ether");
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 60, {from: responder, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Responded" event
+
+// Wait for at least one minute, then:
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: responder});}).then(function(res) { result = res; });
+// Transaction should have succeeded
+result.logs[0]; // should be a "Refunded" event
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be the same (less gas costs)
+
+5. Test initiator can't get a refund during the escrow period
+=============================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+amount=web3.toWei(5, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 60, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+// Quickly (within one minute), run:
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: initiator});}).then(function(res) { result = res; });
+// Transaction should fail
+
+// Wait for at least one minute, then:
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: initiator});}).then(function(res) { result = res; });
+result; // Transaction should have succeeded
+result.logs[0]; // should be a "Refunded" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be the same (less gas costs)
+
+6. Test responder can't get a refund during the escrow period
+=============================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+amount=web3.toWei(13, "ether");
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 60, {from: responder, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Responded" event
+
+// Quickly (within one minute), run:
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: responder});}).then(function(res) { result = res; });
+// Transaction should fail
+
+// Wait for at least one minute, then:
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: responder});}).then(function(res) { result = res; });
+// Transaction should have succeeded
+result.logs[0]; // should be a "Refunded" event
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be the same (less gas costs)
+
+7. Test responder can't redeem after escrow period
+==================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(11, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 60, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+// Wait for at least one minute, then:
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: initiator});}).then(function(res) { result = res; });
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be the same (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be the same (less gas costs)
+
+8. Test initiator can't redeem after escrow period
+==================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(8, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 60, {from: responder, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Responded" event
+
+// Wait for at least one minute, then:
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: initiator});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: responder});}).then(function(res) { result = res; });
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be the same (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be the same (less gas costs)
+
+9. Test 3rd party can't refund or redeem
+========================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+thief="0xc5fdf4076b8f3a5357c5e395ab970b5b54098fef";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(10, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(thief), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 60, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+// Within one minute, run:
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: thief});}).then(function(res) { result = res; });
+// Transaction should fail
+
+// Wait for at least one minute, then:
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: thief});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: initiator});}).then(function(res) { result = res; });
+result.logs[0]; // Should be an "Initiated" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be the same (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(thief), "ether").toString();
+// Should be the same (less gas costs)
+
+10. Test a swap can't be initiated when a swap exists with the same secret
+==========================================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(2, "ether");
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 600, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 600, {from: initiator, value: amount});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 600, {from: responder, value: amount});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+11. Test simultaneous swaps
+===========================
+
+alice="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+bob="0xf17f52151ebef6c7334fad080c5704d77216b732";
+charlie="0x821aea9a577a9b44299b9c15c88cf3087f3b5544";
+
+hash1="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret1="zzz";
+amount1=web3.toWei(10, "ether");
+
+hash2="0x08889bd7b151aa174c21f33f59147fa65381edea";
+secret2="aaa";
+amount2=web3.toWei(7, "ether");
+
+hash3="0x532ba2fe0b87f2155365a58c0c0398b21ea81f0f";
+secret3="bbb";
+amount3=web3.toWei(4, "ether");
+
+web3.fromWei(web3.eth.getBalance(alice), "ether").toString();
+web3.fromWei(web3.eth.getBalance(bob), "ether").toString();
+web3.fromWei(web3.eth.getBalance(charlie), "ether").toString();
+
+// Alice -> Bob
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash1, bob, 600, {from: alice, value: amount1});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+// Bob -> Charlie
+ACCT.deployed().then(function(instance) { return instance.initiate(hash2, charlie, 600, {from: bob, value: amount2});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+// Alice <- Charlie
+ACCT.deployed().then(function(instance) { return instance.respond(hash3, alice, 600, {from: charlie, value: amount3});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Responded" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash1, secret1, {from: bob});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash2, secret2, {from: charlie});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash3, secret3, {from: alice});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+web3.fromWei(web3.eth.getBalance(alice), "ether").toString();
+// Should be 6 Ether less (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(bob), "ether").toString();
+// Should be 3 Ether more (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(charlie), "ether").toString();
+// Should be 3 Ether more (less gas costs)
+
+12. Test a swap can't be redeemed twice by responder
+====================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(10, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 600, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+// Transaction should fail
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 10 Ether less (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 10 Ether more (less gas costs)
+
+13. Test a swap can't be redeemed twice by initiator
+====================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(5, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 600, {from: responder, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Responded" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: initiator});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: initiator});}).then(function(res) { result = res; });
+// Transaction should fail
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 5 Ether more (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 5 Ether less (less gas costs)
+
+14. Test a swap can't be refunded to initiator once redeemed
+============================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(3, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 60, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+// Wait for at least one minute
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: initiator});}).then(function(res) { result = res; });
+// Transaction should fail
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 3 Ether less (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 3 Ether more (less gas costs)
+
+15. Test a swap can't be refunded to responder once redeemed
+============================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(7, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 60, {from: responder, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // Should be a "Responded" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: initiator});}).then(function(res) { result = res; });
+result.logs[0]; // Should be a "Redeemed" event
+
+// Wait for at least one minute
+ACCT.deployed().then(function(instance) { return instance.refund(hash, {from: responder});}).then(function(res) { result = res; });
+// Transaction should fail
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 7 Ether more (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 7 Ether less (less gas costs)
+
+16. Test a swap can't be redeemed by responder without the correct secret
+=========================================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+wrongSecret="zzzz";
+secret="zzz";
+amount=web3.toWei(5, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 600, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, wrongSecret, {from: responder});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 5 Ether less (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 5 Ether more (less gas costs)
+
+17. Test a swap can't be redeemed by initiator without the correct secret
+=========================================================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+wrongSecret="zzzz";
+secret="zzz";
+amount=web3.toWei(11, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 600, {from: responder, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // Should be a "Responded" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, wrongSecret, {from: initiator});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: initiator});}).then(function(res) { result = res; });
+result.logs[0]; // Should be a "Redeemed" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 11 Ether more (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 11 Ether less (less gas costs)
+
+18. Test a swap can't be redeemed by initiator
+==============================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(10, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.initiate(hash, responder, 600, {from: initiator, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // should be an "Initiated" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: initiator});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+result.logs[0]; // should be a "Redeemed" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 10 Ether less (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 10 Ether more (less gas costs)
+
+19. Test a swap can't be redeemed by responder
+==============================================
+
+initiator="0x627306090abab3a6e1400e9345bc60c78a8bef57";
+responder="0xf17f52151ebef6c7334fad080c5704d77216b732";
+hash="0xb2241f38404eef4c16fb75124e5a680d601cb5fc";
+secret="zzz";
+amount=web3.toWei(7, "ether");
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+
+var result;
+ACCT.deployed().then(function(instance) { return instance.respond(hash, initiator, 600, {from: responder, value: amount});}).then(function(res) { result = res; });
+result.logs[0]; // Should be a "Responded" event
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: responder});}).then(function(res) { result = res; });
+// Transaction should fail
+
+ACCT.deployed().then(function(instance) { return instance.redeem(hash, secret, {from: initiator});}).then(function(res) { result = res; });
+result.logs[0]; // Should be a "Redeemed" event
+
+web3.fromWei(web3.eth.getBalance(initiator), "ether").toString();
+// Should be 7 Ether more (less gas costs)
+
+web3.fromWei(web3.eth.getBalance(responder), "ether").toString();
+// Should be 7 Ether less (less gas costs)
