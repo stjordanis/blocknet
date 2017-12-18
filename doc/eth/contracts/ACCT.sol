@@ -23,7 +23,7 @@ contract ACCT {
         uint256 refundTimePoint;
     }
 
-    mapping(bytes20 => Swap) public swaps;
+    mapping(bytes20 => Swap) swaps;
 
     /** Event: An atomic swap has been initiated
      *
