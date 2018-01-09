@@ -20,6 +20,7 @@
 #include "xbridgewalletconnector.h"
 #include "xbridgewalletconnectorbtc.h"
 #include "xbridgewalletconnectorbcc.h"
+#include "xbridgewalletconnectoreth.h"
 
 #include <assert.h>
 
@@ -250,8 +251,8 @@ bool App::Impl::start()
                 xbridge::WalletConnectorPtr conn;
                 if (wp.method == "ETHER")
                 {
-                    LOG() << "wp.method ETHER not implemented" << __FUNCTION__;
-                    // session.reset(new XBridgeSessionEthereum(wp));
+                    conn.reset(new EthWalletConnector);
+                    *conn = wp;
                 }
                 else if (wp.method == "BTC")
                 {
