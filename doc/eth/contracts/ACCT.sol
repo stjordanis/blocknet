@@ -23,7 +23,7 @@ contract ACCT {
         uint256 refundTimePoint;
     }
 
-    mapping(bytes20 => Swap) swaps;
+    mapping(bytes20 => Swap) private swaps;
 
     /** Event: An atomic swap has been initiated
      *
@@ -68,10 +68,11 @@ contract ACCT {
     /** Event: Peer redeemed the coins
      *
      * \param hashedSecret Hash of initiator's secret (used to identify the swap)
+     * \param secret       The initiator's secret
      * \param receipient   Address where the coins where sent
      * \param value        How many wei were sent
      */
-    event Redeemed(bytes20 hashedSecret, address recipient, uint256 value);
+    event Redeemed(bytes20 hashedSecret, bytes secret, address recipient, uint256 value);
 
     /** Check that the swap identified by `hashedSecret` is empty */
     modifier isEmpty(bytes20 hashedSecret) {
@@ -180,6 +181,6 @@ contract ACCT {
         swap.value = 0;
         swap.swapType = SwapType.None;
         msg.sender.transfer(value);
-        Redeemed(hashedSecret, msg.sender, value);
+        Redeemed(hashedSecret, secret, msg.sender, value);
     }
 }
