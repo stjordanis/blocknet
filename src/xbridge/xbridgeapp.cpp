@@ -745,6 +745,11 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
                                        const uint64_t & toAmount,
                                        uint256 & id)
 {
+    const auto statusCode = checkCreateParams(fromCurrency, toCurrency, fromAmount);
+    if(statusCode != xbridge::SUCCESS) {
+        return statusCode;
+    }
+
     if (fromCurrency.size() > 8 || toCurrency.size() > 8)
     {
         WARN() << "invalid currency " << __FUNCTION__;
@@ -842,7 +847,6 @@ bool App::sendPendingTransaction(const TransactionDescrPtr & ptr)
             // not send pending packets if not an xbcTransaction
             return false;
         }
-
         ptr->packet.reset(new XBridgePacket(xbcTransaction));
 
         // field length must be 8 bytes
@@ -891,6 +895,10 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
                                     const std::string & to)
 {
     TransactionDescrPtr ptr;
+    const auto res = checkAcceptParams(id, ptr);
+    if(res != xbridge::SUCCESS) {
+        return res;
+    }
 
     {
         boost::mutex::scoped_lock l(m_p->m_txLocker);
@@ -1091,8 +1099,52 @@ bool App::sendRollbackTransaction(const uint256 & txid)
     return true;
 }
 
-//******************************************************************************
+bool App::isValidAddress(const string &address) const
+{
+    return ((address.size() >= 32) && (address.size() <= 36));
+}
 
+Error App::checkAcceptParams(const uint256 &id, TransactionDescrPtr &ptr)
+{
+    ptr = transaction(id);
+
+    if(!ptr) {
+        WARN() << "transaction not found " << __FUNCTION__;
+        return xbridge::TRANSACTION_NOT_FOUND;
+    }
+
+    return checkAmount(ptr->toCurrency, ptr->toAmount);
+}
+
+Error App::checkCreateParams(const string &fromCurrency,
+                             const string &toCurrency,
+                             const uint64_t &fromAmount)
+{
+    if (fromCurrency.size() > 8 || toCurrency.size() > 8) {
+        WARN() << "invalid currency " << __FUNCTION__;
+        return xbridge::INVALID_CURRENCY;
+    }
+    return  checkAmount(fromCurrency, fromAmount);
+}
+
+Error App::checkAmount(const string &currency, const uint64_t &amount)
+{
+    // check amount
+    WalletConnectorPtr conn = connectorByCurrency(currency);
+    if (!conn) {
+        // no session
+        WARN() << "no session for <" << currency << "> " << __FUNCTION__;
+        return xbridge::NO_SESSION;
+    }
+
+    if (conn->getWalletBalance() < (amount / conn->COIN)) {
+        WARN() << "insufficient funds for <" << currency << "> " << __FUNCTION__;
+        return xbridge::INSIFFICIENT_FUNDS;
+    }
+    return xbridge::SUCCESS;
+}
+
+//******************************************************************************
 //******************************************************************************
 void App::Impl::onTimer()
 {
@@ -1141,4 +1193,3 @@ void App::Impl::onTimer()
 }
 
 } // namespace xbridge
-
