@@ -91,13 +91,13 @@ bool getAccounts(const std::string & rpcuser, const std::string & rpcpasswd,
 
 //*****************************************************************************
 //*****************************************************************************
-bool sendRawTransaction(const std::string & rpcuser,
-                        const std::string & rpcpasswd,
-                        const std::string & rpcip,
-                        const std::string & rpcport,
-                        const std::string & rawtx,
-                        string & txid,
-                        int32_t & errorCode)
+bool sendRawTransactionEth(const std::string & rpcuser,
+                           const std::string & rpcpasswd,
+                           const std::string & rpcip,
+                           const std::string & rpcport,
+                           const std::string & rawtx,
+                           string & txid,
+                           int32_t & errorCode)
 {
     try
     {
@@ -165,7 +165,7 @@ bool getTransactionByHash(const std::string & rpcuser,
         {
             // Error
             LOG() << "error: " << write_string(error, false);
-            errorCode = find_value(error.get_obj(), "code").get_int();
+            int errorCode = find_value(error.get_obj(), "code").get_int();
             return false;
         }
 
@@ -336,8 +336,8 @@ bool EthWalletConnector::sendRawTransaction(const std::string & rawtx,
                                             std::string & txid,
                                             int32_t & errorCode)
 {
-    if (!rpc::sendRawTransaction(m_user, m_passwd, m_ip, m_port,
-                                 rawtx, txid, errorCode))
+    if (!rpc::sendRawTransactionEth(m_user, m_passwd, m_ip, m_port,
+                                    rawtx, txid, errorCode))
     {
         LOG() << "rpc::sendRawTransaction failed" << __FUNCTION__;
         return false;
