@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 #include <stdint.h>
 #include <cstring>
 
@@ -25,9 +26,17 @@ struct UtxoEntry
     std::string txId;
     uint32_t    vout;
     double      amount;
+    std::string address;
 
-    friend bool operator < (const UtxoEntry & l, const UtxoEntry & r);
-    friend bool operator == (const UtxoEntry & l, const UtxoEntry & r);
+    std::vector<unsigned char> rawAddress;
+    std::vector<unsigned char> signature;
+
+    std::string toString() const;
+
+    bool operator < (const UtxoEntry & r) const
+    {
+        return (txId < r.txId) || ((txId == r.txId) && (vout < r.vout));
+    }
 };
 
 } // namespace wallet

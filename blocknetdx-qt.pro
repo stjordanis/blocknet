@@ -298,6 +298,7 @@ SOURCES += \
     src/xbridge/xbridgewalletconnector.cpp \
     src/xbridge/xbridgewalletconnectorbtc.cpp \
     src/xbridge/xbridgewalletconnectorbcc.cpp \
+    src/xbridge/xbridgewalletconnectorsys.cpp \
     src/xbridge/xbridgewalletconnectoreth.cpp
 
 #protobuf generated
@@ -453,7 +454,7 @@ HEADERS += \
     src/hash.h \
     src/limitedmap.h \
     src/threadsafety.h \
-    src/qt/macnotificationhandler.h \    
+    src/qt/macnotificationhandler.h \
     src/tinyformat.h \
     src/activeservicenode.h \
     src/amount.h \
@@ -588,6 +589,7 @@ HEADERS += \
     src/xbridge/xbridgewalletconnectorbtc.h \
     src/xbridge/xbridgewalletconnectorbcc.h \
     src/xbridge/xbridgedef.h \
+    src/xbridge/xbridgewalletconnectorsys.h \
     src/xbridge/xbridgewalletconnectoreth.h \
     src/xbridge/xbridgeethencoder.h
 
@@ -796,4 +798,5 @@ contains(RELEASE, 1) {
 system($$QMAKE_LRELEASE -silent $$_PRO_FILE_)
 
 DISTFILES += \
-    src/qt/paymentrequest.proto
+    src/qt/paymentrequest.proto \
+    src/Makefile.am

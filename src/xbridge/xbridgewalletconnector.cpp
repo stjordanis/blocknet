@@ -16,16 +16,11 @@ namespace wallet
 
 //*****************************************************************************
 //*****************************************************************************
-bool operator < (const UtxoEntry & l, const UtxoEntry & r)
+std::string UtxoEntry::toString() const
 {
-    return (l.txId < r.txId) || (l.vout < r.vout);
-}
-
-//*****************************************************************************
-//*****************************************************************************
-bool operator == (const UtxoEntry & l, const UtxoEntry & r)
-{
-    return (l.txId == r.txId) && (l.vout == r.vout);
+    std::ostringstream o;
+    o << txId << ":" << vout << ":" << amount << ":" << address;
+    return o.str();
 }
 
 } // namespace wallet
