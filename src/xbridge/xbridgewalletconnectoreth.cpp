@@ -28,6 +28,9 @@ namespace xbridge
 namespace rpc
 {
 
+namespace
+{
+
 using namespace json_spirit;
 using namespace std;
 using namespace boost;
@@ -91,13 +94,13 @@ bool getAccounts(const std::string & rpcuser, const std::string & rpcpasswd,
 
 //*****************************************************************************
 //*****************************************************************************
-bool sendRawTransactionEth(const std::string & rpcuser,
-                           const std::string & rpcpasswd,
-                           const std::string & rpcip,
-                           const std::string & rpcport,
-                           const std::string & rawtx,
-                           string & txid,
-                           int32_t & errorCode)
+bool sendRawTransaction(const std::string & rpcuser,
+                        const std::string & rpcpasswd,
+                        const std::string & rpcip,
+                        const std::string & rpcport,
+                        const std::string & rawtx,
+                        string & txid,
+                        int32_t & errorCode)
 {
     try
     {
@@ -239,6 +242,8 @@ bool getBlockNumber(const std::string & rpcuser,
     return true;
 }
 
+} // namespace
+
 } // namespace rpc
 
 EthWalletConnector::EthWalletConnector()
@@ -336,7 +341,7 @@ bool EthWalletConnector::sendRawTransaction(const std::string & rawtx,
                                             std::string & txid,
                                             int32_t & errorCode)
 {
-    if (!rpc::sendRawTransactionEth(m_user, m_passwd, m_ip, m_port,
+    if (!rpc::sendRawTransaction(m_user, m_passwd, m_ip, m_port,
                                     rawtx, txid, errorCode))
     {
         LOG() << "rpc::sendRawTransaction failed" << __FUNCTION__;
