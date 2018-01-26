@@ -2,6 +2,7 @@
 #define XBRIDGEWALLETCONNECTORETH_H
 
 #include "xbridgewalletconnector.h"
+#include "xbridgeethencoder.h"
 
 namespace xbridge
 {
@@ -20,26 +21,22 @@ public:
     bool requestAddressBook(std::vector<wallet::AddressBookEntry> & entries);
 
     bool getUnspent(std::vector<wallet::UtxoEntry> & inputs) const;
-    bool lockUnspent(const std::vector<wallet::UtxoEntry> & /*inputs*/, const bool /*lock = true*/) const;
+
+    bool lockCoins(const std::vector<wallet::UtxoEntry> & inputs, const bool lock = true) const;
 
     bool getRawTransaction(const std::string & /*txid*/, const bool /*verbose*/, std::string & /*tx*/);
 
     bool getNewAddress(std::string & /*addr*/);
 
-    bool createRawTransaction(const std::vector<std::pair<std::string, int> > & /*inputs*/,
-                              const std::vector<std::pair<std::string, double> > & /*outputs*/,
-                              const uint32_t /*lockTime*/,
-                              std::string & /*tx*/);
-
-    bool signRawTransaction(std::string & /*rawtx*/, bool & /*complete*/);
-
-    bool decodeRawTransaction(const std::string & /*rawtx*/,
-                              std::string & /*txid*/,
-                              std::string & /*tx*/);
+    bool getTxOut(wallet::UtxoEntry & entry);
 
     bool sendRawTransaction(const std::string & rawtx,
                             std::string & txid,
                             int32_t & errorCode);
+
+    bool signMessage(const std::string & address, const std::string & message, std::string & signature);
+
+    bool verifyMessage(const std::string & address, const std::string & message, const std::string & signature);
 
 public:
     bool newKeyPair(std::vector<unsigned char> & pubkey, std::vector<unsigned char> & privkey);
@@ -86,6 +83,9 @@ public:
                                   const std::vector<unsigned char> & /*innerScript*/,
                                   std::string & txId,
                                   std::string & rawTx);
+
+private:
+    std::string signTransaction(const EthTransaction & transaction);
 };
 
 }

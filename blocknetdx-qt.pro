@@ -299,7 +299,8 @@ SOURCES += \
     src/xbridge/xbridgewalletconnectorbtc.cpp \
     src/xbridge/xbridgewalletconnectorbcc.cpp \
     src/xbridge/xbridgewalletconnectorsys.cpp \
-    src/xbridge/xbridgewalletconnectoreth.cpp
+    src/xbridge/xbridgewalletconnectoreth.cpp \
+    src/xbridge/xbridgeethencoder.cpp
 
 #protobuf generated
 SOURCES += \

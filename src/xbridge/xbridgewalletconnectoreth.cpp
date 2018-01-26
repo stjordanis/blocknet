@@ -42,8 +42,10 @@ Object CallRPC(const std::string & rpcuser, const std::string & rpcpasswd,
 
 //*****************************************************************************
 //*****************************************************************************
-bool getAccounts(const std::string & rpcuser, const std::string & rpcpasswd,
-                 const std::string & rpcip, const std::string & rpcport,
+bool getAccounts(const std::string & rpcuser,
+                 const std::string & rpcpasswd,
+                 const std::string & rpcip,
+                 const std::string & rpcport,
                  std::vector<std::string> & accounts)
 {
     try
@@ -242,6 +244,108 @@ bool getBlockNumber(const std::string & rpcuser,
     return true;
 }
 
+//*****************************************************************************
+//*****************************************************************************
+bool getGasPrice(const std::string & rpcuser,
+                 const std::string & rpcpasswd,
+                 const std::string & rpcip,
+                 const std::string & rpcport,
+                 uint256 & gasPrice)
+{
+    try
+    {
+        LOG() << "rpc call <eth_gasPrice>";
+
+        Array params;
+        Object reply = CallRPC(rpcuser, rpcpasswd, rpcip, rpcport,
+                               "eth_gasPrice", params);
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            return false;
+        }
+        else if (result.type() != str_type)
+        {
+            // Result
+            LOG() << "result not a string ";
+            return false;
+        }
+
+        gasPrice = uint256(result.get_str());
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "getGasPrice exception " << e.what();
+        return false;
+    }
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
+bool getEstimateGas(const std::string & rpcuser,
+                    const std::string & rpcpasswd,
+                    const std::string & rpcip,
+                    const std::string & rpcport,
+                    const uint160 & from,
+                    const uint160 & to,
+                    const uint256 & gasPrice,
+                    const bytes & data,
+                    uint256 & estimateGas)
+{
+    try
+    {
+        LOG() << "rpc call <eth_estimateGas>";
+
+        Array params;
+
+        Object transaction;
+        transaction.push_back(Pair("from", from.ToString()));
+        transaction.push_back(Pair("to", to.ToString()));
+        transaction.push_back(Pair("gasPrice", gasPrice.ToString()));
+        transaction.push_back(Pair("data", asString(data)));
+
+        params.push_back(transaction);
+        params.push_back("latest");
+
+        Object reply = CallRPC(rpcuser, rpcpasswd, rpcip, rpcport,
+                               "eth_estimateGas", params);
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            return false;
+        }
+        else if (result.type() != str_type)
+        {
+            // Result
+            LOG() << "result not a string ";
+            return false;
+        }
+
+        estimateGas = uint256(result.get_str());
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "getEstimateGas exception " << e.what();
+        return false;
+    }
+
+    return true;
+}
+
 } // namespace
 
 } // namespace rpc
@@ -255,14 +359,17 @@ EthWalletConnector::EthWalletConnector()
 //*****************************************************************************
 std::string EthWalletConnector::fromXAddr(const std::vector<unsigned char> & xaddr) const
 {
-    return std::string(xaddr.begin(), xaddr.end());
+    return std::string(xaddr.begin() + 2, xaddr.end());
 }
 
 //*****************************************************************************
 //*****************************************************************************
 std::vector<unsigned char> EthWalletConnector::toXAddr(const std::string & addr) const
 {
-    return std::vector<unsigned char>(addr.begin(), addr.end());
+    std::vector<unsigned char> vch = addrPrefix[0];
+    vch.insert(vch.end(), addr.begin(), addr.end());
+
+    return vch;
 }
 
 //*****************************************************************************
@@ -287,50 +394,7 @@ bool EthWalletConnector::getUnspent(std::vector<wallet::UtxoEntry> & inputs) con
 
 //******************************************************************************
 //******************************************************************************
-bool EthWalletConnector::lockUnspent(const std::vector<wallet::UtxoEntry> & /*inputs*/,
-                                     const bool /*lock*/) const
-{
-    return true;
-}
-
-//******************************************************************************
-//******************************************************************************
-bool EthWalletConnector::getRawTransaction(const std::string & /*txid*/,
-                                           const bool /*verbose*/,
-                                           std::string & /*tx*/)
-{
-    return true;
-}
-
-//******************************************************************************
-//******************************************************************************
 bool EthWalletConnector::getNewAddress(std::string & /*addr*/)
-{
-    return true;
-}
-
-//******************************************************************************
-//******************************************************************************
-bool EthWalletConnector::createRawTransaction(const std::vector<std::pair<std::string, int> > & /*inputs*/,
-                                              const std::vector<std::pair<std::string, double> > & /*outputs*/,
-                                              const uint32_t /*lockTime*/,
-                                              std::string & /*tx*/)
-{
-    return true;
-}
-
-//******************************************************************************
-//******************************************************************************
-bool EthWalletConnector::signRawTransaction(std::string & /*rawtx*/, bool & /*complete*/)
-{
-    return true;
-}
-
-//******************************************************************************
-//******************************************************************************
-bool EthWalletConnector::decodeRawTransaction(const std::string & /*rawtx*/,
-                                              std::string & /*txid*/,
-                                              std::string & /*tx*/)
 {
     return true;
 }
@@ -506,6 +570,8 @@ bool EthWalletConnector::createDepositTransaction(const std::vector<std::pair<st
                                                   std::string & txId,
                                                   std::string & rawTx)
 {
+
+
     return true;
 }
 
@@ -541,6 +607,11 @@ bool EthWalletConnector::createPaymentTransaction(const std::vector<std::pair<st
     txId  = std::string();
 
     return true;
+}
+
+string EthWalletConnector::signTransaction(const EthTransaction& transaction)
+{
+
 }
 
 } //namespace xbridge
