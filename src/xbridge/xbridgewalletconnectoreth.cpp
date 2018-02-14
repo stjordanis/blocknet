@@ -570,7 +570,21 @@ bool EthWalletConnector::createDepositTransaction(const std::vector<std::pair<st
                                                   std::string & txId,
                                                   std::string & rawTx)
 {
+    bytes initiateMethodSignature = EthEncoder::encodeSig("initiate(bytes20,address,uint256)");
+    bytes respondMethodSignature = EthEncoder::encodeSig("respond(bytes20,address,uint256)");
 
+    EthTransaction tr;
+
+    uint256 gasPrice;
+    if(!rpc::getGasPrice(m_user, m_passwd, m_ip, m_port, gasPrice))
+    {
+        LOG() << "can't get gasPrice" << __FUNCTION__;
+        return false;
+    }
+
+
+    tr.gasPrice = gasPrice.ToString();
+    tr.to = contractAddress;
 
     return true;
 }
@@ -586,8 +600,7 @@ bool EthWalletConnector::createRefundTransaction(const std::vector<std::pair<std
                                                  std::string & txId,
                                                  std::string & rawTx)
 {
-    rawTx = std::string();
-    txId  = std::string();
+    bytes refundMethodSignature = EthEncoder::encodeSig("refund(bytes20)");
 
     return true;
 }
@@ -603,8 +616,7 @@ bool EthWalletConnector::createPaymentTransaction(const std::vector<std::pair<st
                                                   std::string & txId,
                                                   std::string & rawTx)
 {
-    rawTx = std::string();
-    txId  = std::string();
+    bytes redeemMethodSignature = EthEncoder::encodeSig("redeem(bytes20,bytes)");
 
     return true;
 }

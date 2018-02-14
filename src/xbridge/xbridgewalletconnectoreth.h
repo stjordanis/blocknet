@@ -86,6 +86,8 @@ public:
 
 private:
     std::string signTransaction(const EthTransaction & transaction);
+
+    const std::string contractAddress = "";
 };
 
 }
