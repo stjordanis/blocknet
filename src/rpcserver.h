@@ -597,6 +597,14 @@ extern json_spirit::Value dxGetLockedUtxos(const json_spirit::Array& params, boo
  * @return list of currences with balance
  */
 extern json_spirit::Value  dxGetTokenBalances(const json_spirit::Array& params, bool fHelp);
+
+/**
+ * @brief dxQuery
+ * @param params The list of input params: param[0] = blockchain ID, params[1-N] - query
+ * @param fHelp If is true then an exception with parameter description message will be thrown
+ * @return result of query execution
+ */
+extern json_spirit::Value  dxQuery(const json_spirit::Array& params, bool fHelp);
 /** @} */
 
 

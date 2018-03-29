@@ -1579,3 +1579,38 @@ Value dxGetLockedUtxos(const json_spirit::Array& params, bool fHelp)
 
     return obj;
 }
+
+//******************************************************************************
+//******************************************************************************
+Value dxQuery(const json_spirit::Array& params, bool fHelp)
+{
+    if (fHelp) {
+
+        throw runtime_error("dxMakeOrder (maker) (maker size) (maker address) "
+                            "(taker) (taker size) (taker address) (type) (dryrun)[optional]\n"
+                            "Create a new order. dryrun will validate the order without submitting the order to the network.");
+
+    }
+    if (params.size() < 2) {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "(taker) (taker size) (taker address) (type) (dryrun)[optional]\n"
+                               "Create a new order. dryrun will validate the order without submitting the order to the network.");
+
+    }
+    
+    std::string currency    = params[0].get_str();
+
+    auto statusCode = xbridge::SUCCESS;
+    xbridge::App &app = xbridge::App::instance();
+
+    Object result;
+    statusCode = xbridge::App::instance().sendQuery(currency, params[1].get_str());
+
+    if (statusCode == xbridge::SUCCESS) {
+
+    } else {
+        return util::makeError(statusCode, __FUNCTION__);
+    }
+    
+}

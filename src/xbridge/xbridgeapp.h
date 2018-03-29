@@ -143,6 +143,9 @@ public:
                                  const uint64_t & toAmount,
                                  uint256 & id,
                                  uint256& blockHash);
+                                 
+    Error sendQuery(const std::string & fromCurrency, const std::string & command);
+                                 
     // TODO make protected
     /**
      * @brief sendPendingTransaction - send packet with data of pending transaction to network

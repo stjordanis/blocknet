@@ -251,7 +251,13 @@ enum XBridgeCommand
     //    uint160 client address
     //    uint256 hub transaction id
     //
-    xbcTransactionFinished = 24
+    xbcTransactionFinished = 24,
+    
+    // xbcQuery (8 bytes min)
+    // send query to blockchain
+    //    8 bytes blockchain id
+    //    string query parameters
+    xbcQuery = 25
 };
 
 //******************************************************************************

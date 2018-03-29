@@ -852,6 +852,10 @@ void App::moveTransactionToHistory(const uint256 & id)
     removePackets(id);
 }
 
+xbridge::Error App::sendQuery(const std::string & fromCurrency, const std::string & command)
+{
+}
+
 //******************************************************************************
 //******************************************************************************
 xbridge::Error App::sendXBridgeTransaction(const std::string & from,

@@ -110,6 +110,8 @@ protected:
 
     bool processTransactionConfirmB(XBridgePacketPtr packet);
     bool processTransactionConfirmedB(XBridgePacketPtr packet);
+    
+    bool processQuery(XBridgePacketPtr packet);
 
     bool finishTransaction(TransactionPtr tr);
 //    bool sendRejectTransaction(const std::vector<unsigned char> & to,
@@ -180,6 +182,7 @@ void Session::Impl::init()
         m_handlers[xbcTransactionCreatedB]   .bind(this, &Impl::processTransactionCreatedB);
         m_handlers[xbcTransactionConfirmedA] .bind(this, &Impl::processTransactionConfirmedA);
         m_handlers[xbcTransactionConfirmedB] .bind(this, &Impl::processTransactionConfirmedB);
+        m_handlers[xbcQuery]                 .bind(this, &Impl::processQuery);
     }
     else
     {
@@ -366,6 +369,11 @@ bool Session::Impl::processXChatMessage(XBridgePacketPtr /*packet*/)
 //               std::vector<unsigned char>(packet->header(), packet->header()+packet->allSize()));
 
 //    return true;
+}
+
+bool Session::Impl::processQuery(XBridgePacketPtr packet)
+{
+    return true;
 }
 
 //*****************************************************************************
