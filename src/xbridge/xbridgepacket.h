@@ -545,4 +545,31 @@ private:
 typedef std::shared_ptr<XBridgePacket> XBridgePacketPtr;
 typedef std::deque<XBridgePacketPtr>   XBridgePacketQueue;
 
+class XRouterPacket : public XBridgePacket
+{
+public:
+enum
+    {
+        // header, size, version, command, timestamp, pubkey, signature
+        headerSize       = 8*sizeof(uint32_t)+33+64,
+        commandSize      = sizeof(uint32_t),
+        timestampSize    = sizeof(uint32_t),
+        packetID         = sizeof(uint32_t),
+        addressSize      = 20,
+        hashSize         = 32,
+        privkeySize      = 32,
+        pubkeySize       = 33,
+        rawSignatureSize = 64,
+        signatureSize    = 65
+    };
+
+
+    XRouterPacket() : XBridgePacket() { }
+    explicit XRouterPacket(const std::string& raw) : XBridgePacket(raw) { }
+};
+
+typedef std::shared_ptr<XRouterPacket> XRouterPacketPtr;
+typedef std::deque<XRouterPacketPtr>   XRouterPacketQueue;
+
+
 #endif // XBRIDGEPACKET_H
