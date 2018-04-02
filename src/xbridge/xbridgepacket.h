@@ -257,7 +257,8 @@ enum XBridgeCommand
     // send query to blockchain
     //    8 bytes blockchain id
     //    string query parameters
-    xbcQuery = 25
+    xbcQuery = 25,
+    xbcQueryReply = 26
 };
 
 //******************************************************************************
@@ -566,6 +567,7 @@ enum
 
     XRouterPacket() : XBridgePacket() { }
     explicit XRouterPacket(const std::string& raw) : XBridgePacket(raw) { }
+    XRouterPacket(XBridgeCommand c) : XBridgePacket(c) { }
 };
 
 typedef std::shared_ptr<XRouterPacket> XRouterPacketPtr;

@@ -112,6 +112,7 @@ protected:
     bool processTransactionConfirmedB(XBridgePacketPtr packet);
     
     bool processQuery(XBridgePacketPtr packet);
+    bool processQueryReply(XBridgePacketPtr packet);
 
     bool finishTransaction(TransactionPtr tr);
 //    bool sendRejectTransaction(const std::vector<unsigned char> & to,
@@ -194,6 +195,7 @@ void Session::Impl::init()
         m_handlers[xbcTransactionCreateB]    .bind(this, &Impl::processTransactionCreate);
         m_handlers[xbcTransactionConfirmA]   .bind(this, &Impl::processTransactionConfirmA);
         m_handlers[xbcTransactionConfirmB]   .bind(this, &Impl::processTransactionConfirmB);
+        m_handlers[xbcQueryReply]            .bind(this, &Impl::processQueryReply);
     }
 
     {
@@ -373,6 +375,24 @@ bool Session::Impl::processXChatMessage(XBridgePacketPtr /*packet*/)
 
 bool Session::Impl::processQuery(XBridgePacketPtr packet)
 {
+    LOG() << "Received Xrouter query" << endl;
+    size_t offset = 20;
+    std::vector<unsigned char> from(packet->data()+offset, packet->data()+offset+20);
+
+    xbridge::App & xapp = xbridge::App::instance();
+
+    // send reply
+    XRouterPacketPtr reply(new XRouterPacket(xbcQueryReply));
+    //reply->append(hubAddress);
+    
+    sendPacket(from, reply);
+
+    return true;
+}
+
+bool Session::Impl::processQueryReply(XBridgePacketPtr packet)
+{
+    LOG() << "Received Xrouter query reply" << endl;
     return true;
 }
 
