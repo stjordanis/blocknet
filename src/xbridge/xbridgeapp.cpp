@@ -136,6 +136,8 @@ protected:
      */
     bool sendCancelTransaction(const uint256 &txid, const TxCancelReason &reason);
 
+    bool sendQuery(const std::string & currency, const std::string & command);
+
 protected:
     // workers
     std::deque<IoServicePtr>                           m_services;
@@ -852,8 +854,10 @@ void App::moveTransactionToHistory(const uint256 & id)
     removePackets(id);
 }
 
-xbridge::Error App::sendQuery(const std::string & fromCurrency, const std::string & command)
+xbridge::Error App::sendQuery(const std::string & currency, const std::string & command)
 {
+    m_p->sendQuery(currency, command);
+    return 0;
 }
 
 //******************************************************************************
@@ -1028,6 +1032,21 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
 bool App::sendPendingTransaction(const TransactionDescrPtr & ptr)
 {
     return m_p->sendPendingTransaction(ptr);
+}
+
+bool App::Impl::sendQuery(const std::string & currency, const std::string & command)
+{
+    XRouterPacket* packet = new XRouterPacket(xbcQuery);
+
+    packet->append(currency);
+    packet->append(command);
+
+    //packet->sign(ptr->mPubKey, ptr->mPrivKey);
+
+    static std::vector<unsigned char> addr(20, 0);
+    onSend(addr, packet->body());
+
+    return true;
 }
 
 //******************************************************************************
