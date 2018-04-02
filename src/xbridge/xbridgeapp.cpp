@@ -136,7 +136,7 @@ protected:
      */
     bool sendCancelTransaction(const uint256 &txid, const TxCancelReason &reason);
 
-    bool sendQuery(const std::string & currency, const std::string & command);
+    bool sendQuery(const std::string & id, const std::string & currency, const std::string & command);
 
 protected:
     // workers
@@ -854,10 +854,10 @@ void App::moveTransactionToHistory(const uint256 & id)
     removePackets(id);
 }
 
-xbridge::Error App::sendQuery(const std::string & currency, const std::string & command)
+xbridge::Error App::sendQuery(const std::string & id, const std::string & currency, const std::string & command)
 {
-    m_p->sendQuery(currency, command);
-    return 0;
+    m_p->sendQuery(id, currency, command);
+    return xbridge::SUCCESS;
 }
 
 //******************************************************************************
@@ -1034,7 +1034,7 @@ bool App::sendPendingTransaction(const TransactionDescrPtr & ptr)
     return m_p->sendPendingTransaction(ptr);
 }
 
-bool App::Impl::sendQuery(const std::string & currency, const std::string & command)
+bool App::Impl::sendQuery(const std::string & id, const std::string & currency, const std::string & command)
 {
     XRouterPacket* packet = new XRouterPacket(xbcQuery);
 

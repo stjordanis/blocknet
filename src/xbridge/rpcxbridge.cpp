@@ -17,6 +17,9 @@
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/algorithm/copy.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <stdio.h>
 #include <atomic>
@@ -1603,12 +1606,16 @@ Value dxQuery(const json_spirit::Array& params, bool fHelp)
 
     auto statusCode = xbridge::SUCCESS;
     xbridge::App &app = xbridge::App::instance();
-
+    
+    boost::uuids::uuid uuid = boost::uuids::random_generator()();
+    std::string id = boost::uuids::to_string(uuid);
     Object result;
-    statusCode = xbridge::App::instance().sendQuery(currency, params[1].get_str());
+    statusCode = xbridge::App::instance().sendQuery(id, currency, params[1].get_str());
 
     if (statusCode == xbridge::SUCCESS) {
-
+	Object obj;
+        obj.emplace_back(Pair("query-id", id));
+        return obj;
     } else {
         return util::makeError(statusCode, __FUNCTION__);
     }
