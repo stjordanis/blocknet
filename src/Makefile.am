@@ -369,6 +369,7 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/xbitcointransaction.cpp \
   xbridge/rpcxbridge.cpp \
   xbridge/posixtimeconversion.cpp \
+  xbridge/ethereum/rpc.cpp \
   xbridge/bitcoinrpcconnector.h \
   xbridge/config.h \
   xbridge/version.h \
@@ -398,6 +399,7 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/util/xutil.h \
   xbridge/util/xbridgeerror.h \
   xbridge/posixtimeconversion.h \
+  xbridge/ethereum/rpc.h \
   $(BITCOIN_CORE_H)
 
 
