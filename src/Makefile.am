@@ -494,8 +494,9 @@ ethereum_get_balance_SOURCES = tools/ethereum-get-balance.cpp
 ethereum_get_balance_CPPFLAGS = $(BITCOIN_INCLUDES)
 
 ethereum_get_balance_LDADD = \
-  $(LIBBITCOIN_SERVER) \
+  libbitcoin_wallet.a \
   $(LIBXBRIDGE_XBRIDGE) \
+  $(LIBBITCOIN_SERVER) \
   $(LIBBITCOIN_COMMON) \
   $(LIBBITCOIN_UNIVALUE) \
   $(LIBBITCOIN_UTIL) \
@@ -506,6 +507,12 @@ ethereum_get_balance_LDADD = \
   $(LIBBITCOIN_CLI) \
   $(BOOST_LIBS) \
   $(SSL_LIBS)
+
+if ENABLE_WALLET
+#ethereum_get_balance_LDADD += libbitcoin_wallet.a
+endif
+
+ethereum_get_balance_LDADD += -ldb_cxx
 
 
 # blocknetdx-tx binary #
