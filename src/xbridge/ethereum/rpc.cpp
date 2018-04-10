@@ -5,13 +5,19 @@
 #include <stdexcept>
 
 namespace xbridge {
-namespace eth {
 
 using namespace json_spirit;
 
+namespace rpc {
+
+// This should really be declared in xbrigerpc.h
 Object CallRPC(const std::string& rpc_user, const std::string& rpc_passwd,
                const std::string& rpc_ip, const std::string& rpc_port,
                const std::string& strMethod, const Array& params);
+
+} // namespace rpc
+
+namespace eth {
 
 bool get_balance(std::string rpc_user, std::string rpc_password,
         std::string rpc_ip, std::string rpc_port,
@@ -22,7 +28,7 @@ bool get_balance(std::string rpc_user, std::string rpc_password,
         Array params;
         params.push_back(account);
         params.push_back("latest");
-        Object reply = CallRPC(rpc_user, rpc_password, rpc_ip, rpc_port,
+        Object reply = rpc::CallRPC(rpc_user, rpc_password, rpc_ip, rpc_port,
                 "eth_getBalance", params);
         const Value& error = find_value(reply, "error");
         if (error.type() != null_type) {
@@ -42,5 +48,5 @@ bool get_balance(std::string rpc_user, std::string rpc_password,
     return true;
 }
 
-} // namespace xbridge
 } // namespace eth
+} // namespace xbridge

@@ -73,6 +73,7 @@ endif
 
 if BUILD_BITCOIN_UTILS
   bin_PROGRAMS += blocknetdx-cli blocknetdx-tx
+  bin_PROGRAMS += ethereum-get-balance
 endif
 
 .PHONY: FORCE
@@ -486,7 +487,26 @@ blocknetdx_cli_SOURCES = \
   blocknetdx-cli.cpp
 
 blocknetdx_cli_CPPFLAGS = $(BITCOIN_INCLUDES)
-#
+
+
+ethereum_get_balance_SOURCES = tools/ethereum-get-balance.cpp
+
+ethereum_get_balance_CPPFLAGS = $(BITCOIN_INCLUDES)
+
+ethereum_get_balance_LDADD = \
+  $(LIBBITCOIN_SERVER) \
+  $(LIBXBRIDGE_XBRIDGE) \
+  $(LIBBITCOIN_COMMON) \
+  $(LIBBITCOIN_UNIVALUE) \
+  $(LIBBITCOIN_UTIL) \
+  $(LIBBITCOIN_CRYPTO) \
+  $(LIBLEVELDB) \
+  $(LIBMEMENV) \
+  $(LIBSECP256K1) \
+  $(LIBBITCOIN_CLI) \
+  $(BOOST_LIBS) \
+  $(SSL_LIBS)
+
 
 # blocknetdx-tx binary #
 blocknetdx_tx_LDADD = \
