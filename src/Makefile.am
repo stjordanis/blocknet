@@ -493,9 +493,9 @@ ethereum_get_balance_SOURCES = tools/ethereum-get-balance.cpp
 
 ethereum_get_balance_CPPFLAGS = $(BITCOIN_INCLUDES)
 
+ethereum_get_balance_LDFLAGS = $(RELDFLAGS) $(AM_FLAGS) $(LIBTOOL_APP_LDFLAGS) -pthread
+
 ethereum_get_balance_LDADD = \
-  libbitcoin_wallet.a \
-  $(LIBXBRIDGE_XBRIDGE) \
   $(LIBBITCOIN_SERVER) \
   $(LIBBITCOIN_COMMON) \
   $(LIBBITCOIN_UNIVALUE) \
@@ -504,15 +504,23 @@ ethereum_get_balance_LDADD = \
   $(LIBLEVELDB) \
   $(LIBMEMENV) \
   $(LIBSECP256K1) \
-  $(LIBBITCOIN_CLI) \
-  $(BOOST_LIBS) \
-  $(SSL_LIBS)
+  $(LIBXBRIDGE_XBRIDGE) \
+  $(LIBBITCOIN_CLI)
 
-if ENABLE_WALLET
-#ethereum_get_balance_LDADD += libbitcoin_wallet.a
+if ENABLE_ZMQ
+ethereum_get_balance_LDADD += $(LIBBITCOIN_ZMQ) $(ZMQ_LIBS)
 endif
 
-ethereum_get_balance_LDADD += -ldb_cxx
+if ENABLE_WALLET
+ethereum_get_balance_LDADD += libbitcoin_wallet.a
+endif
+
+ethereum_get_balance_LDADD += \
+  $(BOOST_LIBS) \
+  $(BDB_LIBS) \
+  $(SSL_LIBS) \
+  $(CRYPTO_LIBS) \
+  $(MINIUPNPC_LIBS)
 
 
 # blocknetdx-tx binary #
