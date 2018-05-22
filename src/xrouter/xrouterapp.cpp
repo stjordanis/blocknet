@@ -294,10 +294,10 @@ std::string App::sendPacketAndWait(const XRouterPacketPtr & packet, std::string 
         error.emplace_back(Pair("uuid", id));
         return json_spirit::write_string(Value(error), true);
     } else {
-        for (uint i = 0; i < queries[id].size(); i++) {
+        for (unsigned int i = 0; i < queries[id].size(); i++) {
             std::string cand = queries[id][i];
             int cnt = 0;
-            for (uint j = 0; j < queries[id].size(); j++)
+            for (unsigned int j = 0; j < queries[id].size(); j++)
                 if (queries[id][j] == cand) {
                     cnt++;
                     if (cnt > confirmations / 2)
@@ -611,7 +611,7 @@ static double parseVout(Value vout, std::string account) {
         return 0.0;
     Array addr = addr_val.get_array();
     
-    for (uint k = 0; k != addr.size(); k++ ) {
+    for (unsigned int k = 0; k != addr.size(); k++ ) {
         std::string cur_addr = Value(addr[k]).get_str();
         if (cur_addr == account)
             result += val;
@@ -624,12 +624,12 @@ static double getBalanceChange(xbridge::WalletConnectorPtr conn, Object tx, std:
     double result = 0.0;
 
     Array vout = find_value(tx, "vout").get_array();
-    for (uint j = 0; j != vout.size(); j++ ) {
+    for (unsigned int j = 0; j != vout.size(); j++ ) {
         result += parseVout(vout[j], account);
     }
 
     Array vin = find_value(tx, "vin").get_array();
-    for (uint j = 0; j != vin.size(); j++ ) {
+    for (unsigned int j = 0; j != vin.size(); j++ ) {
         const Value& txid_val = find_value(vin[j].get_obj(), "txid");
         if (txid_val.is_null())
             continue;
@@ -648,7 +648,7 @@ static double getBalanceChange(xbridge::WalletConnectorPtr conn, Object tx, std:
 
 static bool checkFilterFit(xbridge::WalletConnectorPtr conn, Object tx, CBloomFilter filter) {
     Array vout = find_value(tx, "vout").get_array();
-    for (uint j = 0; j != vout.size(); j++ ) {
+    for (unsigned int j = 0; j != vout.size(); j++ ) {
         Object src = find_value(vout[j].get_obj(), "scriptPubKey").get_obj();
         std::string outkey = find_value(src, "hex").get_str();
         std::vector<unsigned char> outkeyv(outkey.begin(), outkey.end());
@@ -666,7 +666,7 @@ static bool checkFilterFit(xbridge::WalletConnectorPtr conn, Object tx, CBloomFi
     }
 
     Array vin = find_value(tx, "vin").get_array();
-    for (uint j = 0; j != vin.size(); j++ ) {
+    for (unsigned int j = 0; j != vin.size(); j++ ) {
         const Value& txid_val = find_value(vin[j].get_obj(), "scriptSig");
         if (txid_val.is_null())
             continue;
@@ -750,7 +750,7 @@ bool App::processGetAllTransactions(XRouterPacketPtr packet) {
             Object block = getResult(conn->executeRpcCall("getblock", b)).get_obj();
             Array txs = find_value(block, "tx").get_array();
             std::cout << "block " << id << " " << txs.size() << std::endl;
-            for (uint j = 0; j < txs.size(); j++) {
+            for (unsigned int j = 0; j < txs.size(); j++) {
                 std::string txid = Value(txs[j]).get_str();
                 Array c { Value(txid) };
                 std::string txdata = getResult(conn->executeRpcCall("getrawtransaction", c)).get_str();
@@ -797,7 +797,7 @@ bool App::processGetBalance(XRouterPacketPtr packet) {
             Object block = getResult(conn->executeRpcCall("getblock", b)).get_obj();
             Array txs = find_value(block, "tx").get_array();
             std::cout << "block " << id << " " << txs.size() << std::endl;
-            for (uint j = 0; j < txs.size(); j++) {
+            for (unsigned int j = 0; j < txs.size(); j++) {
                 std::string txid = Value(txs[j]).get_str();
                 Array c { Value(txid) };
                 std::string txdata = getResult(conn->executeRpcCall("getrawtransaction", c)).get_str();
@@ -844,7 +844,7 @@ bool App::processGetBalanceUpdate(XRouterPacketPtr packet) {
             Object block = getResult(conn->executeRpcCall("getblock", b)).get_obj();
             Array txs = find_value(block, "tx").get_array();
             std::cout << "block " << id << " " << txs.size() << std::endl;
-            for (uint j = 0; j < txs.size(); j++) {
+            for (unsigned int j = 0; j < txs.size(); j++) {
                 std::string txid = Value(txs[j]).get_str();
                 Array c { Value(txid) };
                 std::string txdata = getResult(conn->executeRpcCall("getrawtransaction", c)).get_str();
@@ -898,7 +898,7 @@ bool App::processGetTransactionsBloomFilter(XRouterPacketPtr packet) {
             Object block = getResult(conn->executeRpcCall("getblock", b)).get_obj();
             Array txs = find_value(block, "tx").get_array();
             std::cout << "block " << id << " " << txs.size() << std::endl;
-            for (uint j = 0; j < txs.size(); j++) {
+            for (unsigned int j = 0; j < txs.size(); j++) {
                 std::string txid = Value(txs[j]).get_str();
                 Array c { Value(txid) };
                 std::string txdata = getResult(conn->executeRpcCall("getrawtransaction", c)).get_str();
@@ -1149,7 +1149,7 @@ std::string App::getReply(const std::string & id)
         result.emplace_back(Pair("uuid", id));
         return json_spirit::write_string(Value(result), true);
     } else {
-        for (uint i = 0; i < queries[id].size(); i++) {
+        for (unsigned int i = 0; i < queries[id].size(); i++) {
             std::string cand = queries[id][i];
             result.emplace_back(Pair("reply" + std::to_string(i+1), cand));
         }
