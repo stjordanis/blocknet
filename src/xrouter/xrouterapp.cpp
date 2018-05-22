@@ -699,6 +699,14 @@ bool App::processGetAllBlocks(XRouterPacketPtr packet) {
     std::cout << uuid << " "<< currency << " " << number_s << std::endl;
     int number = std::stoi(number_s);
     
+    Object error;
+    error.emplace_back(Pair("error", "call temporarily unavailable"));
+    XRouterPacketPtr rpacket2(new XRouterPacket(xrReply));
+    rpacket2->append(uuid);
+    rpacket2->append(json_spirit::write_string(Value(error), true));
+    sendPacket(rpacket2);
+    return true;
+    
     xbridge::WalletConnectorPtr conn = connectorByCurrency(currency);
     Array result;
     if (conn)
@@ -783,6 +791,14 @@ bool App::processGetBalance(XRouterPacketPtr packet) {
     std::string account((const char *)packet->data()+offset);
     offset += account.size() + 1;
     std::cout << uuid << " "<< currency << " " << account << std::endl;
+
+    Object error;
+    error.emplace_back(Pair("error", "call temporarily unavailable"));
+    XRouterPacketPtr rpacket2(new XRouterPacket(xrReply));
+    rpacket2->append(uuid);
+    rpacket2->append(json_spirit::write_string(Value(error), true));
+    sendPacket(rpacket2);
+    return true;
     
     xbridge::WalletConnectorPtr conn = connectorByCurrency(currency);
     double result = 0.0;
