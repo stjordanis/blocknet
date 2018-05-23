@@ -131,7 +131,7 @@ bool App::init(int argc, char *argv[])
         path += "/xbridge.conf";
         s.read(path.c_str());
         s.parseCmdLine(argc, argv);
-        std::cout << "Finished loading config" << path << std::endl;
+        //std::cout << "Finished loading config" << path << std::endl;
     }
     
     return true;
@@ -963,7 +963,7 @@ bool App::processGetPaymentAddress(XRouterPacketPtr packet) {
 //*****************************************************************************
 //*****************************************************************************
 bool App::processReply(XRouterPacketPtr packet) {
-    std::cout << "Processing Reply\n";
+    //std::cout << "Processing Reply\n";
     
     uint32_t offset = 0;
 
@@ -971,7 +971,7 @@ bool App::processReply(XRouterPacketPtr packet) {
     offset += uuid.size() + 1;
     std::string reply((const char *)packet->data()+offset);
     offset += reply.size() + 1;
-    std::cout << uuid << " " << reply << std::endl;
+    //std::cout << uuid << " " << reply << std::endl;
     
     // check uuid is in queriesLock keys
     if (!queriesLocks.count(uuid))
@@ -991,7 +991,7 @@ void App::onMessageReceived(const std::vector<unsigned char>& id,
     const std::vector<unsigned char>& message,
     CValidationState& /*state*/)
 {
-    std::cerr << "Received xrouter packet\n";
+    //std::cerr << "Received xrouter packet\n";
 
     XRouterPacketPtr packet(new XRouterPacket);
     if (!packet->copyFrom(message)) {
@@ -1078,19 +1078,19 @@ static bool satisfyBlockRequirement(uint256& txHash, uint32_t& vout, CKey& key)
 //*****************************************************************************
 std::string App::xrouterCall(enum XRouterCommand command, const std::string & currency, std::string param1, std::string param2, std::string confirmations)
 {
-    std::cout << "process Query" << std::endl;
+    //std::cout << "process Query" << std::endl;
     XRouterPacketPtr packet(new XRouterPacket(command));
 
     uint256 txHash;
     uint32_t vout;
     CKey key;
     if (!satisfyBlockRequirement(txHash, vout, key)) {
-        std::cerr << "Minimum block requirement not satisfied\n";
-        return "Minimum block requirement not satisfied";
+        //std::cerr << "Minimum block requirement not satisfied. Make sure your wallet is unlocked.\n";
+        return "Minimum block requirement not satisfied. Make sure your wallet is unlocked.";
     }
-    std::cout << "txHash = " << txHash.ToString() << "\n";
-    std::cout << "vout = " << vout << "\n";
-    std::cout << "Sending xrGetBlock packet...\n";
+    //std::cout << "txHash = " << txHash.ToString() << "\n";
+    //std::cout << "vout = " << vout << "\n";
+    //std::cout << "Sending xrGetBlock packet...\n";
     
     //boost::uuids::uuid uuid = boost::uuids::random_generator()();
     //std::string id = boost::uuids::to_string(uuid);
@@ -1108,7 +1108,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     packet->sign(key);
     
     if (!confirmations.empty())
-        return sendPacketAndWait(packet, id, currency, std::stoi(confirmations), 300000);
+        return sendPacketAndWait(packet, id, currency, std::stoi(confirmations), 20000);
     else
         return sendPacketAndWait(packet, id, currency);
 }
