@@ -2,9 +2,13 @@
 //*****************************************************************************
 
 #include "xbridgetransaction.h"
+#include "xbridgeapp.h"
+#include "xbridgeexchange.h"
 #include "util/logger.h"
 #include "util/xutil.h"
+#include "util/settings.h"
 #include "utilstrencodings.h"
+#include "main.h"
 
 #include <boost/date_time/posix_time/conversion.hpp>
 
@@ -34,12 +38,14 @@ Transaction::Transaction(const uint256                    & id,
                          const std::vector<unsigned char> & destAddr,
                          const std::string                & destCurrency,
                          const uint64_t                   & destAmount,
-                         const time_t                     & created)
+                         const uint64_t                   & created,
+                         const uint256                    & blockHash,
+                         const std::vector<unsigned char> & mpubkey)
     : m_id(id)
-    , m_created(boost::posix_time::from_time_t(created))
-    , m_last(boost::posix_time::from_time_t(created))
+    , m_created(util::intToTime(created))
+    , m_last(boost::posix_time::microsec_clock::universal_time())
+    , m_blockHash(blockHash)
     , m_state(trNew)
-    // , m_stateCounter(0)
     , m_a_stateChanged(false)
     , m_b_stateChanged(false)
     , m_confirmationCounter(0)
@@ -51,6 +57,7 @@ Transaction::Transaction(const uint256                    & id,
 {
     m_a.setSource(sourceAddr);
     m_a.setDest(destAddr);
+    m_a.setMPubkey(mpubkey);
 }
 
 //*****************************************************************************
@@ -66,6 +73,11 @@ uint256 Transaction::id() const
     return m_id;
 }
 
+uint256 Transaction::blockHash() const
+{
+    return m_blockHash;
+}
+
 //*****************************************************************************
 // state of transaction
 //*****************************************************************************
@@ -77,10 +89,10 @@ Transaction::State Transaction::state() const
 //*****************************************************************************
 //*****************************************************************************
 Transaction::State Transaction::increaseStateCounter(const Transaction::State state,
-                                                                   const std::vector<unsigned char> & from)
+                                                     const std::vector<unsigned char> & from)
 {
     LOG() << "confirm transaction state <" << strState(state)
-          << "> from " << util::to_str(from);
+          << "> from " << HexStr(from);
 
     if (state == trJoined && m_state == state)
     {
@@ -197,7 +209,7 @@ std::string Transaction::strState(const State state)
     static std::string states[] = {
         "trInvalid", "trNew", "trJoined",
         "trHold", "trInitialized", "trCreated",
-        "trSigned", "trCommited", "trConfirmed",
+        "trSigned", "trCommited",
         "trFinished", "trCancelled", "trDropped"
     };
 
@@ -215,7 +227,7 @@ std::string Transaction::strState() const
 //*****************************************************************************
 void Transaction::updateTimestamp()
 {
-    m_last = boost::posix_time::second_clock::universal_time();
+    m_last = boost::posix_time::microsec_clock::universal_time();
 }
 
 //*****************************************************************************
@@ -245,15 +257,41 @@ bool Transaction::isValid() const
 //*****************************************************************************
 bool Transaction::isExpired() const
 {
-    boost::posix_time::time_duration td = boost::posix_time::second_clock::universal_time() - m_last;
-    if (m_state == trNew && td.total_seconds() > pendingTTL)
-    {
+    boost::posix_time::time_duration tdLast = boost::posix_time::microsec_clock::universal_time() - m_last;
+    boost::posix_time::time_duration tdCreated = boost::posix_time::microsec_clock::universal_time() - m_created;
+
+    if (m_state == trNew && tdCreated.total_seconds() > deadlineTTL)
         return true;
-    }
-    if (m_state > trNew && td.total_seconds() > TTL)
-    {
+
+    if (m_state == trNew && tdLast.total_seconds() > pendingTTL)
         return true;
-    }
+
+    if (m_state > trNew && tdLast.total_seconds() > TTL)
+        return true;
+
+    return false;
+}
+
+//*****************************************************************************
+//*****************************************************************************
+bool Transaction::isExpiredByBlockNumber() const
+{
+    LOCK(cs_main);
+
+    if (mapBlockIndex.count(m_blockHash) == 0)
+        return true; //expired because we don't have this hash in blockchain
+
+    if(m_state > trNew && !isFinished())
+        return false;
+
+    CBlockIndex* blockindex = mapBlockIndex[m_blockHash];
+
+    int trBlockHeight = blockindex->nHeight;
+    int lastBlockHeight = chainActive.Height();
+
+    if(lastBlockHeight - trBlockHeight > blocksTTL)
+        return true;
+
     return false;
 }
 
@@ -279,22 +317,6 @@ void Transaction::finish()
 {
     LOG() << "finish transaction <" << m_id.GetHex() << ">";
     m_state = trFinished;
-}
-
-//*****************************************************************************
-//*****************************************************************************
-bool Transaction::confirm(const std::string & id)
-{
-    if (m_bintxid1 == id || m_bintxid2 == id)
-    {
-        if (++m_confirmationCounter >= 2)
-        {
-            m_state = trConfirmed;
-            return true;
-        }
-    }
-
-    return false;
 }
 
 //*****************************************************************************
@@ -350,7 +372,7 @@ uint256 Transaction::a_datatxid() const
 //*****************************************************************************
 std::vector<unsigned char> Transaction::a_pk1() const
 {
-    return m_a_pk1;
+    return m_a.mpubkey();
 }
 
 //*****************************************************************************
@@ -413,7 +435,7 @@ std::vector<unsigned char> Transaction::b_innerScript() const
 //*****************************************************************************
 std::vector<unsigned char> Transaction::b_pk1() const
 {
-    return m_b_pk1;
+    return m_b.mpubkey();
 }
 
 //*****************************************************************************
@@ -432,7 +454,6 @@ bool Transaction::tryJoin(const TransactionPtr other)
         m_destCurrency != other->m_sourceCurrency)
     {
         // not same currencies
-        ERR() << "not same currencies. transaction not joined" << __FUNCTION__;
         return false;
     }
 
@@ -461,13 +482,13 @@ bool Transaction::setKeys(const std::vector<unsigned char> & addr,
     if (m_b.dest() == addr)
     {
         m_b_datatxid = datatxid;
-        m_b_pk1      = pk;
+        m_b.setMPubkey(pk);
         return true;
     }
     else if (m_a.dest() == addr)
     {
         m_a_datatxid = datatxid;
-        m_a_pk1      = pk;
+        m_a.setMPubkey(pk);
         return true;
     }
     return false;
@@ -492,6 +513,56 @@ bool Transaction::setBinTxId(const std::vector<unsigned char> & addr,
         return true;
     }
     return false;
+}
+
+std::ostream & operator << (std::ostream & out, const TransactionPtr & tx)
+{
+    if(!settings().isFullLog())
+    {
+        out << std::endl << "ORDER ID: " << tx->id().GetHex() << std::endl;
+
+        return out;
+    }
+
+    xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(tx->a_currency());
+    xbridge::WalletConnectorPtr connTo   = xbridge::App::instance().connectorByCurrency(tx->b_currency());
+
+    if (!connFrom || !connTo)
+        out << "MISSING SOME CONNECTOR, NOT ALL ORDER INFO WILL BE LOGGED";
+
+    xbridge::Exchange & e = xbridge::Exchange::instance();
+
+    std::vector<xbridge::wallet::UtxoEntry> items;
+    e.getUtxoItems(tx->id(), items);
+
+    std::ostringstream inputsStream;
+    uint32_t count = 0;
+    for(const xbridge::wallet::UtxoEntry & entry : items)
+    {
+        inputsStream << "    INDEX: " << count << std::endl
+                     << "    ID: " << entry.txId << std::endl
+                     << "    VOUT: " << boost::lexical_cast<std::string>(entry.vout) << std::endl
+                     << "    AMOUNT: " << entry.amount << std::endl
+                     << "    ADDRESS: " << entry.address << std::endl;
+
+        ++count;
+    }
+
+    out << std::endl
+        << "ORDER BODY" << std::endl
+        << "ID: " << tx->id().GetHex() << std::endl
+        << "MAKER: " << tx->a_currency() << std::endl
+        << "MAKER SIZE: " << util::xBridgeStringValueFromAmount(tx->a_amount()) << std::endl
+        << "MAKER ADDR: " << (!tx->a_address().empty() && connFrom ? connFrom->fromXAddr(tx->a_address()) : "") << std::endl
+        << "TAKER: " << tx->b_currency() << std::endl
+        << "TAKER SIZE: " << util::xBridgeStringValueFromAmount(tx->b_amount()) << std::endl
+        << "TAKER ADDR: " << (!tx->b_address().empty() && connTo ? connTo->fromXAddr(tx->b_address()) : "") << std::endl
+        << "STATE: " << tx->strState() << std::endl
+        << "BLOCK HASH: " << tx->blockHash().GetHex() << std::endl
+        << "CREATED AT: " << util::iso8601(tx->createdTime()) << std::endl
+        << "USED INPUTS: " << std::endl << inputsStream.str();
+
+    return out;
 }
 
 } // namespace xbridge

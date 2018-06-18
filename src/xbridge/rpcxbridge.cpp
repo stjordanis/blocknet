@@ -13,7 +13,10 @@
 #include <boost/signals2.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-
+#include <boost/range/algorithm_ext/push_back.hpp>
+#include <boost/range/adaptor/map.hpp>
+#include <boost/range/adaptor/filtered.hpp>
+#include <boost/range/algorithm/copy.hpp>
 
 #include <stdio.h>
 #include <atomic>
@@ -22,33 +25,89 @@
 #include "util/settings.h"
 #include "util/logger.h"
 #include "util/xbridgeerror.h"
+#include "util/xutil.h"
 #include "xbridgeapp.h"
 #include "xbridgeexchange.h"
 #include "xbridgetransaction.h"
+#include "xbridgetransactiondescr.h"
+#include "xuiconnector.h"
 #include "rpcserver.h"
-
+#include "init.h"
+#include "wallet.h"
 using namespace json_spirit;
 using namespace std;
 using namespace boost;
 using namespace boost::asio;
 
 using TransactionMap    = std::map<uint256, xbridge::TransactionDescrPtr>;
+
 using TransactionPair   = std::pair<uint256, xbridge::TransactionDescrPtr>;
 
 using RealVector        = std::vector<double>;
 
+using TransactionVector = std::vector<xbridge::TransactionDescrPtr>;
 namespace bpt           = boost::posix_time;
 
-double xBridgeValueFromAmount(uint64_t amount)
+
+
+//******************************************************************************
+//******************************************************************************
+Value dxGetLocalTokens(const Array & params, bool fHelp)
 {
-    return static_cast<double>(amount) / xbridge::TransactionDescr::COIN;
+    if (fHelp) {
+
+        throw runtime_error("dxGetLocalTokens\nList coins supported by your node. You can only trade with these supported coins.");
+
+    }
+    if (params.size() > 0) {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "This function does not accept any parameter");
+
+    }
+
+    Array r;
+
+    std::vector<std::string> currencies = xbridge::App::instance().availableCurrencies();
+    for (std::string currency : currencies) {
+
+        r.emplace_back(currency);
+
+    }
+    return r;
 }
 
-uint64_t xBridgeAmountFromReal(double val)
+//******************************************************************************
+//******************************************************************************
+Value dxGetNetworkTokens(const Array & params, bool fHelp)
 {
-    // TODO: should we check amount ranges and throw JSONRPCError like they do in rpcserver.cpp ?
-    return static_cast<uint64_t>(val * xbridge::TransactionDescr::COIN + 0.5);
+    if (fHelp) {
+
+        throw runtime_error("dxGetNetworkTokens\nList coins supported by the network.");
+
+    }
+    if (params.size() > 0) {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "This function does not accept any parameters");
+
+    }
+
+    return dxGetLocalTokens(params, fHelp); // TODO Remove when xwallet broadcast is ready
+
+    Array r;
+
+    std::vector<std::string> currencies = xbridge::App::instance().networkCurrencies();
+    for (std::string currency : currencies) {
+
+        r.emplace_back(currency);
+
+    }
+    return r;
 }
+
+//******************************************************************************
+//******************************************************************************
 
 /** \brief Returns the list of open and pending transactions
   * \param params A list of input params.
@@ -59,224 +118,315 @@ uint64_t xBridgeAmountFromReal(double val)
   * The open transactions go first.
   */
 
-Value dxGetTransactions(const Array & params, bool fHelp)
+Value dxGetOrders(const Array & params, bool fHelp)
 {
-    if(fHelp) {
-        throw runtime_error("dxGetTransactions\nList transactions.");
+    if (fHelp) {
+
+        throw runtime_error("dxGetOrders\nList of all orders.");
+
     }
-    if (params.size() > 0) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "This function does not accept any parameter"));
-        error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-        return  error;
+    if (!params.empty()) {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "This function does not accept any parameters");
+
     }
 
-    Array arr;
-
-    xbridge::App & xapp = xbridge::App::instance();
+    auto &xapp = xbridge::App::instance();
     TransactionMap trlist = xapp.transactions();
-    for (const auto & trEntry : trlist)
-    {
-        const xbridge::TransactionDescrPtr & tr = trEntry.second;
+
+    Array result;
+    for (const auto& trEntry : trlist) {
+
+        const auto &tr = trEntry.second;
 
         xbridge::WalletConnectorPtr connFrom = xapp.connectorByCurrency(tr->fromCurrency);
         xbridge::WalletConnectorPtr connTo   = xapp.connectorByCurrency(tr->toCurrency);
-        if (!connFrom || !connTo)
-        {
+        if (!connFrom || !connTo) {
+
             continue;
+
         }
 
         Object jtr;
-        jtr.emplace_back(Pair("id",           tr->id.GetHex()));
-        jtr.emplace_back(Pair("from",         tr->fromCurrency));
-        jtr.emplace_back(Pair("from address", connFrom->fromXAddr(tr->from)));
-        jtr.emplace_back(Pair("fromAmount",   xBridgeValueFromAmount(tr->fromAmount)));
-        jtr.emplace_back(Pair("to",           tr->toCurrency));
-        jtr.emplace_back(Pair("to address",   connTo->fromXAddr(tr->to)));
-        jtr.emplace_back(Pair("toAmount",     xBridgeValueFromAmount(tr->toAmount)));
-        jtr.emplace_back(Pair("state",        tr->strState()));
+        jtr.emplace_back(Pair("id",             tr->id.GetHex()));
+        jtr.emplace_back(Pair("maker",          tr->fromCurrency));
+        jtr.emplace_back(Pair("maker_size",     util::xBridgeStringValueFromAmount(tr->fromAmount)));
+        jtr.emplace_back(Pair("taker",          tr->toCurrency));
+        jtr.emplace_back(Pair("taker_size",     util::xBridgeStringValueFromAmount(tr->toAmount)));
+        jtr.emplace_back(Pair("updated_at",     util::iso8601(tr->txtime)));
+        jtr.emplace_back(Pair("created_at",     util::iso8601(tr->created)));
+        jtr.emplace_back(Pair("status",         tr->strState()));
+        result.emplace_back(jtr);
 
-        arr.emplace_back(jtr);
     }
 
-    return arr;
+
+    return result;
 }
 
 //*****************************************************************************
 //*****************************************************************************
 
-Value dxGetTransactionsHistory(const Array & params, bool fHelp)
+Value dxGetOrderFills(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw runtime_error("dxGetTransactionsHistory "
-                            "(ALL - optional parameter, if specified then all transactions are shown, "
-                            "not only successfully completed ");
+
+        throw runtime_error("dxGetOrderFills (maker) (taker) (combined, default=true)[optional]\n"
+                            "Returns all the recent trades by trade pair that have been filled \n"
+                            "(i.e. completed). Maker symbol is always listed first. The [combined] \n"
+                            "flag defaults to true. When set to false [combined] will return only \n"
+                            "maker trades, switch maker and taker to get the reverse."
+                            );
+
     }
 
-    bool invalidParams = ((params.size() != 0) &&
-                          (params.size() != 1));
+    bool invalidParams = ((params.size() != 2) &&
+                          (params.size() != 3));
     if (invalidParams) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "Invalid number of parameters"));
-        error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-        return  error;
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "(maker) (taker) (combined, default=true)[optional]");
+
     }
 
-    bool isShowAll = params.size() == 1 && params[0].get_str() == "ALL";
+    bool combined = params.size() == 3 ? params[2].get_bool() : true;
+
+    const auto maker = params[0].get_str();
+    const auto taker = params[1].get_str();
+
+
+
+    TransactionMap history = xbridge::App::instance().history();
+
+
+
+    TransactionVector result;
+
+    for (auto &item : history) {
+        const xbridge::TransactionDescrPtr &ptr = item.second;
+        if ((ptr->state == xbridge::TransactionDescr::trFinished) &&
+            (combined ? ((ptr->fromCurrency == maker && ptr->toCurrency == taker) || (ptr->toCurrency == maker && ptr->fromCurrency == taker)) : (ptr->fromCurrency == maker && ptr->toCurrency == taker))) {
+            result.push_back(ptr);
+        }
+    }
+
+    std::sort(result.begin(), result.end(),
+              [](const xbridge::TransactionDescrPtr &a,  const xbridge::TransactionDescrPtr &b)
+    {
+         return (a->txtime) > (b->txtime);
+    });
 
     Array arr;
+    for(const auto &transaction : result) {
 
-    TransactionMap trlist = xbridge::App::instance().history();
+        Object tmp;
+        tmp.emplace_back(Pair("id",         transaction->id.GetHex()));
+        tmp.emplace_back(Pair("time",       util::iso8601(transaction->txtime)));
+        tmp.emplace_back(Pair("maker",      transaction->fromCurrency));
+        tmp.emplace_back(Pair("maker_size", util::xBridgeStringValueFromAmount(transaction->fromAmount)));
+        tmp.emplace_back(Pair("taker",      transaction->toCurrency));
+        tmp.emplace_back(Pair("taker_size", util::xBridgeStringValueFromAmount(transaction->toAmount)));
+        arr.emplace_back(tmp);
 
-    for (const auto &trEntry : trlist)
-    {
-        Object buy;
-        const auto &tr = trEntry.second;
-        if (!isShowAll && tr->state != xbridge::TransactionDescr::trFinished)
-        {
-            continue;
-        }
-
-        double fromAmount = static_cast<double>(tr->fromAmount);
-        double toAmount = static_cast<double>(tr->toAmount);
-        double price = fromAmount / toAmount;
-        std::string buyTime = to_iso_extended_string(tr->created);
-        buy.emplace_back(Pair("time",      buyTime));
-        buy.emplace_back(Pair("traid_id",  tr->id.GetHex()));
-        buy.emplace_back(Pair("price",     price));
-        buy.emplace_back(Pair("size",      tr->toAmount));
-        buy.emplace_back(Pair("side",      "buy"));
-        arr.emplace_back(buy);
     }
-
     return arr;
 }
 
-Value dxGetTradeHistory(const json_spirit::Array& params, bool fHelp)
+Value dxGetOrderHistory(const json_spirit::Array& params, bool fHelp)
 {
 
     if (fHelp) {
-        throw runtime_error("dxGetTradeHistory "
-                            "(from currency) (to currency) (start time) (end time) (txids - optional) ");
+
+        throw runtime_error("dxGetOrderHistory (maker) (taker) (start time) (end time) (granularity) (order_ids, default=false)[optional]\n"
+                            "Returns the order history over a specified time interval. [start_time] and [end_time] are \n"
+                            "in unix time seconds [granularity] in seconds of supported time interval lengths include: \n"
+                            "60,300,900,3600,21600,86400. [order_ids] is a boolean, defaults to false (not showing ids).");
+
     }
-    if ((params.size() != 4 && params.size() != 5)) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "Invalid number of parameters"));
-        error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-        return  error;
+    if (params.size() < 5) {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "(maker) (taker) (start time) (end time) (granularity) "
+                               "(order_ids, default=false)[optional]");
     }
 
     Array arr;
-    TransactionMap trlist = xbridge::App::instance().history();
+    TransactionMap history = xbridge::App::instance().history();
 
-    if(trlist.empty())
-    {
+    if(history.empty()) {
+
         LOG() << "empty history transactions list";
         return arr;
+
     }
 
     const auto fromCurrency     = params[0].get_str();
     const auto toCurrency       = params[1].get_str();
     const auto startTimeFrame   = params[2].get_int();
-    const auto endTimeFrame     = params[3].get_int();
-    bool isShowTxids = false;
-    if(params.size() == 5)
-    {
-        isShowTxids = (params[4].get_str() == "txids");
+    auto endTimeFrame           = params[3].get_int();
+    const auto granularity      = params[4].get_int();
+
+    // Validate start time (no start date less than 2/25/2018)
+    if (startTimeFrame < 1519540000) {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "Start time too early.");
+
     }
+
+    // Validate start and end times (no times too far in the future)
+    std::time_t currentTime = std::time(nullptr);
+    std::time_t oneDayFromNow = currentTime + 86400;
+    if (startTimeFrame > oneDayFromNow || endTimeFrame > oneDayFromNow) {
+        Object error;
+        error.emplace_back(Pair("error", "Start/end times are too large."));
+        error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
+        error.emplace_back(Pair("name",  __FUNCTION__));
+        return error;
+    }
+    if (endTimeFrame > currentTime)
+        endTimeFrame = (int)currentTime + 1;
+
+    // Validate granularity
+    switch (granularity) {
+        case 60:
+        case 300:
+        case 900:
+        case 3600:
+        case 21600:
+        case 86400:
+            break;
+        default:
+            return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                                   "granularity must be one of: 60,300,900,3600,21600,86400");
+    }
+
+    bool isShowTxids = params.size() == 6 ? params[5].get_bool() : false;
 
     TransactionMap trList;
     std::vector<xbridge::TransactionDescrPtr> trVector;
 
     //copy all transactions between startTimeFrame and endTimeFrame
-    std::copy_if(trlist.begin(), trlist.end(), std::inserter(trList, trList.end()),
+    std::copy_if(history.begin(), history.end(), std::inserter(trList, trList.end()),
                  [&startTimeFrame, &endTimeFrame, &toCurrency, &fromCurrency](const TransactionPair &transaction){
-        return  ((transaction.second->created)      <   bpt::from_time_t(endTimeFrame)) &&
-                ((transaction.second->created)      >   bpt::from_time_t(startTimeFrame)) &&
-                (transaction.second->toCurrency     ==  toCurrency) &&
-                (transaction.second->fromCurrency   ==  fromCurrency) &&
-                (transaction.second->state          ==  xbridge::TransactionDescr::trFinished);
+        return  ((transaction.second->created)   <=  bpt::from_time_t(endTimeFrame)) &&
+                ((transaction.second->created)   >=  bpt::from_time_t(startTimeFrame)) &&
+                ((transaction.second->toCurrency == toCurrency && transaction.second->fromCurrency == fromCurrency) || // return requested and inverse trading pairs
+                (transaction.second->toCurrency  == fromCurrency && transaction.second->fromCurrency == toCurrency)) &&
+                (transaction.second->state       == xbridge::TransactionDescr::trFinished);
     });
 
     if(trList.empty()) {
-        LOG() << "No transactions for the specified period " << __FUNCTION__;
+
+        LOG() << "No orders for the specified period " << __FUNCTION__;
         return  arr;
+
     }
 
-    RealVector toAmounts;
-    RealVector fromAmounts;
-
-    Object res;
-
-    Array times;
-    times.emplace_back(startTimeFrame);
-    times.emplace_back(endTimeFrame);
-    res.emplace_back(Pair("t", times));
-
     //copy values into vector
-    for (const auto &trEntry : trList)
-    {
-        const auto &tr          = trEntry.second;
-        const auto fromAmount   = xBridgeValueFromAmount(tr->fromAmount);
-        const auto toAmount     = xBridgeValueFromAmount(tr->toAmount);
-        toAmounts.emplace_back(toAmount);
-        fromAmounts.emplace_back(fromAmount);
+    for (const auto &trEntry : trList) {
+        const auto &tr = trEntry.second;
         trVector.push_back(tr);
     }
 
-
+    // Sort ascending by updated time
     std::sort(trVector.begin(), trVector.end(),
-              [](const xbridge::TransactionDescrPtr &a,  const xbridge::TransactionDescrPtr &b)
+              [](const xbridge::TransactionDescrPtr &a, const xbridge::TransactionDescrPtr &b)
     {
-         return (a->created) < (b->created);
+         return (a->txtime) < (b->txtime);
     });
 
-    Array opens;
-    //write start price
-    opens.emplace_back(xBridgeValueFromAmount(trVector[0]->fromAmount));
-    opens.emplace_back(xBridgeValueFromAmount(trVector[0]->toAmount));
-    res.emplace_back(Pair("o", opens));
+    // Setup intervals. Each time period (interval) has a high,low,open,close,volume. This code is
+    // responsible for calculating the results for each interval.
+    int jstart = 0;
+    for (int timeInterval = startTimeFrame; timeInterval < endTimeFrame; timeInterval += granularity) {
+        Array interval;
 
-    Array close;
-    //write end price
-    close.emplace_back(xBridgeValueFromAmount(trVector[trVector.size() - 1]->fromAmount));
-    close.emplace_back(xBridgeValueFromAmount(trVector[trVector.size() - 1]->toAmount));
-    res.emplace_back(Pair("c", close));
+        double volume = 0; // store total volume for interval
+        xbridge::TransactionDescrPtr open = nullptr; // open order
+        xbridge::TransactionDescrPtr close = nullptr; // close order
+        xbridge::TransactionDescrPtr high = nullptr; // high order
+        xbridge::TransactionDescrPtr low = nullptr; // low order
+        bool orderFound = false;
+        Array orderIds;
 
-    Array volumes;
-    //write sum of bids and asks
-    volumes.emplace_back(accumulate(toAmounts.begin(), toAmounts.end(), .0));
-    volumes.emplace_back(accumulate(fromAmounts.begin(), fromAmounts.end(), .0));
-    res.emplace_back(Pair("v", volumes));
+        // start searching from point of last checked order (since orders are only processed once)
+        for (int j = jstart; j < (int)trVector.size(); j++) {
+            const auto &tr = trVector[j];
+            auto t = (int)(util::timeToInt(tr->txtime)/1000/1000); // need seconds, timeToInt is in microseconds
+            // only check orders within boundaries (time interval)
+            if (t >= timeInterval && t < timeInterval + granularity) {
+                // Record if order found
+                orderFound = true;
+                // open is always first order
+                if (open == nullptr)
+                    open = tr;
+                // defaults
+                if (high == nullptr)
+                    high = tr;
+                if (low == nullptr)
+                    low = tr;
+                // close is always last order
+                close = tr;
 
-    Array highs;
-    //write higs values of the bids and asks  in timeframe
-    highs.emplace_back(*std::max_element(toAmounts.begin(), toAmounts.end()));
-    highs.emplace_back(*std::max_element(fromAmounts.begin(), fromAmounts.end()));
-    res.emplace_back(Pair("h", highs));
+                // volume is based in "to amount" (track volume of what we're priced in, in this case orders are priced in "to amount")
+                volume += fromCurrency == tr->fromCurrency ? util::xBridgeValueFromAmount(tr->fromAmount) :
+                          util::xBridgeValueFromAmount(tr->toAmount);
 
-    Array lows;
-    //write lows values of the bids and ask in the timeframe
-    lows.emplace_back(*std::min_element(toAmounts.begin(), toAmounts.end()));
-    lows.emplace_back(*std::min_element(fromAmounts.begin(), fromAmounts.end()));
-    res.emplace_back(Pair("l", lows));
+                // calc prices, algo: to/from = price (in terms of to). e.g. LTC-SYS price = SYS-size / LTC-size = SYS per unit priced in LTC
+                double high_price    = fromCurrency == high->fromCurrency ? util::price(high) : util::priceBid(high);
+                double low_price     = fromCurrency == low->fromCurrency  ? util::price(low)  : util::priceBid(low);
+                double current_price = fromCurrency == tr->fromCurrency   ? util::price(tr)   : util::priceBid(tr);
 
-    if(isShowTxids)
-    {
-        Array tmp;
-        for(auto tr : trVector)
-        {
-            tmp.emplace_back(tr->id.GetHex());
+                // record highest if current price larger than highest price
+                if (current_price > high_price)
+                    high = tr;
+                // record lowest if current price is lower than lowest price
+                if (current_price < low_price)
+                    low = tr;
+
+                // store order id if necessary
+                if (isShowTxids)
+                    orderIds.emplace_back(tr->id.GetHex());
+
+                jstart = j; // want to skip already searched orders
+            }
         }
-        res.emplace_back(Pair("txids", tmp));
-    }
 
-    //write status
-    res.emplace_back(Pair("s", "ok"));
-    arr.emplace_back(res);
+        // Process if at least 1 order is found
+        if (orderFound) {
+            // latest prices
+            double open_price  = fromCurrency == open->fromCurrency  ? util::price(open)  : util::priceBid(open);
+            double close_price = fromCurrency == close->fromCurrency ? util::price(close) : util::priceBid(close);
+            double high_price  = fromCurrency == high->fromCurrency  ? util::price(high)  : util::priceBid(high);
+            double low_price   = fromCurrency == low->fromCurrency   ? util::price(low)   : util::priceBid(low);
+
+            // format: [ time, low, high, open, close, volume ]
+            interval.emplace_back(util::iso8601(boost::posix_time::from_time_t(timeInterval + granularity)));
+            interval.emplace_back(low_price);
+            interval.emplace_back(high_price);
+            interval.emplace_back(open_price);
+            interval.emplace_back(close_price);
+            interval.emplace_back(volume);
+
+            if (isShowTxids)
+                interval.emplace_back(orderIds);
+
+        } else { // if no orders for time interval, return empty data
+            // format: [ time, low, high, open, close, volume ]
+            interval.emplace_back(util::iso8601(boost::posix_time::from_time_t(timeInterval + granularity)));
+            interval.emplace_back(0);
+            interval.emplace_back(0);
+            interval.emplace_back(0);
+            interval.emplace_back(0);
+            interval.emplace_back(0);
+            if (isShowTxids)
+                interval.emplace_back(Array());
+        }
+
+        arr.emplace_back(interval);
+    }
 
     return arr;
 }
@@ -284,368 +434,482 @@ Value dxGetTradeHistory(const json_spirit::Array& params, bool fHelp)
 //*****************************************************************************
 //*****************************************************************************
 
-Value dxGetTransactionInfo(const Array & params, bool fHelp)
+Value dxGetOrder(const Array & params, bool fHelp)
 {
     if (fHelp) {
-         throw runtime_error("dxGetTransactionInfo (id) Transaction info.");
+
+         throw runtime_error("dxGetOrder (id)\n"
+                             "Get order info by id.");
+
     }
     if (params.size() != 1) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "Invalid number of parameters"));
-        error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-        return  error;
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "(id)");
+
     }
 
     uint256 id(params[0].get_str());
-    Array arr;
 
-    xbridge::App & xapp = xbridge::App::instance();
+    auto &xapp = xbridge::App::instance();
 
-    const xbridge::TransactionDescrPtr tr = xapp.transaction(uint256(id));
-    if (tr)
-    {
-        xbridge::WalletConnectorPtr connFrom = xapp.connectorByCurrency(tr->fromCurrency);
-        xbridge::WalletConnectorPtr connTo   = xapp.connectorByCurrency(tr->toCurrency);
-        if (!connFrom || !connTo)
-        {
-            throw runtime_error("connector not found");
-        }
+    const xbridge::TransactionDescrPtr order = xapp.transaction(uint256(id));
 
-        Object jtr;
-        jtr.emplace_back(Pair("id",           tr->id.GetHex()));
-        jtr.emplace_back(Pair("created",      bpt::to_iso_extended_string(tr->created)));
-        jtr.emplace_back(Pair("from",         tr->fromCurrency));
-        jtr.emplace_back(Pair("from address", connFrom->fromXAddr(tr->from)));
-        jtr.emplace_back(Pair("fromAmount",   xBridgeValueFromAmount(tr->fromAmount)));
-        jtr.emplace_back(Pair("to",           tr->toCurrency));
-        jtr.emplace_back(Pair("to address",   connTo->fromXAddr(tr->to)));
-        jtr.emplace_back(Pair("toAmount",     xBridgeValueFromAmount(tr->toAmount)));
-        jtr.emplace_back(Pair("state",        tr->strState()));
+    if(order == nullptr) {
 
-        arr.emplace_back(jtr);
+        return util::makeError(xbridge::TRANSACTION_NOT_FOUND, __FUNCTION__,
+                               id.ToString());
+
     }
 
-    return arr;
-}
+    xbridge::WalletConnectorPtr connFrom = xapp.connectorByCurrency(order->fromCurrency);
+    xbridge::WalletConnectorPtr connTo   = xapp.connectorByCurrency(order->toCurrency);
+    if(!connFrom) {
 
+        return util::makeError(xbridge::NO_SESSION, __FUNCTION__,
+                               order->fromCurrency);
 
-//******************************************************************************
-//******************************************************************************
-Value dxGetCurrencies(const Array & params, bool fHelp)
-{
-    if (fHelp) {
-        throw runtime_error("dxGetCurrencies\nList currencies.");
     }
-    if (params.size() > 0) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "This function does not accept any parameter"));
-        error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-        return  error;
+    if (!connTo) {
+
+        return util::makeError(xbridge::NO_SESSION, __FUNCTION__,
+                               order->toCurrency);
+
     }
 
-    Object obj;
-
-    std::vector<std::string> currencies = xbridge::App::instance().availableCurrencies();
-    for (std::string currency : currencies)
-    {
-        obj.emplace_back(Pair(currency, ""));
-    }
-    return obj;
+    Object result;
+    result.emplace_back(Pair("id",          order->id.GetHex()));
+    result.emplace_back(Pair("maker",       order->fromCurrency));
+    result.emplace_back(Pair("maker_size",  util::xBridgeStringValueFromAmount(order->fromAmount)));
+    result.emplace_back(Pair("taker",       order->toCurrency));
+    result.emplace_back(Pair("taker_size",  util::xBridgeStringValueFromAmount(order->toAmount)));
+    result.emplace_back(Pair("updated_at",  util::iso8601(order->txtime)));
+    result.emplace_back(Pair("created_at",  util::iso8601(order->created)));
+    result.emplace_back(Pair("status",      order->strState()));
+    return result;
 }
 
 //******************************************************************************
 //******************************************************************************
-Value dxCreateTransaction(const Array &params, bool fHelp)
+Value dxMakeOrder(const Array &params, bool fHelp)
 {
+
     if (fHelp) {
-        throw runtime_error("dxCreateTransaction "
-                            "(address from) (currency from) (amount from) "
-                            "(address to) (currency to) (amount to)\n"
-                            "Create xbridge transaction.");
+
+        throw runtime_error("dxMakeOrder (maker) (maker size) (maker address) "
+                            "(taker) (taker size) (taker address) (type) (dryrun)[optional]\n"
+                            "Create a new order. dryrun will validate the order without submitting the order to the network.");
+
     }
-    if (params.size() != 6) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "Invalid number of parameters"));
-        error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-        return  error;
+    if (params.size() < 7) {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "(taker) (taker size) (taker address) (type) (dryrun)[optional]\n"
+                               "Create a new order. dryrun will validate the order without submitting the order to the network.");
+
     }
 
-    std::string fromAddress     = params[0].get_str();
-    std::string fromCurrency    = params[1].get_str();
-    double      fromAmount      = params[2].get_real();
-    std::string toAddress       = params[3].get_str();
-    std::string toCurrency      = params[4].get_str();
-    double      toAmount        = params[5].get_real();
+    if (!util::xBridgeValidCoin(params[1].get_str())) {
+        Object error;
+        error.emplace_back(Pair("error",    xbridge::xbridgeErrorText(xbridge::INVALID_PARAMETERS,
+                      "maker size is too precise, maximum precision supported is " +
+                              std::to_string(util::xBridgeSignificantDigits(xbridge::TransactionDescr::COIN)) + " digits")));
+        error.emplace_back(Pair("code",     xbridge::INVALID_PARAMETERS));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return error;
+    }
+
+    if (!util::xBridgeValidCoin(params[4].get_str())) {
+        Object error;
+        error.emplace_back(Pair("error",    xbridge::xbridgeErrorText(xbridge::INVALID_PARAMETERS,
+                      "taker size is too precise, maximum precision supported is " +
+                              std::to_string(util::xBridgeSignificantDigits(xbridge::TransactionDescr::COIN)) + " digits")));
+        error.emplace_back(Pair("code",     xbridge::INVALID_PARAMETERS));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return error;
+    }
+
+    std::string fromCurrency    = params[0].get_str();
+    double      fromAmount      = boost::lexical_cast<double>(params[1].get_str());
+    std::string fromAddress     = params[2].get_str();
+
+    std::string toCurrency      = params[3].get_str();
+    double      toAmount        = boost::lexical_cast<double>(params[4].get_str());
+    std::string toAddress       = params[5].get_str();
+
+    std::string type            = params[6].get_str();
+
+    // Validate the order type
+    if (type != "exact") {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "Only the exact type is supported at this time.");
+
+    }
+
+    // Check that addresses are not the same
+    if (fromAddress == toAddress) {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "maker address and taker address cannot be the same: " + fromAddress);
+    }
+
+    // Check upper limits
+    if (fromAmount > (double)xbridge::TransactionDescr::MAX_COIN ||
+            toAmount > (double)xbridge::TransactionDescr::MAX_COIN) {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "Maximum supported size is " + std::to_string(xbridge::TransactionDescr::MAX_COIN));
+    }
+    // Check lower limits
+    if (fromAmount <= 0 || toAmount <= 0) {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "Minimum supported size is " + util::xBridgeStringValueFromPrice(1.0/xbridge::TransactionDescr::COIN));
+    }
+
+    // Validate address prefix
+    xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(fromCurrency);
+    xbridge::WalletConnectorPtr connTo   = xbridge::App::instance().connectorByCurrency(toCurrency);
+    if (!connFrom) return util::makeError(xbridge::NO_SESSION, __FUNCTION__, "unable to connect to wallet: " + fromCurrency);
+    if (!connTo) return util::makeError(xbridge::NO_SESSION, __FUNCTION__, "unable to connect to wallet: " + toCurrency);
+    if (!connFrom->hasValidAddressPrefix(fromAddress))
+        return util::makeError(xbridge::INVALID_ADDRESS, __FUNCTION__,
+                               ": " + fromCurrency + " address is bad, are you using the correct address?");
+    if (!connTo->hasValidAddressPrefix(toAddress))
+        return util::makeError(xbridge::INVALID_ADDRESS, __FUNCTION__,
+                               ": " + toCurrency + " address is bad, are you using the correct address?");
 
     auto statusCode = xbridge::SUCCESS;
 
     xbridge::App &app = xbridge::App::instance();
+
+
     if (!app.isValidAddress(fromAddress)) {
-        statusCode = xbridge::INVALID_ADDRESS;
-        Object error;
-        error.emplace_back(Pair("error",
-                                xbridge::xbridgeErrorText(statusCode, fromAddress)));
-        error.emplace_back(Pair("code", statusCode));
-        return  error;
+
+        return util::makeError(xbridge::INVALID_ADDRESS, __FUNCTION__, fromAddress);
+
     }
     if (!app.isValidAddress(toAddress)) {
-        statusCode = xbridge::INVALID_ADDRESS;
-        Object error;
-        error.emplace_back(Pair("error",
-                                xbridge::xbridgeErrorText(statusCode, toAddress)));
-        error.emplace_back(Pair("code", statusCode));
-        return  error;
-    }
-    bool validateParams = ((params.size() == 7) && (params[6].get_str() == "validate"));
 
-    //if validate mode enabled
-    if(validateParams) {
-        Object result;
-        statusCode = app.checkCreateParams(fromCurrency, toCurrency,
-                                           xBridgeAmountFromReal(fromAmount));
-        switch (statusCode) {
-        case xbridge::SUCCESS:
-            result.emplace_back(Pair("status",         "created"));
-            result.emplace_back(Pair("id",             uint256().GetHex()));
-            result.emplace_back(Pair("from",           fromAddress));
-            result.emplace_back(Pair("fromCurrency",   fromCurrency));
-            result.emplace_back(Pair("fromAmount",     fromAmount));
-            result.emplace_back(Pair("to",             toAddress));
-            result.emplace_back(Pair("toCurrency",     toCurrency));
-            result.emplace_back(Pair("toAmount",       toAmount));
-            return result;
-        case xbridge::INVALID_CURRENCY:
-            result.emplace_back(Pair("error",
-                                    xbridge::xbridgeErrorText(statusCode, fromCurrency)));
-            break;
-        case xbridge::NO_SESSION:
-            result.emplace_back(Pair("error",
-                                    xbridge::xbridgeErrorText(statusCode, fromCurrency)));
-            break;
-        case xbridge::INSIFFICIENT_FUNDS:
-            result.emplace_back(Pair("error",
-                                     xbridge::xbridgeErrorText(statusCode, toAddress)));
-            break;
-        default:
-            result.emplace_back(Pair("error", xbridge::xbridgeErrorText(statusCode)));
-        }
-        result.emplace_back(Pair("code", statusCode));
-        return  result;
+        return util::makeError(xbridge::INVALID_ADDRESS, __FUNCTION__, toAddress);
+
     }
+    if(fromAmount <= .0) {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "maker size must be greater than 0");
+    }
+    if(toAmount <= .0) {
+
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "taker size must be greater than 0");
+
+    }
+    // Perform explicit check on dryrun to avoid executing order on bad spelling
+    bool dryrun = false;
+    if (params.size() == 8) {
+        std::string dryrunParam = params[7].get_str();
+        if (dryrunParam != "dryrun") {
+
+            return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__, dryrunParam);
+
+        }
+        dryrun = true;
+    }
+
+
+    Object result;
+    statusCode = app.checkCreateParams(fromCurrency, toCurrency,
+                                       util::xBridgeAmountFromReal(fromAmount), fromAddress);
+    switch (statusCode) {
+    case xbridge::SUCCESS:{
+        // If dryrun
+        if (dryrun) {
+            result.emplace_back(Pair("id", uint256().GetHex()));
+            result.emplace_back(Pair("maker", fromCurrency));
+            result.emplace_back(Pair("maker_size",
+                                     util::xBridgeStringValueFromAmount(util::xBridgeAmountFromReal(fromAmount))));
+            result.emplace_back(Pair("maker_address", fromAddress));
+            result.emplace_back(Pair("taker", toCurrency));
+            result.emplace_back(Pair("taker_size",
+                                     util::xBridgeStringValueFromAmount(util::xBridgeAmountFromReal(toAmount))));
+            result.emplace_back(Pair("taker_address", toAddress));
+            result.emplace_back(Pair("status", "created"));
+            return result;
+        }
+        break;
+    }
+
+    case xbridge::INVALID_CURRENCY: {
+        return util::makeError(statusCode, __FUNCTION__, fromCurrency);
+    }
+    case xbridge::NO_SESSION:{
+        return util::makeError(statusCode, __FUNCTION__, fromCurrency);
+    }
+    case xbridge::INSIFFICIENT_FUNDS:{
+        return util::makeError(statusCode, __FUNCTION__, fromAddress);
+    }
+
+    default:
+        return util::makeError(statusCode, __FUNCTION__);
+    }
+
 
     uint256 id = uint256();
+    uint256 blockHash = uint256();
     statusCode = xbridge::App::instance().sendXBridgeTransaction
-          (fromAddress, fromCurrency, xBridgeAmountFromReal(fromAmount),
-           toAddress, toCurrency, xBridgeAmountFromReal(toAmount), id);
+          (fromAddress, fromCurrency, util::xBridgeAmountFromReal(fromAmount),
+           toAddress, toCurrency, util::xBridgeAmountFromReal(toAmount), id, blockHash);
 
-    if(statusCode== xbridge::SUCCESS) {
+    if (statusCode == xbridge::SUCCESS) {
+
         Object obj;
         obj.emplace_back(Pair("id",             id.GetHex()));
+        obj.emplace_back(Pair("maker_address",  fromAddress));
+        obj.emplace_back(Pair("maker",          fromCurrency));
+        obj.emplace_back(Pair("maker_size",     util::xBridgeStringValueFromAmount(util::xBridgeAmountFromReal(fromAmount))));
+        obj.emplace_back(Pair("taker_address",  toAddress));
+        obj.emplace_back(Pair("taker",          toCurrency));
+        obj.emplace_back(Pair("taker_size",     util::xBridgeStringValueFromAmount(util::xBridgeAmountFromReal(toAmount))));
         const auto &createdTime = xbridge::App::instance().transaction(id)->created;
-        obj.emplace_back(Pair("time",           bpt::to_iso_extended_string(createdTime)));
-        obj.emplace_back(Pair("from",           fromAddress));
-        obj.emplace_back(Pair("fromCurrency",   fromCurrency));
-        obj.emplace_back(Pair("fromAmount",     fromAmount));
-        obj.emplace_back(Pair("to",             toAddress));
-        obj.emplace_back(Pair("toCurrency",     toCurrency));
-        obj.emplace_back(Pair("toAmount",       toAmount));
+        obj.emplace_back(Pair("created_at",     util::iso8601(createdTime)));
+        obj.emplace_back(Pair("updated_at",     util::iso8601(bpt::microsec_clock::universal_time()))); // TODO Need actual updated time, this is just estimate
+        obj.emplace_back(Pair("block_id",       blockHash.GetHex()));
+        obj.emplace_back(Pair("status",         "created"));
         return obj;
+
     } else {
-        Object error;
-        error.emplace_back(Pair("error", xbridge::xbridgeErrorText(statusCode)));
-        error.emplace_back(Pair("code", statusCode));
-        return error;
+        return util::makeError(statusCode, __FUNCTION__);
     }
 }
 
 //******************************************************************************
 //******************************************************************************
-Value dxAcceptTransaction(const Array & params, bool fHelp)
+Value dxTakeOrder(const Array & params, bool fHelp)
 {
-    if (fHelp) {
-        throw runtime_error("dxAcceptTransaction (id) "
-                            "(address from) (address to)\n"
-                            "Accept xbridge transaction.");
+
+    if (fHelp)
+    {
+        throw runtime_error("dxTakeOrder (id) (address from) (address to) [optional](dryrun)\n"
+                            "Accepts the order. dryrun will evaluate input without accepting the order.");
     }
+
     auto statusCode = xbridge::SUCCESS;
 
-    if ((params.size() != 3) && (params.size() != 4)) {
-        statusCode = xbridge::INVALID_PARAMETERS;
-        Object error;
-        error.emplace_back(Pair("error",
-                                xbridge::xbridgeErrorText(statusCode)));
-        error.emplace_back(Pair("code", statusCode));
-        return  error;
+    if ((params.size() != 3) && (params.size() != 4))
+    {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "(id) (address from) (address to) [optional](dryrun)");
     }
 
     uint256 id(params[0].get_str());
     std::string fromAddress    = params[1].get_str();
     std::string toAddress      = params[2].get_str();
+
     xbridge::App &app = xbridge::App::instance();
 
-    if (!app.isValidAddress(fromAddress)) {
-        statusCode = xbridge::INVALID_ADDRESS;
-        Object error;
-        error.emplace_back(Pair("error",
-                                xbridge::xbridgeErrorText(statusCode, fromAddress)));
-        error.emplace_back(Pair("code", statusCode));
-        return  error;
+    if (!app.isValidAddress(fromAddress))
+    {
+        return util::makeError(xbridge::INVALID_ADDRESS, __FUNCTION__, fromAddress);
     }
-    if (!app.isValidAddress(toAddress)) {
-        statusCode = xbridge::INVALID_ADDRESS;
-        Object error;
-        error.emplace_back(Pair("error",
-                                xbridge::xbridgeErrorText(statusCode, toAddress)));
-        error.emplace_back(Pair("code", statusCode));
-        return  error;
+
+    if (!app.isValidAddress(toAddress))
+    {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__, toAddress);
     }
-    bool validateParams = ((params.size() == 4) && (params[3].get_str() == "validate"));
-    //if validate mode enabled
-    if(validateParams) {
-        Object result;
-        xbridge::TransactionDescrPtr ptr;
-        statusCode = app.checkAcceptParams(id, ptr);
-        switch (statusCode) {
-        case xbridge::SUCCESS:
-            result.emplace_back(Pair("status", "Accepted"));
-            result.emplace_back(Pair("id", uint256().GetHex()));
-            result.emplace_back(Pair("from", fromAddress));
-            result.emplace_back(Pair("to", toAddress));
-            return result;
-        case xbridge::TRANSACTION_NOT_FOUND:
-            result.emplace_back(Pair("error",
-                                    xbridge::xbridgeErrorText(statusCode, id.GetHex())));
-            break;
-        case xbridge::NO_SESSION:
-            result.emplace_back(Pair("error",
-                                    xbridge::xbridgeErrorText(statusCode, ptr->toCurrency)));
-            break;
-        case xbridge::INSIFFICIENT_FUNDS:
-            result.emplace_back(Pair("error",
-                                     xbridge::xbridgeErrorText(statusCode, ptr->to)));
-            break;
-        default:
-            result.emplace_back(Pair("error", xbridge::xbridgeErrorText(statusCode)));
+
+    // Check that addresses are not the same
+    if (fromAddress == toAddress) {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "address from and address to cannot be the same: " + fromAddress);
+    }
+
+    // Perform explicit check on dryrun to avoid executing order on bad spelling
+    bool dryrun = false;
+    if (params.size() == 4) {
+        std::string dryrunParam = params[3].get_str();
+        if (dryrunParam != "dryrun") {
+            return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__, dryrunParam);
         }
-        result.emplace_back(Pair("code", statusCode));
-        return  result;
+        dryrun = true;
     }
+
+    Object result;
+    xbridge::TransactionDescrPtr txDescr;
+    statusCode = app.checkAcceptParams(id, txDescr, fromAddress);
+
+    switch (statusCode)
+    {
+    case xbridge::SUCCESS: {
+        if (txDescr->isLocal()) // no self trades
+            return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__, "unable to accept your own order");
+
+        // Validate address prefix
+        xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(txDescr->fromCurrency);
+        xbridge::WalletConnectorPtr connTo   = xbridge::App::instance().connectorByCurrency(txDescr->toCurrency);
+        if (!connFrom) return util::makeError(xbridge::NO_SESSION, __FUNCTION__, "unable to connect to wallet: " + txDescr->fromCurrency);
+        if (!connTo) return util::makeError(xbridge::NO_SESSION, __FUNCTION__, "unable to connect to wallet: " + txDescr->toCurrency);
+        // taker [to] will match order [from] currency
+        if (!connFrom->hasValidAddressPrefix(toAddress))
+            return util::makeError(xbridge::INVALID_ADDRESS, __FUNCTION__,
+                                   ": " + txDescr->fromCurrency + " address is bad, are you using the correct address?");
+        // taker [from] will match order [to] currency
+        if (!connTo->hasValidAddressPrefix(fromAddress))
+            return util::makeError(xbridge::INVALID_ADDRESS, __FUNCTION__,
+                                   ": " + txDescr->toCurrency + " address is bad, are you using the correct address?");
+
+        if(dryrun)
+        {
+            result.emplace_back(Pair("id", uint256().GetHex()));
+
+            result.emplace_back(Pair("maker", txDescr->fromCurrency));
+            result.emplace_back(Pair("maker_size", util::xBridgeStringValueFromAmount(txDescr->fromAmount)));
+
+            result.emplace_back(Pair("taker", txDescr->toCurrency));
+            result.emplace_back(Pair("taker_size", util::xBridgeStringValueFromAmount(txDescr->toAmount)));
+
+            result.emplace_back(Pair("updated_at", util::iso8601(bpt::microsec_clock::universal_time())));
+            result.emplace_back(Pair("created_at", util::iso8601(txDescr->created)));
+
+            result.emplace_back(Pair("status", "filled"));
+            return result;
+        }
+
+        break;
+    }
+    case xbridge::TRANSACTION_NOT_FOUND:
+    {
+        return util::makeError(xbridge::TRANSACTION_NOT_FOUND, __FUNCTION__, id.ToString());
+    }
+
+    case xbridge::NO_SESSION:
+    {
+        return util::makeError(xbridge::NO_SESSION, __FUNCTION__, txDescr->toCurrency);
+    }
+
+    case xbridge::INSIFFICIENT_FUNDS:
+    {
+        return util::makeError(xbridge::INSIFFICIENT_FUNDS, __FUNCTION__,
+                               std::string(txDescr->to.begin(),txDescr->to.end()));
+    }
+
+    default:
+        return util::makeError(statusCode, __FUNCTION__);
+
+    }
+
+    // TODO swap is destructive on state (also complicates historical data)
+    std::swap(txDescr->fromCurrency, txDescr->toCurrency);
+    std::swap(txDescr->fromAmount, txDescr->toAmount);
 
     statusCode = app.acceptXBridgeTransaction(id, fromAddress, toAddress);
-    if(statusCode == xbridge::SUCCESS) {
-        Object obj;
-        obj.emplace_back(Pair("status", "Accepted"));
-        obj.emplace_back(Pair("time",   bpt::to_iso_extended_string(bpt::second_clock::universal_time())));
-        obj.emplace_back(Pair("id",     id.GetHex()));
-        obj.emplace_back(Pair("from",   fromAddress));
-        obj.emplace_back(Pair("to",     toAddress));
-        return obj;
+    if (statusCode == xbridge::SUCCESS) {
+
+        result.emplace_back(Pair("id", id.GetHex()));
+
+        result.emplace_back(Pair("maker", txDescr->fromCurrency));
+        result.emplace_back(Pair("maker_size", util::xBridgeStringValueFromAmount(txDescr->fromAmount)));
+
+        result.emplace_back(Pair("taker", txDescr->toCurrency));
+        result.emplace_back(Pair("taker_size", util::xBridgeStringValueFromAmount(txDescr->toAmount)));
+
+        result.emplace_back(Pair("updated_at", util::iso8601(bpt::microsec_clock::universal_time())));
+        result.emplace_back(Pair("created_at", util::iso8601(txDescr->created)));
+
+        result.emplace_back(Pair("status", txDescr->strState()));
+        return result;
+
     } else {
-        Object obj;
-        obj.emplace_back(Pair("error",
-                              xbridge::xbridgeErrorText(statusCode)));
-        obj.emplace_back(Pair("code", statusCode));
-        return obj;
+        // restore state on error
+        std::swap(txDescr->fromCurrency, txDescr->toCurrency);
+        std::swap(txDescr->fromAmount, txDescr->toAmount);
+        return util::makeError(statusCode, __FUNCTION__);
     }
 }
 
 //******************************************************************************
 //******************************************************************************
-Value dxCancelTransaction(const Array &params, bool fHelp)
+Value dxCancelOrder(const Array &params, bool fHelp)
 {
-    if(fHelp) {
-        throw runtime_error("dxCancelTransaction (id)\n"
-                            "Cancel xbridge transaction.");
-    }
-    if (params.size() != 1) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "Invalid number of parameters"));
-        error.emplace_back(Pair("code", xbridge::INVALID_ADDRESS));
-        return  error;
-    }
-    LOG() << "rpc cancel transaction " << __FUNCTION__;
-    uint256 id(params[0].get_str());
-    const auto res = xbridge::App::instance().cancelXBridgeTransaction(id, crRpcRequest);
-    if (res == xbridge::SUCCESS)
+    if(fHelp)
     {
-        Object obj;
-        obj.emplace_back(Pair("id", id.GetHex()));
-        //I purposely did not grab a mutex
-        const auto &txtime = xbridge::App::instance().transaction(id)->txtime;
-        obj.emplace_back(Pair("time", bpt::to_iso_extended_string(txtime)));
-        return  obj;
-    } else {
-        Object obj;
-        obj.emplace_back(Pair("error", xbridge::xbridgeErrorText(res)));
-        obj.emplace_back(Pair("code", res));
-        return obj;
+        throw runtime_error("dxCancelOrder (id)\n"
+                            "Cancel xbridge order.");
     }
-}
 
-//******************************************************************************
-//******************************************************************************
-json_spirit::Value dxrollbackTransaction(const json_spirit::Array& params, bool fHelp)
-{
-    if (fHelp) {
-        throw runtime_error("dxRollbackTransaction (id)\n"
-                            "Rollback xbridge transaction.");
+    if (params.size() != 1)
+    {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "(id)");
     }
-    if (params.size() != 1) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "Invalid number of parameters"));
-        error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-        return  error;
-    }
-    LOG() << "rpc rollback transaction " << __FUNCTION__;
+
+    LOG() << "rpc cancel order " << __FUNCTION__;
     uint256 id(params[0].get_str());
-    const auto res = xbridge::App::instance().rollbackXBridgeTransaction(id);
-    if(res == xbridge::SUCCESS) {
-        Object obj;
-        obj.emplace_back(Pair("id", id.GetHex()));
-        return  obj;
-    } else {
-        Object obj;
-        obj.emplace_back(Pair("error", xbridge::xbridgeErrorText(res)));
-        obj.emplace_back(Pair("code", res));
-        return obj;
+
+    xbridge::TransactionDescrPtr tx = xbridge::App::instance().transaction(id);
+    if (!tx)
+    {
+        return util::makeError(xbridge::TRANSACTION_NOT_FOUND, __FUNCTION__, id.ToString());
     }
+
+    if (tx->state >= xbridge::TransactionDescr::trCreated)
+    {
+        return util::makeError(xbridge::INVALID_STATE, __FUNCTION__, "order is already " + tx->strState());
+    }
+
+    const auto res = xbridge::App::instance().cancelXBridgeTransaction(id, crRpcRequest);
+    if (res != xbridge::SUCCESS)
+    {
+        return util::makeError(res, __FUNCTION__);
+    }
+
+    xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(tx->fromCurrency);
+    xbridge::WalletConnectorPtr connTo   = xbridge::App::instance().connectorByCurrency(tx->toCurrency);
+    if (!connFrom) {
+        return util::makeError(xbridge::NO_SESSION, __FUNCTION__, tx->fromCurrency);
+    }
+
+    if (!connTo) {
+        return util::makeError(xbridge::NO_SESSION, __FUNCTION__, tx->toCurrency);
+    }
+    Object obj;
+    obj.emplace_back(Pair("id", id.GetHex()));
+
+    obj.emplace_back(Pair("maker", tx->fromCurrency));
+    obj.emplace_back(Pair("maker_size", util::xBridgeStringValueFromAmount(tx->fromAmount)));
+    obj.emplace_back(Pair("maker_address", connFrom->fromXAddr(tx->from)));
+
+    obj.emplace_back(Pair("taker", tx->toCurrency));
+    obj.emplace_back(Pair("taker_size", util::xBridgeStringValueFromAmount(tx->toAmount)));
+    obj.emplace_back(Pair("taker_address", connTo->fromXAddr(tx->to)));
+    obj.emplace_back(Pair("refund_tx", tx->refTx));
+
+    obj.emplace_back(Pair("updated_at", util::iso8601(tx->txtime)));
+    obj.emplace_back(Pair("created_at", util::iso8601(tx->created)));
+
+    obj.emplace_back(Pair("status", tx->strState()));
+    return obj;
 }
 
 //******************************************************************************
 //******************************************************************************
-json_spirit::Value dxGetOrderBook(const json_spirit::Array& params, bool fHelp)
+Value dxGetOrderBook(const json_spirit::Array& params, bool fHelp)
 {
-    if (fHelp) {
-        throw runtime_error("dxGetOrderBook "
-                            "(the level of detail) (from currency) (to currency) "
-                            "(max orders - optional, default = 50) ");
+    if (fHelp)
+    {
+        throw runtime_error("dxGetOrderBook (detail level, 1-4) (maker) (taker) (max orders, default=50)[optional]\n"
+                            "Returns the order book. There are 4 detail levels that can be specified to obtain \n"
+                            "different outputs for the orderbook. 1 lists the best bid and ask. 2 lists the \n"
+                            "aggregated bids and asks. 3 lists the non-aggregated bids and asks. 4 is level 1 \n"
+                            "with order ids. Optionally specify the maximum orders you wish to return.");
     }
-    if ((params.size() < 3 || params.size() > 5)) {
-        Object error;
-        error.emplace_back(Pair("error",
-                                "Invalid number of parameters"));
-        error.emplace_back(Pair("code",
-                                xbridge::INVALID_PARAMETERS));
-        return  error;
+
+    if ((params.size() < 3 || params.size() > 4))
+    {
+        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
+                               "(detail level, 1-4) (maker) (taker) (max orders, default=50)[optional]");
     }
 
     Object res;
     TransactionMap trList = xbridge::App::instance().transactions();
     {
-        if(trList.empty()) {
-            LOG() << "empty  transactions list ";
-            return res;
-        }
-
-        TransactionMap asksList;
-
-        TransactionMap bidsList;
-
         /**
          * @brief detaiLevel - Get a list of open orders for a product.
          * The amount of detail shown can be customized with the level parameter.
@@ -653,41 +917,23 @@ json_spirit::Value dxGetOrderBook(const json_spirit::Array& params, bool fHelp)
         const auto detailLevel  = params[0].get_int();
         const auto fromCurrency = params[1].get_str();
         const auto toCurrency   = params[2].get_str();
-        bool isShowTxids = (params.size() == 5) && (params[4].get_str() == "txids");
-
-        if (detailLevel < 1 || detailLevel > 3) {
-            Object error;
-            error.emplace_back(Pair("error",
-                                    "invalid detail level value:"));
-            error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-            return  error;
-        }
 
         std::size_t maxOrders = 50;
-        if(detailLevel == 2 && params.size() == 4) {
+
+        if (detailLevel == 2 && params.size() == 4)
             maxOrders = params[3].get_int();
+
+        if (maxOrders < 1)
+            maxOrders = 1;
+
+        if (detailLevel < 1 || detailLevel > 4)
+        {
+            return util::makeError(xbridge::INVALID_DETAIL_LEVEL, __FUNCTION__);
         }
-        if(maxOrders < 1) {
-            Object error;
-            error.emplace_back(Pair("error",
-                                    "Negative value of maximum orders parameter"));
-            error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-            return  error;
-        }
 
-        //copy all transactions in currencies specified in the parameters
-        std::copy_if(trList.begin(), trList.end(), std::inserter(asksList, asksList.end()),
-                     [&toCurrency, &fromCurrency](const TransactionPair &transaction) {
-            return  ((transaction.second->toCurrency == fromCurrency) &&
-                    (transaction.second->fromCurrency == toCurrency));
-        });
-
-        std::copy_if(trList.begin(), trList.end(), std::inserter(bidsList, bidsList.end()),
-                     [&toCurrency, &fromCurrency](const TransactionPair &transaction) {
-            return  ((transaction.second->toCurrency == toCurrency) &&
-                    (transaction.second->fromCurrency == fromCurrency));
-        });
-
+        res.emplace_back(Pair("detail", detailLevel));
+        res.emplace_back(Pair("maker", fromCurrency));
+        res.emplace_back(Pair("taker", toCurrency));
 
         /**
          * @brief bids - array with bids
@@ -698,83 +944,191 @@ json_spirit::Value dxGetOrderBook(const json_spirit::Array& params, bool fHelp)
          */
         Array asks;
 
+        if(trList.empty())
+        {
+            LOG() << "empty transactions list";
+            res.emplace_back(Pair("asks", asks));
+            res.emplace_back(Pair("bids", bids));
+            return res;
+        }
+
+        TransactionMap asksList;
+        TransactionMap bidsList;
+
+        //copy all transactions in currencies specified in the parameters
+
+        // ask orders are based in the first token in the trading pair
+        std::copy_if(trList.begin(), trList.end(), std::inserter(asksList, asksList.end()),
+                     [&toCurrency, &fromCurrency](const TransactionPair &transaction)
+        {
+            if(transaction.second == nullptr)
+                return false;
+            if (transaction.second->fromAmount <= 0 || transaction.second->toAmount <= 0)
+                return false;
+            if (transaction.second->state != xbridge::TransactionDescr::trPending)
+                return false;
+
+            return  ((transaction.second->toCurrency == toCurrency) &&
+                    (transaction.second->fromCurrency == fromCurrency));
+        });
+
+        // bid orders are based in the second token in the trading pair (inverse of asks)
+        std::copy_if(trList.begin(), trList.end(), std::inserter(bidsList, bidsList.end()),
+                     [&toCurrency, &fromCurrency](const TransactionPair &transaction)
+        {
+            if(transaction.second == nullptr)
+                return false;
+            if (transaction.second->fromAmount <= 0 || transaction.second->toAmount <= 0)
+                return false;
+            if (transaction.second->state != xbridge::TransactionDescr::trPending)
+                return false;
+
+            return  ((transaction.second->toCurrency == fromCurrency) &&
+                    (transaction.second->fromCurrency == toCurrency));
+        });
+
         std::vector<xbridge::TransactionDescrPtr> asksVector;
         std::vector<xbridge::TransactionDescrPtr> bidsVector;
 
-        for (const auto &trEntry : asksList) {
+        for (const auto &trEntry : asksList)
             asksVector.emplace_back(trEntry.second);
-        }
 
-        for (const auto &trEntry : bidsList) {
+        for (const auto &trEntry : bidsList)
             bidsVector.emplace_back(trEntry.second);
-        }
 
-        //sort descending
-        std::sort(bidsVector.begin(), bidsVector.end(),
-                  [](const xbridge::TransactionDescrPtr &a,  const xbridge::TransactionDescrPtr &b) {
-            const auto priceA = xBridgeValueFromAmount(a->fromAmount) / xBridgeValueFromAmount(a->toAmount);
-            const auto priceB = xBridgeValueFromAmount(b->fromAmount) / xBridgeValueFromAmount(b->toAmount);
+        // sort asks descending
+        std::sort(asksVector.begin(), asksVector.end(),
+                  [](const xbridge::TransactionDescrPtr &a, const xbridge::TransactionDescrPtr &b)
+        {
+            const auto priceA = util::price(a);
+            const auto priceB = util::price(b);
             return priceA > priceB;
         });
 
-        std::sort(asksVector.begin(), asksVector.end(), [](const xbridge::TransactionDescrPtr &a,  const xbridge::TransactionDescrPtr &b){
-            const auto priceA = xBridgeValueFromAmount(a->fromAmount) / xBridgeValueFromAmount(a->toAmount);
-            const auto priceB = xBridgeValueFromAmount(b->fromAmount) / xBridgeValueFromAmount(b->toAmount);
-            return priceA < priceB;
+        //sort bids descending
+        std::sort(bidsVector.begin(), bidsVector.end(),
+                  [](const xbridge::TransactionDescrPtr &a, const xbridge::TransactionDescrPtr &b)
+        {
+            const auto priceA = util::priceBid(a);
+            const auto priceB = util::priceBid(b);
+            return priceA > priceB;
         });
+
+        // floating point comparisons
+        // see Knuth 4.2.2 Eq 36
+        auto floatCompare = [](const double a, const double b) -> bool
+        {
+            const auto epsilon = std::numeric_limits<double>::epsilon();
+            return (fabs(a - b) / fabs(a) <= epsilon) && (fabs(a - b) / fabs(b) <= epsilon);
+        };
 
         switch (detailLevel)
         {
         case 1:
         {
-            //return Only the best bid and ask
-            const auto bidsItem = std::max_element(bidsList.begin(), bidsList.end(),
-                                       [](const TransactionPair &a, const TransactionPair &b) {
-                //find transaction with best bids
-                const auto &tr1 = a.second;
-                const auto &tr2 = b.second;
-                const auto priceA = xBridgeValueFromAmount(tr1->fromAmount) / xBridgeValueFromAmount(tr1->toAmount);
-                const auto priceB = xBridgeValueFromAmount(tr2->fromAmount) / xBridgeValueFromAmount(tr2->toAmount);
-                return priceA < priceB;
-            });
+            //return only the best bid and ask
+            if (!bidsList.empty()) {
+                const auto bidsItem = std::max_element(bidsList.begin(), bidsList.end(),
+                                       [](const TransactionPair &a, const TransactionPair &b)
+                {
+                    //find transaction with best bids
+                    const auto &tr1 = a.second;
+                    const auto &tr2 = b.second;
 
-            {
+                    if(tr1 == nullptr)
+                        return true;
+
+                    if(tr2 == nullptr)
+                        return false;
+
+                    const auto priceA = util::priceBid(tr1);
+                    const auto priceB = util::priceBid(tr2);
+
+                    return priceA < priceB;
+                });
+
+                const auto bidsCount = std::count_if(bidsList.begin(), bidsList.end(),
+                                                     [bidsItem, floatCompare](const TransactionPair &a)
+                {
+                    const auto &tr = a.second;
+
+                    if(tr == nullptr)
+                        return false;
+
+                    const auto price = util::priceBid(tr);
+
+                    const auto &bestTr = bidsItem->second;
+                    if (bestTr != nullptr)
+                    {
+                        const auto bestBidPrice = util::priceBid(bestTr);
+                        return floatCompare(price, bestBidPrice);
+                    }
+
+                    return false;
+                });
+
                 const auto &tr = bidsItem->second;
-                if(tr != nullptr) {
-                    const auto bidPrice = xBridgeValueFromAmount(tr->fromAmount) / xBridgeValueFromAmount(tr->toAmount);
-                    bids.emplace_back(bidPrice);
-                    bids.emplace_back(xBridgeValueFromAmount(tr->fromAmount));
-                    if(isShowTxids) {
-                        bids.emplace_back(tr->id.GetHex());
-                    }
+                if (tr != nullptr)
+                {
+                    const auto bidPrice = util::priceBid(tr);
+                    bids.emplace_back(Array{util::xBridgeStringValueFromPrice(bidPrice),
+                                            util::xBridgeStringValueFromAmount(tr->toAmount),
+                                            static_cast<int64_t>(bidsCount)});
                 }
             }
-            ///////////////////////////////////////////////////////////////////////////////////////////////
 
-            const auto asksItem = std::min_element(asksList.begin(), asksList.end(),
-                                                   [](const TransactionPair &a, const TransactionPair &b) {
-                //find transactions with best asks
-                const auto &tr1 = a.second;
-                const auto &tr2 = b.second;
-                const auto priceA = xBridgeValueFromAmount(tr1->fromAmount) / xBridgeValueFromAmount(tr1->toAmount);
-                const auto priceB = xBridgeValueFromAmount(tr2->fromAmount) / xBridgeValueFromAmount(tr2->toAmount);
-                return priceA < priceB;
-            });
+            if (!asksList.empty()) {
+                const auto asksItem = std::min_element(asksList.begin(), asksList.end(),
+                                                   [](const TransactionPair &a, const TransactionPair &b)
+                {
+                    //find transactions with best asks
+                    const auto &tr1 = a.second;
+                    const auto &tr2 = b.second;
 
-            {
+                    if(tr1 == nullptr)
+                        return true;
+
+                    if(tr2 == nullptr)
+                        return false;
+
+                    const auto priceA = util::price(tr1);
+                    const auto priceB = util::price(tr2);
+                    return priceA < priceB;
+                });
+
+                const auto asksCount = std::count_if(asksList.begin(), asksList.end(),
+                                                     [asksItem, floatCompare](const TransactionPair &a)
+                {
+                    const auto &tr = a.second;
+
+                    if(tr == nullptr)
+                        return false;
+
+                    const auto price = util::price(tr);
+
+                    const auto &bestTr = asksItem->second;
+                    if (bestTr != nullptr)
+                    {
+                        const auto bestAskPrice = util::price(bestTr);
+                        return floatCompare(price, bestAskPrice);
+                    }
+
+                    return false;
+                });
+
                 const auto &tr = asksItem->second;
-                if(tr != nullptr) {
-                    const auto askPrice = xBridgeValueFromAmount(tr->fromAmount) / xBridgeValueFromAmount(tr->toAmount);
-                    asks.emplace_back(askPrice);
-                    asks.emplace_back(xBridgeValueFromAmount(tr->fromAmount));
-                    if(isShowTxids) {
-                        asks.emplace_back(tr->id.GetHex());
-                    }
+                if (tr != nullptr)
+                {
+                    const auto askPrice = util::price(tr);
+                    asks.emplace_back(Array{util::xBridgeStringValueFromPrice(askPrice),
+                                            util::xBridgeStringValueFromAmount(tr->fromAmount),
+                                            static_cast<int64_t>(asksCount)});
                 }
             }
-            res.emplace_back(Pair("bids", bids));
+
             res.emplace_back(Pair("asks", asks));
-            return  res;
+            res.emplace_back(Pair("bids", bids));
+            return res;
         }
         case 2:
         {
@@ -785,115 +1139,446 @@ json_spirit::Value dxGetOrderBook(const json_spirit::Array& params, bool fHelp)
              */
             auto bound = std::min(maxOrders, bidsVector.size());
 
-            // floating point comparisons
-            // see Knuth 4.2.2 Eq 36
-            auto floatCompare = [](const double a, const double b) -> bool {
-                auto epsilon = std::numeric_limits<double>::epsilon();
-                return (fabs(a - b) / fabs(a) <= epsilon  ) && (fabs(a - b) / fabs(b) <= epsilon);
-            };
-            for(size_t i = 0; i < bound; i++) {
-                Array tmp;
+            for (size_t i = 0; i < bound; i++)
+            {
+                if(bidsVector[i] == nullptr)
+                    continue;
+
+                Array bid;
                 //calculate bids and push to array
-                const auto fromAmount   = bidsVector[i]->fromAmount;
-                const auto toAmount     = bidsVector[i]->toAmount;
-                const auto bidPrice     = xBridgeValueFromAmount(fromAmount) / xBridgeValueFromAmount(toAmount);
-                auto volume             = xBridgeValueFromAmount(bidsVector[i]->fromAmount);
-                size_t j = i + 1;
-                tmp.emplace_back(bidPrice);
-                Array txids;
-                if(isShowTxids) {
-                    txids.emplace_back(bidsVector[i]->id.GetHex());
+                const auto bidAmount    = bidsVector[i]->toAmount;
+                const auto bidPrice     = util::priceBid(bidsVector[i]);
+                auto bidSize            = bidAmount;
+                const auto bidsCount    = std::count_if(bidsList.begin(), bidsList.end(),
+                                                     [bidPrice, floatCompare](const TransactionPair &a)
+                {
+                    const auto &tr = a.second;
+
+                    if(tr == nullptr)
+                        return false;
+
+                    const auto price = util::priceBid(tr);
+
+                    return floatCompare(price, bidPrice);
+                });
+                //array sorted by bid price, we can to skip the transactions with equals bid price
+                while((++i < bound) && floatCompare(util::priceBid(bidsVector[i]), bidPrice)) {
+                    bidSize += bidsVector[i]->toAmount;
                 }
-                while(j < bound) {
-                    const auto fromAmount2  = bidsVector[j]->fromAmount;
-                    const auto toAmount2    = bidsVector[j]->toAmount;
-                    const auto bidPrice2    = xBridgeValueFromAmount(fromAmount2) / xBridgeValueFromAmount(toAmount2);
-                    if(!floatCompare(bidPrice, bidPrice2)) {
-                        i = j - 1;
-                        break;
-                    }
-                    volume += xBridgeValueFromAmount(bidsVector[j]->fromAmount);
-                    if(isShowTxids) {
-                        txids.emplace_back(bidsVector[j]->id.GetHex());
-                    }
-                    j++;
-                }
-                tmp.emplace_back(volume);
-                if(isShowTxids) {
-                    tmp.emplace_back(txids);
-                }
-                bids.emplace_back(tmp);
+                bid.emplace_back(util::xBridgeStringValueFromPrice(bidPrice));
+                bid.emplace_back(util::xBridgeStringValueFromPrice(bidSize));
+                bid.emplace_back(static_cast<int64_t>(bidsCount));
+                bids.emplace_back(bid);
             }
+
             bound = std::min(maxOrders, asksVector.size());
-            for(size_t  i = 0; i < bound; i++ ) {
-                Array tmp;
+
+            for (size_t i = 0; i < bound; i++)
+            {
+                if(asksVector[i] == nullptr)
+                    continue;
+
+                Array ask;
                 //calculate asks and push to array
-                const auto fromAmount   = asksVector[i]->fromAmount;
-                const auto toAmount     = asksVector[i]->toAmount;
-                const auto askPrice     = xBridgeValueFromAmount(fromAmount) / xBridgeValueFromAmount(toAmount);
-                auto volume             = xBridgeValueFromAmount(asksVector[i]->fromAmount);
-                size_t j = i + 1;
-                tmp.emplace_back(askPrice);
-                Array txids;
-                if(isShowTxids) {
-                    txids.emplace_back(asksVector[i]->id.GetHex());
+                const auto askAmount    = asksVector[i]->fromAmount;
+                const auto askPrice     = util::price(asksVector[i]);
+                auto askSize            = askAmount;
+                const auto asksCount    = std::count_if(asksList.begin(), asksList.end(),
+                                                     [askPrice, floatCompare](const TransactionPair &a)
+                {
+                    const auto &tr = a.second;
+
+                    if(tr == nullptr)
+                        return false;
+
+                    const auto price = util::price(tr);
+
+                    return floatCompare(price, askPrice);
+                });
+
+                //array sorted by price, we can to skip the transactions with equals price
+                while((++i < bound) && floatCompare(util::price(asksVector[i]), askPrice)){
+                    askSize += asksVector[i]->fromAmount;
                 }
-                while(j < bound) {
-                    const auto fromAmount2  = asksVector[j]->fromAmount;
-                    const auto toAmount2    = asksVector[j]->toAmount;
-                    const auto askPrice2    = xBridgeValueFromAmount(fromAmount2) / xBridgeValueFromAmount(toAmount2);
-                    if(!floatCompare(askPrice, askPrice2)) {
-                        i = j - 1;
-                        break;
-                    }
-                    volume += xBridgeValueFromAmount(asksVector[j]->fromAmount);
-                    if(isShowTxids) {
-                        txids.emplace_back(asksVector[j]->id.GetHex());
-                    }
-                    j++;
-                }
-                tmp.emplace_back(volume);
-                if(isShowTxids) {
-                    tmp.emplace_back(txids);
-                }
-                asks.emplace_back(tmp);
+                ask.emplace_back(util::xBridgeStringValueFromPrice(askPrice));
+                ask.emplace_back(util::xBridgeStringValueFromPrice(askSize));
+                ask.emplace_back(static_cast<int64_t>(asksCount));
+                asks.emplace_back(ask);
             }
-            res.emplace_back(Pair("bids", bids));
+
             res.emplace_back(Pair("asks", asks));
+            res.emplace_back(Pair("bids", bids));
             return  res;
         }
         case 3:
         {
             //Full order book (non aggregated)
+            auto bound = std::min(maxOrders, bidsVector.size());
 
-            for (const auto &tr : bidsVector) {
-                Array tmp;
-                const auto bidPrice = xBridgeValueFromAmount(tr->fromAmount) / xBridgeValueFromAmount(tr->toAmount);
-                tmp.emplace_back(bidPrice);
-                tmp.emplace_back(xBridgeValueFromAmount(tr->fromAmount));
-                tmp.emplace_back(tr->id.GetHex());
-                bids.emplace_back(tmp);
+            for (size_t i = 0; i < bound; i++)
+            {
+                if(bidsVector[i] == nullptr)
+                    continue;
 
+                Array bid;
+                const auto bidAmount   = bidsVector[i]->toAmount;
+                const auto bidPrice    = util::priceBid(bidsVector[i]);
+                bid.emplace_back(util::xBridgeStringValueFromPrice(bidPrice));
+                bid.emplace_back(util::xBridgeStringValueFromAmount(bidAmount));
+                bid.emplace_back(bidsVector[i]->id.GetHex());
+
+                bids.emplace_back(bid);
             }
-            for (const auto &tr : asksVector) {
-                Array tmp;
-                const auto askPrice = xBridgeValueFromAmount(tr->fromAmount) / xBridgeValueFromAmount(tr->toAmount);
-                tmp.emplace_back(askPrice);
-                tmp.emplace_back(xBridgeValueFromAmount(tr->fromAmount));
-                tmp.emplace_back(tr->id.GetHex());
-                asks.emplace_back(tmp);
+
+            bound = std::min(maxOrders, asksVector.size());
+
+            for (size_t i = 0; i < bound; i++)
+            {
+                if(asksVector[i] == nullptr)
+                    continue;
+
+                Array ask;
+                const auto bidAmount    = asksVector[i]->fromAmount;
+                const auto askPrice     = util::price(asksVector[i]);
+                ask.emplace_back(util::xBridgeStringValueFromPrice(askPrice));
+                ask.emplace_back(util::xBridgeStringValueFromAmount(bidAmount));
+                ask.emplace_back(asksVector[i]->id.GetHex());
+
+                asks.emplace_back(ask);
             }
-            res.emplace_back(Pair("bids", bids));
+
             res.emplace_back(Pair("asks", asks));
+            res.emplace_back(Pair("bids", bids));
             return  res;
-
         }
+        case 4:
+        {
+            //return Only the best bid and ask
+            if (!bidsList.empty()) {
+                const auto bidsItem = std::max_element(bidsList.begin(), bidsList.end(),
+                                           [](const TransactionPair &a, const TransactionPair &b)
+                {
+                    //find transaction with best bids
+                    const auto &tr1 = a.second;
+                    const auto &tr2 = b.second;
+
+                    if(tr1 == nullptr)
+                        return true;
+
+                    if(tr2 == nullptr)
+                        return false;
+
+                    const auto priceA = util::priceBid(tr1);
+                    const auto priceB = util::priceBid(tr2);
+
+                    return priceA < priceB;
+                });
+
+                const auto &tr = bidsItem->second;
+                if (tr != nullptr)
+                {
+                    const auto bidPrice = util::priceBid(tr);
+                    bids.emplace_back(util::xBridgeStringValueFromPrice(bidPrice));
+                    bids.emplace_back(util::xBridgeStringValueFromAmount(tr->toAmount));
+
+                    Array bidsIds;
+                    bidsIds.emplace_back(tr->id.GetHex());
+
+                    for(const TransactionPair &tp : bidsList)
+                    {
+                        const auto &otherTr = tp.second;
+
+                        if(otherTr == nullptr)
+                            continue;
+
+                        if(tr->id == otherTr->id)
+                            continue;
+
+                        const auto otherTrBidPrice = util::priceBid(otherTr);
+
+                        if(!floatCompare(bidPrice, otherTrBidPrice))
+                            continue;
+
+                        bidsIds.emplace_back(otherTr->id.GetHex());
+                    }
+
+                    bids.emplace_back(bidsIds);
+                }
+            }
+
+            if (!asksList.empty()) {
+                const auto asksItem = std::min_element(asksList.begin(), asksList.end(),
+                                                   [](const TransactionPair &a, const TransactionPair &b)
+                {
+                    //find transactions with best asks
+                    const auto &tr1 = a.second;
+                    const auto &tr2 = b.second;
+
+                    if(tr1 == nullptr)
+                        return true;
+
+                    if(tr2 == nullptr)
+                        return false;
+
+                    const auto priceA = util::price(tr1);
+                    const auto priceB = util::price(tr2);
+                    return priceA < priceB;
+                });
+
+                const auto &tr = asksItem->second;
+                if (tr != nullptr)
+                {
+                    const auto askPrice = util::price(tr);
+                    asks.emplace_back(util::xBridgeStringValueFromPrice(askPrice));
+                    asks.emplace_back(util::xBridgeStringValueFromAmount(tr->fromAmount));
+
+                    Array asksIds;
+                    asksIds.emplace_back(tr->id.GetHex());
+
+                    for(const TransactionPair &tp : asksList)
+                    {
+                        const auto &otherTr = tp.second;
+
+                        if(otherTr == nullptr)
+                            continue;
+
+                        if(tr->id == otherTr->id)
+                            continue;
+
+                        const auto otherTrAskPrice = util::price(otherTr);
+
+                        if(!floatCompare(askPrice, otherTrAskPrice))
+                            continue;
+
+                        asksIds.emplace_back(otherTr->id.GetHex());
+                    }
+
+                    asks.emplace_back(asksIds);
+                }
+            }
+
+            res.emplace_back(Pair("asks", asks));
+            res.emplace_back(Pair("bids", bids));
+            return res;
+        }
+
         default:
-            Object error;
-            error.emplace_back(Pair("error",
-                                    "invalid detail level value:"));
-            error.emplace_back(Pair("code", xbridge::INVALID_PARAMETERS));
-            return  error;
+            return util::makeError(xbridge::INVALID_DETAIL_LEVEL, __FUNCTION__);
         }
     }
+}
+
+//******************************************************************************
+//******************************************************************************
+json_spirit::Value dxGetMyOrders(const json_spirit::Array& params, bool fHelp)
+{
+    if (fHelp) {
+
+        throw runtime_error("dxGetMyOrders\nLists all orders owned by you.");
+
+    }
+
+    if (!params.empty()) {
+
+        Object error;
+        error.emplace_back(Pair("error",
+                                            xbridge::xbridgeErrorText(xbridge::INVALID_PARAMETERS,
+                                                                      "This function does not accept any parameters")));
+        error.emplace_back(Pair("code",     xbridge::INVALID_PARAMETERS));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return  error;
+
+    }
+
+    xbridge::App & xapp = xbridge::App::instance();
+
+    Array r;
+    TransactionVector orders;
+
+    TransactionMap trList = xbridge::App::instance().transactions();
+
+    // Filter local orders
+    for (auto i : trList) {
+        const xbridge::TransactionDescrPtr &t = i.second;
+        if(!t->isLocal())
+            continue;
+        orders.push_back(t);
+    }
+
+    // Add historical orders
+    TransactionMap history = xbridge::App::instance().history();
+
+    // Filter local orders only
+    for (auto &item : history) {
+        const xbridge::TransactionDescrPtr &ptr = item.second;
+        if (ptr->isLocal() &&
+                (ptr->state == xbridge::TransactionDescr::trFinished ||
+                 ptr->state == xbridge::TransactionDescr::trCancelled)) {
+            orders.push_back(ptr);
+        }
+    }
+
+    // Return if no records
+    if (orders.empty())
+        return r;
+
+    // sort ascending by updated time
+    std::sort(orders.begin(), orders.end(),
+        [](const xbridge::TransactionDescrPtr &a,  const xbridge::TransactionDescrPtr &b) {
+            return (a->txtime) < (b->txtime);
+        });
+
+    std::map<std::string, bool> seen;
+    for (const auto &t : orders) {
+        // do not process already seen orders
+        if (seen.count(t->id.GetHex()))
+            continue;
+        seen[t->id.GetHex()] = true;
+
+        xbridge::WalletConnectorPtr connFrom = xapp.connectorByCurrency(t->fromCurrency);
+        xbridge::WalletConnectorPtr connTo   = xapp.connectorByCurrency(t->toCurrency);
+
+        Object o;
+        o.emplace_back(Pair("id", t->id.GetHex()));
+
+        // maker data
+        o.emplace_back(Pair("maker", t->fromCurrency));
+        o.emplace_back(Pair("maker_size", util::xBridgeStringValueFromAmount(t->fromAmount)));
+        o.emplace_back(Pair("maker_address", connFrom->fromXAddr(t->from)));
+        // taker data
+        o.emplace_back(Pair("taker", t->toCurrency));
+        o.emplace_back(Pair("taker_size", util::xBridgeStringValueFromAmount(t->toAmount)));
+        o.emplace_back(Pair("taker_address", connTo->fromXAddr(t->to)));
+        // dates
+        o.emplace_back(Pair("updated_at", util::iso8601(t->txtime)));
+        o.emplace_back(Pair("created_at", util::iso8601(t->created)));
+        o.emplace_back(Pair("status", t->strState()));
+
+        r.emplace_back(o);
+    }
+
+    return r;
+}
+
+//******************************************************************************
+//******************************************************************************
+json_spirit::Value  dxGetTokenBalances(const json_spirit::Array& params, bool fHelp)
+{
+    if (fHelp)
+    {
+        throw runtime_error("dxGetTokenBalances\n"
+                            "List of connected wallet balances. These balances do not include orders that are using \n"
+                            "locked utxos to support a pending or open order. The DX works best with presliced utxos \n"
+                            "so that your entire wallet balance is capable of multiple simultaneous trades.");
+    }
+
+    if (params.size() != 0)
+    {
+        Object error;
+        error.emplace_back(Pair("error",
+                                            xbridge::xbridgeErrorText(xbridge::INVALID_PARAMETERS,
+                                                                      "This function does not accept any parameters")));
+        error.emplace_back(Pair("code",     xbridge::INVALID_PARAMETERS));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return  error;
+    }
+
+    Object res;
+
+    // Wallet balance
+    double walletBalance = boost::numeric_cast<double>(pwalletMain->GetBalance()) / boost::numeric_cast<double>(COIN);
+    res.emplace_back("Wallet", util::xBridgeStringValueFromPrice(walletBalance));
+
+    // Add connected wallet balances
+    const auto &connectors = xbridge::App::instance().connectors();
+    for(const auto &connector : connectors)
+    {
+        const auto balance = connector->getWalletBalance();
+
+        //ignore not connected wallets
+        if(balance >= 0)
+            res.emplace_back(connector->currency, util::xBridgeStringValueFromPrice(balance));
+    }
+
+    return res;
+}
+
+//******************************************************************************
+//******************************************************************************
+Value dxGetLockedUtxos(const json_spirit::Array& params, bool fHelp)
+{
+    if (fHelp)
+    {
+        throw runtime_error("dxGetLockedUtxos (id)\n"
+                            "Return list of locked utxo of an order.");
+    }
+
+    if (params.size() != 0 || params.size() != 1)
+    {
+        Object error;
+        error.emplace_back(Pair("error",    xbridge::xbridgeErrorText(xbridge::INVALID_PARAMETERS, "requered transaction id or empty param")));
+        error.emplace_back(Pair("code",     xbridge::INVALID_PARAMETERS));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return error;
+    }
+
+    xbridge::Exchange & e = xbridge::Exchange::instance();
+    if (!e.isStarted())
+    {
+        Object error;
+        error.emplace_back(Pair("error",    xbridge::xbridgeErrorText(xbridge::Error::NOT_EXCHANGE_NODE)));
+        error.emplace_back(Pair("code",     xbridge::Error::NOT_EXCHANGE_NODE));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return error;
+    }
+
+    uint256 id;
+
+    if(params.size() == 1)
+        id = uint256(params[0].get_str());
+
+    std::vector<xbridge::wallet::UtxoEntry> items;
+    if(!e.getUtxoItems(id, items))
+    {
+
+        Object error;
+        error.emplace_back(Pair("error",    xbridge::xbridgeErrorText(xbridge::Error::TRANSACTION_NOT_FOUND, id.GetHex())));
+        error.emplace_back(Pair("code",     xbridge::Error::TRANSACTION_NOT_FOUND));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return error;
+    }
+
+    Array utxo;
+
+    for(const xbridge::wallet::UtxoEntry & entry : items)
+        utxo.emplace_back(entry.toString());
+
+    Object obj;
+    if(id.IsNull())
+    {
+        obj.emplace_back(Pair("all_locked_utxo", utxo));
+
+        return obj;
+    }
+
+    xbridge::TransactionPtr pendingTx = e.pendingTransaction(id);
+    xbridge::TransactionPtr acceptedTx = e.transaction(id);
+
+    if (!pendingTx->isValid() && !acceptedTx->isValid())
+    {
+        Object error;
+        error.emplace_back(Pair("error",    xbridge::xbridgeErrorText(xbridge::Error::TRANSACTION_NOT_FOUND, id.GetHex())));
+        error.emplace_back(Pair("code",     xbridge::Error::TRANSACTION_NOT_FOUND));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return error;
+    }
+
+    obj.emplace_back(Pair("id", id.GetHex()));
+
+    if(pendingTx->isValid())
+        obj.emplace_back(Pair(pendingTx->a_currency(), utxo));
+    else if(acceptedTx->isValid())
+        obj.emplace_back(Pair(acceptedTx->a_currency() + "_and_" + acceptedTx->b_currency(), utxo));
+
+    return obj;
 }

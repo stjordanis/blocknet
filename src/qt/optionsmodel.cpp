@@ -1,6 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The BlocknetDX developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2015-2018 The Blocknet developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -323,7 +324,7 @@ bool OptionsModel::setData(const QModelIndex& index, const QVariant& value, int 
         case Theme:
             if (settings.value("theme") != value) {
                 settings.setValue("theme", value);
-                setRestartRequired(true);
+                setRestartRequired(false);
             }
             break;
         case Language:

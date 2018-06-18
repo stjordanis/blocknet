@@ -12,7 +12,7 @@
 #include <memory>
 #include <ctime>
 #include <stdint.h>
-#include <assert.h>
+//#include <assert.h>
 #include <string.h>
 
 //******************************************************************************
@@ -34,7 +34,8 @@ enum TxCancelReason
     crInvalidAddress  = 12,
     crBlocknetError   = 13,
     crBadADepositTx   = 14,
-    crBadBDepositTx   = 15
+    crBadBDepositTx   = 15,
+    crTimeout         = 16
 };
 
 //******************************************************************************
@@ -90,7 +91,7 @@ enum XBridgeCommand
 
     // exchange transaction
     //
-    // xbcTransaction  (148 bytes min)
+    // xbcTransaction  (152 bytes min)
     // clients not process this messages, only exchange
     //    uint256  client transaction id
     //    20 bytes source address
@@ -99,7 +100,7 @@ enum XBridgeCommand
     //    20 bytes destination address
     //    8 bytes  destination currency
     //    uint64   destination amount
-    //    uint32_t timestamp
+    //    uint64   timestamp
     //
     //    array of unspent outputs used in transaction
     //      uint32_t count of array items
@@ -108,15 +109,16 @@ enum XBridgeCommand
     //        uint32_t out idx
     xbcTransaction = 3,
     //
-    // xbcPendingTransaction (88 bytes)
+    // xbcPendingTransaction (124 bytes)
     // exchange broadcast send this message, send list of opened transactions
     //    uint256 transaction id
     //    8 bytes source currency
-    //    uint64 source amount
+    //    uint64  source amount
     //    8 bytes destination currency
-    //    uint64 destination amount
+    //    uint64  destination amount
     //    uint160 hub address
-    //    uint32_t timestamp
+    //    uint64  timestamp
+    //    uint256 block hash
     xbcPendingTransaction = 4,
     //
     // xbcTransactionAccepting (164 bytes min)
@@ -137,10 +139,9 @@ enum XBridgeCommand
     xbcTransactionAccepting = 5,
 
     //
-    // xbcTransactionHold (85 or 117 bytes)
+    // xbcTransactionHold (52 bytes)
     //    uint160 hub address
     //    uint256 transaction id
-    //    public key, 33 or 65 bytes, servicenode public key
     xbcTransactionHold = 6,
     //
     // xbcTransactionHoldApply (72 bytes)
@@ -150,12 +151,10 @@ enum XBridgeCommand
     xbcTransactionHoldApply = 7,
 
     //
-    // xbcTransactionInit (188 or 221 bytes min)
+    // xbcTransactionInit (144 bytes min)
     //    uint160 client address
     //    uint160 hub address
     //    uint256 hub transaction id
-    //    public key, 33 or 65 bytes, servicenode public key
-    //    uint16_t  role ( 'A' (Alice) or 'B' (Bob) :) )
     //    20 bytes source address
     //    8 bytes source currency
     //    uint64 source amount
@@ -164,12 +163,11 @@ enum XBridgeCommand
     //    uint64 destination amount
     xbcTransactionInit = 8,
     //
-    // xbcTransactionInitialized (137 bytes)
+    // xbcTransactionInitialized (104 bytes)
     //    uint160 hub address
     //    uint160 client address
     //    uint256 hub transaction id
     //    uint256 data transaction id
-    //    public key, 33 bytes
     xbcTransactionInitialized = 9,
 
     //
@@ -178,7 +176,7 @@ enum XBridgeCommand
     //    uint160  hub address
     //    uint256  hub transaction id
     //    20 bytes source address
-    //    uint256 data tx id, 32 bytes
+    //    uint256  data tx id, 32 bytes
     //    opponent public key, 33 bytes
     xbcTransactionCreateA = 10,
     //
@@ -186,8 +184,8 @@ enum XBridgeCommand
     //    uint160 hub address
     //    uint160 client address
     //    uint256 hub transaction id
-    //    string deposit tx id
-    //    string inner script (TODO delete later)
+    //    string  deposit tx id
+    //    string  inner script (TODO delete later)
     xbcTransactionCreatedA = 11,
     //
     // xbcTransactionCreateB (205 bytes min)
@@ -246,10 +244,7 @@ enum XBridgeCommand
     //    uint256  hub transaction id
     //    uint32_t reason
     xbcTransactionCancel = 22,
-    //
-    // xbcTransactionRollback
-    //    uint256 hub transaction id
-    xbcTransactionRollback = 23,
+
     //
     // xbcTransactionFinished
     //    uint160 client address
@@ -269,9 +264,9 @@ typedef uint32_t crc_t;
 // boost::uint32_t command
 // boost::uint32_t timestamp
 // boost::uint32_t size
+// boost::uint32_t extsize (backward compatibility)
 // boost::uint32_t crc
 //
-// boost::uint32_t rezerved
 // boost::uint32_t rezerved
 // boost::uint32_t rezerved
 //******************************************************************************
@@ -282,9 +277,16 @@ class XBridgePacket
 public:
     enum
     {
-        headerSize    = 8*sizeof(uint32_t),
-        commandSize   = sizeof(uint32_t),
-        timestampSize = sizeof(uint32_t)
+        // header, size, version, command, timestamp, pubkey, signature
+        headerSize       = 8*sizeof(uint32_t)+33+64,
+        commandSize      = sizeof(uint32_t),
+        timestampSize    = sizeof(uint32_t),
+        addressSize      = 20,
+        hashSize         = 32,
+        privkeySize      = 32,
+        pubkeySize       = 33,
+        rawSignatureSize = 64,
+        signatureSize    = 65
     };
 
     uint32_t     size()    const     { return sizeField(); }
@@ -293,29 +295,32 @@ public:
     crc_t        crc()     const
     {
         // TODO implement this
-        assert(!"not implemented");
+        ERR() << "not implemented " << __FUNCTION__;
+//        assert(!"not implemented");
         return 0;
         // return crcField();
     }
 
-    uint32_t version() const       { return versionField(); }
+    uint32_t version() const                { return versionField(); }
 
-    XBridgeCommand  command() const       { return static_cast<XBridgeCommand>(commandField()); }
+    XBridgeCommand  command() const         { return static_cast<XBridgeCommand>(commandField()); }
 
-    void    alloc()                       { m_body.resize(headerSize + size()); }
+    const unsigned char * pubkey() const    { return pubkeyField(); }
+    const unsigned char * signature() const { return signatureField(); }
+
+    void    alloc()                         { m_body.resize(headerSize + size()); }
 
     const std::vector<unsigned char> & body() const
-                                          { return m_body; }
-    unsigned char  * header()             { return &m_body[0]; }
-    unsigned char  * data()               { return &m_body[headerSize]; }
-
-    // boost::int32_t int32Data() const { return field32<2>(); }
+                                            { return m_body; }
+    unsigned char  * header()               { return &m_body[0]; }
+    unsigned char  * data()                 { return &m_body[headerSize]; }
 
     void    clear()
     {
         m_body.resize(headerSize);
-        commandField() = 0;
-        sizeField() = 0;
+        commandField()   = 0;
+        sizeField()      = 0;
+        __oldSizeField() = 0;
 
         // TODO crc
         // crcField() = 0;
@@ -325,6 +330,7 @@ public:
     {
         m_body.resize(size+headerSize);
         sizeField() = size;
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
     void    setData(const unsigned char data)
@@ -332,14 +338,16 @@ public:
         m_body.resize(sizeof(data) + headerSize);
         sizeField() = sizeof(data);
         m_body[headerSize] = data;
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
-    void    setData(const int32_t data)
-    {
-        m_body.resize(sizeof(data) + headerSize);
-        sizeField() = sizeof(data);
-        field32<2>() = data;
-    }
+//    void    setData(const int32_t data)
+//    {
+//        m_body.resize(sizeof(data) + headerSize);
+//        sizeField() = sizeof(data);
+//        field32<2>() = data;
+//        __oldSizeField() = sizeField()+__headerDifference;
+//    }
 
     void    setData(const std::string & data)
     {
@@ -349,26 +357,28 @@ public:
         {
             data.copy((char *)(&m_body[headerSize]), data.size());
         }
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
-    void    setData(const std::vector<unsigned char> & data, const unsigned int offset = 0)
-    {
-        setData(&data[0], static_cast<uint32_t>(data.size()), offset);
-    }
+//    void    setData(const std::vector<unsigned char> & data, const unsigned int offset = 0)
+//    {
+//        setData(&data[0], static_cast<uint32_t>(data.size()), offset);
+//    }
 
-    void    setData(const unsigned char * data, const uint32_t size, const uint32_t offset = 0)
-    {
-        unsigned int off = offset + headerSize;
-        if (size)
-        {
-            if (m_body.size() < size+off)
-            {
-                m_body.resize(size+off);
-                sizeField() = size+off-headerSize;
-            }
-            memcpy(&m_body[off], data, size);
-        }
-    }
+//    void    setData(const unsigned char * data, const uint32_t size, const uint32_t offset = 0)
+//    {
+//        unsigned int off = offset + headerSize;
+//        if (size)
+//        {
+//            if (m_body.size() < size+off)
+//            {
+//                m_body.resize(size+off);
+//                sizeField() = size+off-headerSize;
+//            }
+//            memcpy(&m_body[off], data, size);
+//            __oldSizeField() = sizeField()+__headerDifference;
+//        }
+//    }
 
 //    template<typename _T>
 //    void append(const _T data)
@@ -385,6 +395,7 @@ public:
         unsigned char * ptr = (unsigned char *)&data;
         std::copy(ptr, ptr+sizeof(data), std::back_inserter(m_body));
         sizeField() = static_cast<uint32_t>(m_body.size()) - headerSize;
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
     void append(const uint32_t data)
@@ -393,6 +404,7 @@ public:
         unsigned char * ptr = (unsigned char *)&data;
         std::copy(ptr, ptr+sizeof(data), std::back_inserter(m_body));
         sizeField() = static_cast<uint32_t>(m_body.size()) - headerSize;
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
     void append(const uint64_t data)
@@ -401,6 +413,7 @@ public:
         unsigned char * ptr = (unsigned char *)&data;
         std::copy(ptr, ptr+sizeof(data), std::back_inserter(m_body));
         sizeField() = static_cast<uint32_t>(m_body.size()) - headerSize;
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
     void append(const unsigned char * data, const int size)
@@ -408,6 +421,7 @@ public:
         m_body.reserve(m_body.size() + size);
         std::copy(data, data+size, std::back_inserter(m_body));
         sizeField() = static_cast<uint32_t>(m_body.size()) - headerSize;
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
     void append(const std::string & data)
@@ -416,6 +430,7 @@ public:
         std::copy(data.begin(), data.end(), std::back_inserter(m_body));
         m_body.push_back(0);
         sizeField() = static_cast<uint32_t>(m_body.size()) - headerSize;
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
     void append(const std::vector<unsigned char> & data)
@@ -423,16 +438,22 @@ public:
         m_body.reserve(m_body.size() + data.size());
         std::copy(data.begin(), data.end(), std::back_inserter(m_body));
         sizeField() = static_cast<uint32_t>(m_body.size()) - headerSize;
+        __oldSizeField() = sizeField()+__headerDifference;
     }
 
     bool copyFrom(const std::vector<unsigned char> & data)
     {
+        if (data.size() < headerSize)
+        {
+            ERR() << "received data size less than packet header size " << __FUNCTION__;
+            return false;
+        }
+
         m_body = data;
 
         if (sizeField() != static_cast<uint32_t>(data.size())-headerSize)
         {
-            ERR() << "incorrect data size in XBridgePacket::copyFrom";
-            assert(!"incorrect data size in XBridgePacket::copyFrom");
+            ERR() << "incorrect data size " << __FUNCTION__;
             return false;
         }
 
@@ -470,6 +491,11 @@ public:
         return *this;
     }
 
+    bool sign(const std::vector<unsigned char> & pubkey,
+              const std::vector<unsigned char> & privkey);
+    bool verify();
+    bool verify(const std::vector<unsigned char> & pubkey);
+
 private:
     template<uint32_t INDEX>
     uint32_t & field32()
@@ -479,16 +505,34 @@ private:
     uint32_t const& field32() const
         { return *static_cast<uint32_t const*>(static_cast<void const*>(&m_body[INDEX * 4])); }
 
-    uint32_t       & versionField()         { return field32<0>(); }
-    uint32_t const & versionField() const   { return field32<0>(); }
-    uint32_t &       commandField()         { return field32<1>(); }
-    uint32_t const & commandField() const   { return field32<1>(); }
-    uint32_t &       timestampField()       { return field32<2>(); }
-    uint32_t const & timestampField() const { return field32<2>(); }
-    uint32_t &       sizeField()            { return field32<3>(); }
-    uint32_t const & sizeField() const      { return field32<3>(); }
-    uint32_t &       crcField()             { return field32<4>(); }
-    uint32_t const & crcField() const       { return field32<4>(); }
+    uint32_t       & versionField()              { return field32<0>(); }
+    uint32_t const & versionField() const        { return field32<0>(); }
+    uint32_t &       commandField()              { return field32<1>(); }
+    uint32_t const & commandField() const        { return field32<1>(); }
+    uint32_t &       timestampField()            { return field32<2>(); }
+    uint32_t const & timestampField() const      { return field32<2>(); }
+    uint32_t &       sizeField()                 { return field32<4>(); }
+    uint32_t const & sizeField() const           { return field32<4>(); }
+    uint32_t &       crcField()                  { return field32<5>(); }
+    uint32_t const & crcField() const            { return field32<5>(); }
+
+    unsigned char *       pubkeyField()          { return &m_body[20]; }
+    const unsigned char * pubkeyField() const    { return &m_body[20]; }
+    unsigned char *       signatureField()       { return &m_body[53]; }
+    const unsigned char * signatureField() const { return &m_body[53]; }
+
+private:
+    // TODO temporary constants for backward compatibility
+    enum
+    {
+        // header: size, version, command, timestamp, rezerved
+        __oldHeaderSize = 8*sizeof(uint32_t),
+        __headerDifference = headerSize - __oldHeaderSize
+    };
+
+    // save size field for backward compatibility
+    uint32_t &       __oldSizeField()              { return field32<3>(); }
+    uint32_t const & __oldSizeField() const        { return field32<3>(); }
 };
 
 typedef std::shared_ptr<XBridgePacket> XBridgePacketPtr;

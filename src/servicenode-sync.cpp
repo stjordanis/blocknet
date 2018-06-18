@@ -1,5 +1,6 @@
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The BlocknetDX developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2015-2018 The Blocknet developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -51,8 +52,8 @@ bool CServicenodeSync::IsBlockchainSynced()
     CBlockIndex* pindex = chainActive.Tip();
     if (pindex == NULL) return false;
 
-
-    if (pindex->nTime + 60 * 60 < GetTime())
+    // Do not stall testnet
+    if (Params().NetworkID() == CBaseChainParams::MAIN && pindex->nTime + 60 * 60 < GetTime())
         return false;
 
     fBlockchainSynced = true;

@@ -10,6 +10,10 @@
 #include "xbridge/util/xbridgeerror.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include <QApplication>
+#include <QDateTime>
+
+#include "xbridge/posixtimeconversion.h"
 //******************************************************************************
 //******************************************************************************
 XBridgeTransactionsModel::XBridgeTransactionsModel()
@@ -17,13 +21,16 @@ XBridgeTransactionsModel::XBridgeTransactionsModel()
     m_columns << trUtf8("TOTAL")
               << trUtf8("SIZE")
               << trUtf8("BID")
+              << trUtf8("DATE")
+              << trUtf8("ID")
               << trUtf8("STATE");
 
-    xuiConnector.NotifyXBridgeTransactionReceived.connect
-            (boost::bind(&XBridgeTransactionsModel::onTransactionReceived, this, _1));
 
-    xuiConnector.NotifyXBridgeTransactionStateChanged.connect
-            (boost::bind(&XBridgeTransactionsModel::onTransactionStateChanged, this, _1));
+    xuiConnector.NotifyXBridgeTransactionReceived.connect
+            (boost::bind(&XBridgeTransactionsModel::onTransactionReceivedExtSignal, this, _1));
+
+    xuiConnector.NotifyXBridgeTransactionChanged.connect
+            (boost::bind(&XBridgeTransactionsModel::onTransactionStateChangedExtSignal, this, _1));
 
     connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimer()));
     m_timer.start(3000);
@@ -34,10 +41,10 @@ XBridgeTransactionsModel::XBridgeTransactionsModel()
 XBridgeTransactionsModel::~XBridgeTransactionsModel()
 {
     xuiConnector.NotifyXBridgeTransactionReceived.disconnect
-            (boost::bind(&XBridgeTransactionsModel::onTransactionReceived, this, _1));
+            (boost::bind(&XBridgeTransactionsModel::onTransactionReceivedExtSignal, this, _1));
 
-    xuiConnector.NotifyXBridgeTransactionStateChanged.disconnect
-            (boost::bind(&XBridgeTransactionsModel::onTransactionStateChanged, this, _1));
+    xuiConnector.NotifyXBridgeTransactionChanged.disconnect
+            (boost::bind(&XBridgeTransactionsModel::onTransactionStateChangedExtSignal, this, _1));
 }
 
 //******************************************************************************
@@ -74,36 +81,45 @@ QVariant XBridgeTransactionsModel::data(const QModelIndex & idx, int role) const
     {
         switch (idx.column())
         {
-            case Total:
-            {
-                double amount = (double)d->fromAmount / xbridge::TransactionDescr::COIN;
-                QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->fromCurrency));
+        case Total:
+        {
+            double amount = (double)d->fromAmount / xbridge::TransactionDescr::COIN;
+            QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->fromCurrency));
 
-                return QVariant(text);
-            }
-            case Size:
-            {
-                double amount = (double)d->toAmount / xbridge::TransactionDescr::COIN;
-                QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->toCurrency));
+            return QVariant(text);
+        }
+        case Size:
+        {
+            double amount = (double)d->toAmount / xbridge::TransactionDescr::COIN;
+            QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->toCurrency));
 
-                return QVariant(text);
-            }
-            case BID:
-            {
-                double amountTotal = (double)d->fromAmount / xbridge::TransactionDescr::COIN;
-                double amountSize = (double)d->toAmount / xbridge::TransactionDescr::COIN;
-                double bid = amountTotal / amountSize;
-                QString text = QString::number(bid, 'f', 12).remove(QRegExp("\\.?0+$"));
+            return QVariant(text);
+        }
+        case BID:
+        {
+            double amountTotal = (double)d->fromAmount / xbridge::TransactionDescr::COIN;
+            double amountSize = (double)d->toAmount / xbridge::TransactionDescr::COIN;
+            double bid = amountTotal / amountSize;
+            QString text = QString::number(bid, 'f', 12).remove(QRegExp("\\.?0+$"));
 
-                return QVariant(text);
-            }
-            case State:
-            {
-                return QVariant(transactionState(d->state));
-            }
+            return QVariant(text);
+        }
+        case Date:
+        {
+            return QVariant(QDateTime::fromMSecsSinceEpoch(util::timeToInt(d->created) / 1000).
+                            toString("dd/MM/yyyy HH:MM:ss.zzz"));
+        }
+        case ID:
+        {
+            return QString::fromStdString(d->id.GetHex()).left(10);
+        }
+        case State:
+        {
+            return QVariant(transactionState(d->state));
+        }
 
-            default:
-                return QVariant();
+        default:
+            return QVariant();
         }
     }
 
@@ -130,6 +146,24 @@ QVariant XBridgeTransactionsModel::headerData(int section, Qt::Orientation orien
         }
     }
     return QVariant();
+}
+
+void XBridgeTransactionsModel::customEvent(QEvent *event)
+{
+    // When we get here, we've crossed the thread boundary and are now
+    // executing in the Qt object's thread
+
+    if (event->type() == TRANSACTION_RECEIVED_EVENT) {
+
+        auto e = static_cast<TransactionReceivedEvent *>(event);
+        onTransactionReceived(e->tx);
+
+    } else if (event->type() == TRANSACTION_STATE_CHANGED_EVENT) {
+
+        auto e = static_cast<TransactionStateChangedEvent *>(event);
+        onTransactionStateChanged(e->id);
+
+    }
 }
 
 //******************************************************************************
@@ -161,30 +195,20 @@ bool XBridgeTransactionsModel::isMyTransaction(const unsigned int index) const
 //******************************************************************************
 //******************************************************************************
 xbridge::Error XBridgeTransactionsModel::newTransaction(const std::string & from,
-                                              const std::string & to,
-                                              const std::string & fromCurrency,
-                                              const std::string & toCurrency,
-                                              const double fromAmount,
-                                              const double toAmount)
+                                                        const std::string & to,
+                                                        const std::string & fromCurrency,
+                                                        const std::string & toCurrency,
+                                                        const double fromAmount,
+                                                        const double toAmount)
 {
     xbridge::App & xapp = xbridge::App::instance();
-    xbridge::WalletConnectorPtr ptr = xapp.connectorByCurrency(fromCurrency);
-    if (ptr && ptr->minAmount() > fromAmount)
-    {
-        return xbridge::INVALID_AMOUNT;
-    }
 
-    // TODO check amount
-    uint256 id = uint256();
+    uint256 id, blockHash;
     const auto code = xapp.sendXBridgeTransaction
             (from, fromCurrency, (uint64_t)(fromAmount * xbridge::TransactionDescr::COIN),
-             to,   toCurrency,   (uint64_t)(toAmount * xbridge::TransactionDescr::COIN),id);
+             to,   toCurrency,   (uint64_t)(toAmount * xbridge::TransactionDescr::COIN),
+             id, blockHash);
 
-    if (code == xbridge::SUCCESS)
-    {
-        xbridge::TransactionDescrPtr d = xapp.transaction(id);
-        onTransactionReceived(d);
-    }
     return code;
 }
 
@@ -226,7 +250,7 @@ xbridge::Error XBridgeTransactionsModel::newTransactionFromPending(const uint256
                 return error;
             }
 
-            d->txtime = boost::posix_time::second_clock::universal_time();
+            d->txtime = boost::posix_time::microsec_clock::universal_time();
 
             break;
         }
@@ -265,7 +289,7 @@ xbridge::Error XBridgeTransactionsModel::cancelTransaction(const uint256 & id)
 //******************************************************************************
 xbridge::Error XBridgeTransactionsModel::rollbackTransaction(const uint256 & id)
 {
-    return xbridge::App::instance().rollbackXBridgeTransaction(id);
+    return xbridge::App::instance().cancelXBridgeTransaction(id, crRollback);
 }
 
 //******************************************************************************
@@ -276,30 +300,43 @@ void XBridgeTransactionsModel::onTimer()
     for (unsigned int i = 0; i < m_transactions.size(); ++i)
     {
         boost::posix_time::time_duration td =
-                boost::posix_time::second_clock::universal_time() -
+                boost::posix_time::microsec_clock::universal_time() -
                 m_transactions[i]->txtime;
 
+        boost::posix_time::time_duration tc =
+                boost::posix_time::microsec_clock::universal_time() -
+                m_transactions[i]->created;
+
         if (m_transactions[i]->state == xbridge::TransactionDescr::trNew &&
-                td.total_seconds() > xbridge::Transaction::TTL/60)
+                td.total_seconds() > xbridge::Transaction::pendingTTL)
         {
             m_transactions[i]->state = xbridge::TransactionDescr::trOffline;
             emit dataChanged(index(i, FirstColumn), index(i, LastColumn));
         }
         else if (m_transactions[i]->state == xbridge::TransactionDescr::trPending &&
-                td.total_seconds() > xbridge::Transaction::TTL/6)
+                 td.total_seconds() > xbridge::Transaction::pendingTTL)
         {
             m_transactions[i]->state = xbridge::TransactionDescr::trExpired;
             emit dataChanged(index(i, FirstColumn), index(i, LastColumn));
         }
         else if ((m_transactions[i]->state == xbridge::TransactionDescr::trExpired ||
                   m_transactions[i]->state == xbridge::TransactionDescr::trOffline) &&
-                         td.total_seconds() < xbridge::Transaction::TTL/6)
+                 td.total_seconds() < xbridge::Transaction::pendingTTL)
         {
             m_transactions[i]->state = xbridge::TransactionDescr::trPending;
             emit dataChanged(index(i, FirstColumn), index(i, LastColumn));
         }
-        else if (m_transactions[i]->state == xbridge::TransactionDescr::trExpired &&
-                td.total_seconds() > xbridge::Transaction::TTL)
+        else if ((m_transactions[i]->state == xbridge::TransactionDescr::trExpired ||
+                  m_transactions[i]->state == xbridge::TransactionDescr::trOffline) &&
+                 td.total_seconds() > xbridge::Transaction::TTL)
+        {
+            emit beginRemoveRows(QModelIndex(), i, i);
+            m_transactions.erase(m_transactions.begin()+i);
+            emit endRemoveRows();
+            --i;
+        }
+        else if (m_transactions[i]->state == xbridge::TransactionDescr::trPending &&
+                 tc.total_seconds() > xbridge::Transaction::deadlineTTL)
         {
             emit beginRemoveRows(QModelIndex(), i, i);
             m_transactions.erase(m_transactions.begin()+i);
@@ -313,6 +350,13 @@ void XBridgeTransactionsModel::onTimer()
 //******************************************************************************
 void XBridgeTransactionsModel::onTransactionReceived(const xbridge::TransactionDescrPtr & tx)
 {
+    if (tx->state > xbridge::TransactionDescr::trPending)
+    {
+        // TODO temporary log
+        ERR() << "received tx with incorrect tx state <" << tx->state << "> " << __FUNCTION__;
+        return;
+    }
+
     for (unsigned int i = 0; i < m_transactions.size(); ++i)
     {
         const xbridge::TransactionDescrPtr & descr = m_transactions.at(i);
@@ -367,9 +411,30 @@ void XBridgeTransactionsModel::onTransactionStateChanged(const uint256 & id)
         if (m_transactions[i]->id == id)
         {
             // found
-            emit dataChanged(index(i, FirstColumn), index(i, LastColumn));
+            xbridge::TransactionDescrPtr & tr = m_transactions[i];
+            if (tr->state == xbridge::TransactionDescr::trCancelled && !tr->isLocal())
+            {
+                emit beginRemoveRows(QModelIndex(), i, i);
+                m_transactions.erase(m_transactions.begin() + i);
+                emit endRemoveRows();
+            }
+            else
+            {
+                emit dataChanged(index(i, FirstColumn), index(i, LastColumn));
+            }
+            break;
         }
     }
+}
+
+void XBridgeTransactionsModel::onTransactionReceivedExtSignal(const xbridge::TransactionDescrPtr &tx)
+{
+    QApplication::postEvent(this, new TransactionReceivedEvent(tx));
+}
+
+void XBridgeTransactionsModel::onTransactionStateChangedExtSignal(const uint256 &id)
+{
+    QApplication::postEvent(this, new TransactionStateChangedEvent(id));
 }
 
 //******************************************************************************

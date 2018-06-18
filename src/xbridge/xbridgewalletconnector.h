@@ -17,6 +17,24 @@ namespace xbridge
 
 //*****************************************************************************
 //*****************************************************************************
+namespace rpc
+{
+struct WalletInfo
+{
+    double   relayFee;
+    uint32_t blocks;
+
+    WalletInfo()
+        : relayFee(0)
+        , blocks(0)
+    {
+
+    }
+};
+} //namespace rpc
+
+//*****************************************************************************
+//*****************************************************************************
 class WalletConnector : public WalletParam
 {
 public:
@@ -28,6 +46,8 @@ public:
         *(WalletParam *)this = other;
         return *this;
     }
+
+    virtual bool init() = 0;
 
 public:
     // reimplement for currency
@@ -41,9 +61,11 @@ public:
 
     virtual bool requestAddressBook(std::vector<wallet::AddressBookEntry> & entries) = 0;
 
-    double getWalletBalance() const;
+    double getWalletBalance(const std::string &addr = "") const;
 
-    virtual bool getUnspent(std::vector<wallet::UtxoEntry> & inputs) const = 0;
+    virtual bool getInfo(rpc::WalletInfo & info) const = 0;
+
+    virtual bool getUnspent(std::vector<wallet::UtxoEntry> & inputs, const bool withoutDust = true) const = 0;
 
     virtual bool lockCoins(const std::vector<wallet::UtxoEntry> & inputs,
                              const bool lock = true) const = 0;
@@ -52,13 +74,17 @@ public:
 
     virtual bool sendRawTransaction(const std::string & rawtx,
                                     std::string & txid,
-                                    int32_t & errorCode) = 0;
+                                    int32_t & errorCode,
+                                    std::string & message) = 0;
 
     virtual bool signMessage(const std::string & address, const std::string & message, std::string & signature) = 0;
     virtual bool verifyMessage(const std::string & address, const std::string & message, const std::string & signature) = 0;
 
 public:
     // helper functions
+    bool hasValidAddressPrefix(const std::string & addr) const;
+
+    virtual bool isDustAmount(const double & amount) const = 0;
 
     virtual bool newKeyPair(std::vector<unsigned char> & pubkey, std::vector<unsigned char> & privkey) = 0;
 
@@ -66,8 +92,8 @@ public:
     virtual std::vector<unsigned char> getScriptId(const std::vector<unsigned char> & script) = 0;
     virtual std::string scriptIdToString(const std::vector<unsigned char> & id) const = 0;
 
-    virtual double minTxFee1(const uint32_t inputCount, const uint32_t outputCount) = 0;
-    virtual double minTxFee2(const uint32_t inputCount, const uint32_t outputCount) = 0;
+    virtual double minTxFee1(const uint32_t inputCount, const uint32_t outputCount) const = 0;
+    virtual double minTxFee2(const uint32_t inputCount, const uint32_t outputCount) const = 0;
 
     virtual bool checkTransaction(const std::string & depositTxId,
                                   const std::string & /*destination*/,

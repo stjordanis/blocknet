@@ -1,9 +1,9 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The BlocknetDX developers
-// Copyright (c) 2014-2017 PPCoin Developers
-// Copyright (c) 2017 PIVX Developers
+// Copyright (c) 2014-2017 The PPCoin developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2015-2018 The Blocknet developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -5796,14 +5796,14 @@ bool ProcessMessages(CNode* pfrom)
                 // Allow exceptions from over-long size
                 LogPrintf("ProcessMessages(%s, %u bytes): Exception '%s' caught\n", SanitizeString(strCommand), nMessageSize, e.what());
             } else {
-                PrintExceptionContinue(&e, "ProcessMessages()");
+                PrintExceptionContinue(&e, string("ProcessMessages() " + strCommand).c_str());
             }
         } catch (boost::thread_interrupted) {
             throw;
         } catch (std::exception& e) {
-            PrintExceptionContinue(&e, "ProcessMessages()");
+            PrintExceptionContinue(&e, string("ProcessMessages() " + strCommand).c_str());
         } catch (...) {
-            PrintExceptionContinue(NULL, "ProcessMessages()");
+            PrintExceptionContinue(NULL, string("ProcessMessages() " + strCommand).c_str());
         }
 
         if (!fRet)

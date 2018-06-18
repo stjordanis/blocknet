@@ -351,21 +351,25 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/util/xutil.cpp \
   xbridge/util/xbridgeerror.cpp \
   xbridge/bitcoinrpcconnector.cpp \
+  xbridge/xbridgepacket.cpp \
   xbridge/xbridgeapp.cpp \
   xbridge/xbridgeexchange.cpp \
   xbridge/xbridgesession.cpp \
   xbridge/xbridgetransaction.cpp \
+  xbridge/xbridgetransactiondescr.cpp \
   xbridge/xbridgetransactionmember.cpp \
   xbridge/xbridgewalletconnector.cpp \
   xbridge/xbridgewalletconnectorbtc.cpp \
   xbridge/xbridgewalletconnectorbcc.cpp \
   xbridge/xbridgewalletconnectorsys.cpp \
+  xbridge/xbridgewalletconnectordgb.cpp \
   xbridge/xkey.cpp \
   xbridge/xpubkey.cpp \
   xbridge/xbitcoinaddress.cpp \
   xbridge/xbitcoinsecret.cpp \
   xbridge/xbitcointransaction.cpp \
   xbridge/rpcxbridge.cpp \
+  xbridge/posixtimeconversion.cpp \
   xbridge/bitcoinrpcconnector.h \
   xbridge/config.h \
   xbridge/version.h \
@@ -385,6 +389,7 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/xbridgewalletconnectorbtc.h \
   xbridge/xbridgewalletconnectorbcc.h \
   xbridge/xbridgewalletconnectorsys.h \
+  xbridge/xbridgewalletconnectordgb.h \
   xbridge/xbridgewallet.h \
   xbridge/xkey.h \
   xbridge/xpubkey.h \
@@ -394,6 +399,7 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/util/txlog.h \
   xbridge/util/xutil.h \
   xbridge/util/xbridgeerror.h \
+  xbridge/posixtimeconversion.h \
   $(BITCOIN_CORE_H)
 
 

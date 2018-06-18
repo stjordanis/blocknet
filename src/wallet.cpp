@@ -1,7 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The BlocknetDX developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2015-2018 The Blocknet developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -2088,15 +2089,57 @@ bool CWallet::ConvertList(std::vector<CTxIn> vCoins, std::vector<int64_t>& vecAm
     return true;
 }
 
+bool CWallet::FundTransaction(CMutableTransaction  & tx,
+                              CAmount              & nFeeRet,
+                              int                  & /*nChangePosInOut*/,
+                              std::string          & strFailReason,
+                              const std::set<int>  & /*setSubtractFeeFromOutputs*/,
+                              bool                   keepReserveKey,
+                              const CCoinControl   * coinControl)
+{
+    // vector<CRecipient> vecSend;
+    std::vector<std::pair<CScript, CAmount> > vecSend;
+
+    // Turn the txout set into a CRecipient vector
+    for (size_t idx = 0; idx < tx.vout.size(); idx++)
+    {
+        const CTxOut& txOut = tx.vout[idx];
+        // CRecipient recipient = {txOut.scriptPubKey, txOut.nValue, setSubtractFeeFromOutputs.count(idx) == 1};
+        // vecSend.push_back(recipient);
+        vecSend.push_back(std::make_pair(txOut.scriptPubKey, txOut.nValue));
+    }
+
+    CReserveKey reservekey(this);
+    CWalletTx wtx;
+    if (!CreateTransaction(vecSend, wtx, reservekey, nFeeRet, strFailReason, coinControl, ALL_COINS, false, 0))
+    {
+        return false;
+    }
+
+    // Copy inputs
+    tx.vin = wtx.vin;
+
+    // Copy outputs
+    tx.vout = wtx.vout;
+
+    // optionally keep the change output key
+    if (keepReserveKey)
+    {
+        reservekey.KeepKey();
+    }
+
+    return true;
+}
+
 bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend,
-    CWalletTx& wtxNew,
-    CReserveKey& reservekey,
-    CAmount& nFeeRet,
-    std::string& strFailReason,
-    const CCoinControl* coinControl,
-    AvailableCoinsType coin_type,
-    bool useIX,
-    CAmount nFeePay)
+                                CWalletTx& wtxNew,
+                                CReserveKey& reservekey,
+                                CAmount& nFeeRet,
+                                std::string& strFailReason,
+                                const CCoinControl* coinControl,
+                                AvailableCoinsType coin_type,
+                                bool useIX,
+                                CAmount nFeePay)
 {
     if (useIX && nFeePay < CENT) nFeePay = CENT;
 
@@ -2135,11 +2178,19 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, CAmount> >& vecSend,
                 if (coinControl && !coinControl->fSplitBlock) {
                     BOOST_FOREACH (const PAIRTYPE(CScript, CAmount) & s, vecSend) {
                         CTxOut txout(s.second, s.first);
-                        if (txout.IsDust(::minRelayTxFee)) {
+                        if (coinControl->fAllowZeroValueOutputs && txout.nValue == 0)
+                        {
+                            txNew.vout.push_back(txout);
+                        }
+                        else if (txout.IsDust(::minRelayTxFee))
+                        {
                             strFailReason = _("Transaction amount too small");
                             return false;
                         }
-                        txNew.vout.push_back(txout);
+                        else
+                        {
+                            txNew.vout.push_back(txout);
+                        }
                     }
                 } else //UTXO Splitter Transaction
                 {

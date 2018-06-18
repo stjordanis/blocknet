@@ -6,7 +6,6 @@
 
 #include "uint256.h"
 #include "xbridgetransactionmember.h"
-#include "xkey.h"
 #include "xbridgedef.h"
 
 #include <vector>
@@ -39,7 +38,6 @@ public:
         trSigned,
         trCommited,
 
-        trConfirmed,
         trFinished,
         trCancelled,
         trDropped
@@ -47,14 +45,20 @@ public:
 
     enum
     {
-        // transaction lock time base, in seconds, 10 min
-        lockTime = 600,
+        // transaction lock time base, in seconds, 60 sec * 10 min
+        lockTime = 60 * 10,
 
-        // pending transaction ttl in seconds, 1 min from last update
-        pendingTTL = 60,
+        // pending transaction ttl in seconds, 6 min from last update
+        pendingTTL = 60 * 6,
 
-        // transaction ttl in seconds, 60 min
-        TTL = 3600
+        // transaction ttl in seconds, 60 sec * 60 min
+        TTL = 60 * 60,
+
+        // order deadline ttl in seconds, 60 sec * 60 min * 24 hours * 7 days
+        deadlineTTL = 60 * 60 * 24 * 7,
+
+        // number of blocks ttl, 1440 blocks per day * 7 days
+        blocksTTL = 1440 * 7
     };
 
 public:
@@ -66,31 +70,82 @@ public:
                 const std::vector<unsigned char> & destAddr,
                 const std::string                & destCurrency,
                 const uint64_t                   & destAmount,
-                const std::time_t                & created);
+                const uint64_t                   & created,
+                const uint256                    & blockHash,
+                const std::vector<unsigned char> & mpubkey);
+
     ~Transaction();
 
     uint256 id() const;
 
-    // state of transaction
+    uint256 blockHash() const;
+
+    //
+    /**
+     * @brief state
+     * @return state of transaction
+     */
     State state() const;
-    // update state counter and update state
+    //
+    /**
+     * @brief increaseStateCounter update state counter and update state
+     * @param state
+     * @param from
+     * @return
+     */
     State increaseStateCounter(const State state, const std::vector<unsigned char> & from);
 
+    /**
+     * @brief strState
+     * @param state - transaction state
+     * @return string name of state
+     */
     static std::string strState(const State state);
+    /**
+     * @brief strState
+     * @return  string name of state
+     */
     std::string strState() const;
 
+    /**
+     * @brief updateTimestamp - update transaction time
+     */
     void updateTimestamp();
+    /**
+     * @brief createdTime
+     * @return time of creation transaction
+     */
     boost::posix_time::ptime createdTime() const;
 
+    /**
+     * @brief isFinished
+     * @return true if transaction finished, canclelled or dropped
+     */
     bool isFinished() const;
+    /**
+     * @brief isValid
+     * @return true, if transaction not invalid
+     */
     bool isValid() const;
+    /**
+     * @brief isExpired check time of last transaction update
+     * @return true, if la
+     */
     bool isExpired() const;
+    bool isExpiredByBlockNumber() const;
 
+    /**
+     * @brief cancel - set transaction state to trCancelled
+     */
     void cancel();
+    /**
+     * @brief drop - set transaction state to trDropped
+     */
     void drop();
+    /**
+     * @brief finish - set transaction state to finished
+     */
     void finish();
-
-    bool confirm(const std::string & id);
 
     // uint256                    firstId() const;
     std::vector<unsigned char> a_address() const;
@@ -131,6 +186,8 @@ public:
                                           const std::string & id,
                                           const std::vector<unsigned char> & innerScript);
 
+    friend std::ostream & operator << (std::ostream & out, const TransactionPtr & tx);
+
 public:
     boost::mutex               m_lock;
 
@@ -139,6 +196,8 @@ private:
 
     boost::posix_time::ptime   m_created;
     boost::posix_time::ptime   m_last;
+
+    uint256                    m_blockHash; //hash of block when transaction created
 
     State                      m_state;
 
@@ -164,9 +223,6 @@ private:
 
     uint256                    m_a_datatxid;
     uint256                    m_b_datatxid;
-
-    std::vector<unsigned char> m_a_pk1;
-    std::vector<unsigned char> m_b_pk1;
 };
 
 } // namespace xbridge

@@ -3,9 +3,9 @@
 
 // #include "uint256.h"
 #include "base58.h"
+#include "util/xutil.h"
+#include "xbridgedef.h"
 #include "xbridgepacket.h"
-#include "xkey.h"
-#include "xbitcoinsecret.h"
 #include "xbridgewalletconnector.h"
 
 #include <string>
@@ -24,7 +24,8 @@ struct TransactionDescr
 {
     enum
     {
-        COIN = 1000000
+        COIN = 1000000,
+        MAX_COIN = 100000000
     };
 
     enum State
@@ -70,6 +71,8 @@ struct TransactionDescr
     boost::posix_time::ptime   created;
     boost::posix_time::ptime   txtime;
 
+    uint256                    blockHash;
+
     // raw bitcoin transactions
     std::string                binTxId;
     std::string                binTx;
@@ -91,9 +94,15 @@ struct TransactionDescr
     std::vector<unsigned char>    mPubKey;
     std::vector<unsigned char>    mPrivKey;
 
+    // other node pubkey (set when ... )
+    std::vector<unsigned char>    oPubKey;
+
     // X key (secret data)
     std::vector<unsigned char>    xPubKey;
     std::vector<unsigned char>    xPrivKey;
+
+    // service node pub key
+    std::vector<unsigned char>    sPubKey;
 
     // used coins in transaction
     std::vector<xbridge::wallet::UtxoEntry> usedCoins;
@@ -104,8 +113,8 @@ struct TransactionDescr
         , lockTimeTx2(0)
         , state(trNew)
         , reason(0)
-        , created(boost::posix_time::second_clock::universal_time())
-        , txtime(boost::posix_time::second_clock::universal_time())
+        , created(boost::posix_time::microsec_clock::universal_time())
+        , txtime(boost::posix_time::microsec_clock::universal_time())
     {}
 
 //    bool operator == (const XBridgeTransactionDescr & d) const
@@ -135,23 +144,25 @@ struct TransactionDescr
         return *this;
     }
 
+    friend std::ostream & operator << (std::ostream & out, const TransactionDescrPtr & tx);
+
     TransactionDescr(const TransactionDescr & d)
     {
         state   = trNew;
-        created = boost::posix_time::second_clock::universal_time();
-        txtime  = boost::posix_time::second_clock::universal_time();
+        created = boost::posix_time::microsec_clock::universal_time();
+        txtime  = boost::posix_time::microsec_clock::universal_time();
 
         copyFrom(d);
     }
 
     void updateTimestamp()
     {
-        txtime       = boost::posix_time::second_clock::universal_time();
+        txtime       = boost::posix_time::microsec_clock::universal_time();
     }
 
     void updateTimestamp(const TransactionDescr & d)
     {
-        txtime       = boost::posix_time::second_clock::universal_time();
+        txtime       = boost::posix_time::microsec_clock::universal_time();
         if (created > d.created)
         {
             created = d.created;
@@ -160,6 +171,7 @@ struct TransactionDescr
 
     bool isLocal() const
     {
+        // must have from and to addresses
         return from.size() != 0 && to.size() != 0;
     }
 
@@ -167,21 +179,24 @@ struct TransactionDescr
     {
         switch (state)
         {
-            case trInvalid:   return std::string("Invalid");
-            case trNew:       return std::string("New");
-            case trPending:   return std::string("Open");
-            case trAccepting: return std::string("Accepting");
-            case trHold:      return std::string("Hold");
-            case trCreated:   return std::string("Created");
-            case trSigned:    return std::string("Signed");
-            case trCommited:  return std::string("Commited");
-            case trFinished:  return std::string("Finished");
-            case trCancelled: return std::string("Cancelled");
-            case trRollback:  return std::string("Rolled Back");
-            case trDropped:   return std::string("Dropped");
-            case trExpired:   return std::string("Expired");
-            case trOffline:   return std::string("Offline");
-            default:          return std::string("Unknown");
+            case trExpired:        return std::string("expired");
+            case trNew:            return std::string("new");
+            case trOffline:        return std::string("offline");
+            case trPending:        return std::string("open");
+            case trAccepting:      return std::string("accepting");
+            case trHold:           return std::string("hold");
+            case trInitialized:    return std::string("initialized");
+            case trCreated:        return std::string("created");
+            case trSigned:         return std::string("signed");
+            case trCommited:       return std::string("commited");
+            case trFinished:       return std::string("finished");
+            case trRollback:       return std::string("rolled back");
+            case trRollbackFailed: return std::string("rollback failed");
+            case trDropped:        return std::string("dropped");
+            case trCancelled:      return std::string("canceled");
+            case trInvalid:        return std::string("invalid");
+
+            default:               return std::string("unknown");
         }
     }
 

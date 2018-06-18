@@ -41,6 +41,149 @@ Object CallRPC(const std::string & rpcuser, const std::string & rpcpasswd,
 
 //*****************************************************************************
 //*****************************************************************************
+bool getinfo(const std::string & rpcuser, const std::string & rpcpasswd,
+             const std::string & rpcip, const std::string & rpcport,
+             WalletInfo & info)
+{
+    try
+    {
+        // LOG() << "rpc call <getinfo>";
+
+        Array params;
+        Object reply = CallRPC(rpcuser, rpcpasswd, rpcip, rpcport,
+                               "getinfo", params);
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            // int code = find_value(error.get_obj(), "code").get_int();
+            return false;
+        }
+        else if (result.type() != obj_type)
+        {
+            // Result
+            LOG() << "result not an object " <<
+                     (result.type() == null_type ? "" :
+                      result.type() == str_type  ? result.get_str() :
+                                                   write_string(result, true));
+            return false;
+        }
+
+        Object o = result.get_obj();
+
+        info.relayFee = find_value(o, "relayfee").get_real();
+        info.blocks   = find_value(o, "blocks").get_int();
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "getinfo exception " << e.what();
+        return false;
+    }
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
+bool getnetworkinfo(const std::string & rpcuser, const std::string & rpcpasswd,
+                    const std::string & rpcip, const std::string & rpcport,
+                    WalletInfo & info)
+{
+    try
+    {
+        // LOG() << "rpc call <getnetworkinfo>";
+
+        Array params;
+        Object reply = CallRPC(rpcuser, rpcpasswd, rpcip, rpcport,
+                               "getnetworkinfo", params);
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            // int code = find_value(error.get_obj(), "code").get_int();
+            return false;
+        }
+        else if (result.type() != obj_type)
+        {
+            // Result
+            LOG() << "result not an object " <<
+                     (result.type() == null_type ? "" :
+                      result.type() == str_type  ? result.get_str() :
+                                                   write_string(result, true));
+            return false;
+        }
+
+        Object o = result.get_obj();
+
+        info.relayFee = find_value(o, "relayfee").get_real();
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "getinfo exception " << e.what();
+        return false;
+    }
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
+bool getblockchaininfo(const std::string & rpcuser, const std::string & rpcpasswd,
+                       const std::string & rpcip, const std::string & rpcport,
+                       WalletInfo & info)
+{
+    try
+    {
+        Array params;
+        Object reply = CallRPC(rpcuser, rpcpasswd, rpcip, rpcport,
+                               "getblockchaininfo", params);
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            // int code = find_value(error.get_obj(), "code").get_int();
+            return false;
+        }
+        else if (result.type() != obj_type)
+        {
+            // Result
+            LOG() << "result not an object " <<
+                     (result.type() == null_type ? "" :
+                      result.type() == str_type  ? result.get_str() :
+                                                   write_string(result, true));
+            return false;
+        }
+
+        Object o = result.get_obj();
+
+        info.blocks = find_value(o, "blocks").get_real();
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "getinfo exception " << e.what();
+        return false;
+    }
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
 bool listaccounts(const std::string & rpcuser, const std::string & rpcpasswd,
                   const std::string & rpcip, const std::string & rpcport,
                   std::vector<std::string> & accounts)
@@ -77,15 +220,14 @@ bool listaccounts(const std::string & rpcuser, const std::string & rpcpasswd,
         Object acclist = result.get_obj();
         for (auto nameval : acclist)
         {
-            if (!nameval.name_.empty())
-            {
-                accounts.push_back(nameval.name_);
-            }
+            accounts.push_back(nameval.name_);
         }
     }
     catch (std::exception & e)
     {
-        LOG() << "listaccounts exception " << e.what();
+        if(fDebug)
+            LOG() << "listaccounts exception " << e.what();
+
         return false;
     }
 
@@ -418,63 +560,6 @@ bool getRawTransaction(const std::string & rpcuser,
     catch (std::exception & e)
     {
         LOG() << "getrawtransaction exception " << e.what();
-        return false;
-    }
-
-    return true;
-}
-
-//*****************************************************************************
-//*****************************************************************************
-struct Info
-{
-    uint32_t blocks;
-};
-
-//*****************************************************************************
-//*****************************************************************************
-bool getInfo(const std::string & rpcuser,
-             const std::string & rpcpasswd,
-             const std::string & rpcip,
-             const std::string & rpcport,
-             Info & info)
-{
-    try
-    {
-        LOG() << "rpc call <getinfo>";
-
-        Array params;
-        Object reply = CallRPC(rpcuser, rpcpasswd, rpcip, rpcport,
-                               "getinfo", params);
-
-        // Parse reply
-        const Value & result = find_value(reply, "result");
-        const Value & error  = find_value(reply, "error");
-
-        if (error.type() != null_type)
-        {
-            // Error
-            LOG() << "error: " << write_string(error, false);
-            // int code = find_value(error.get_obj(), "code").get_int();
-            return false;
-        }
-        else if (result.type() != obj_type)
-        {
-            // Result
-            LOG() << "result not an object " <<
-                     (result.type() == null_type ? "" :
-                      result.type() == str_type  ? result.get_str() :
-                                                   write_string(result, true));
-            return false;
-        }
-
-        Object o = result.get_obj();
-
-        info.blocks = find_value(o, "blocks").get_int();
-    }
-    catch (std::exception & e)
-    {
-        LOG() << "getinfo exception " << e.what();
         return false;
     }
 
@@ -823,8 +908,9 @@ bool sendRawTransaction(const std::string & rpcuser,
                         const std::string & rpcip,
                         const std::string & rpcport,
                         const std::string & rawtx,
-                        string & txid,
-                        int32_t & errorCode)
+                        std::string & txid,
+                        int32_t & errorCode,
+                        std::string & message)
 {
     try
     {
@@ -845,6 +931,8 @@ bool sendRawTransaction(const std::string & rpcuser,
             // Error
             LOG() << "error: " << write_string(error, false);
             errorCode = find_value(error.get_obj(), "code").get_int();
+            message = find_value(error.get_obj(), "message").get_str();
+
             return false;
         }
 
@@ -984,6 +1072,28 @@ BtcWalletConnector::BtcWalletConnector()
 
 //*****************************************************************************
 //*****************************************************************************
+bool BtcWalletConnector::init()
+{
+    rpc::WalletInfo info;
+    if (!rpc::getnetworkinfo(m_user, m_passwd, m_ip, m_port, info))
+    {
+        LOG() << "getnetworkinfo failed, trying call getinfo " << __FUNCTION__;
+
+        if (!rpc::getinfo(m_user, m_passwd, m_ip, m_port, info))
+        {
+            WARN() << "init error: both calls of getnetworkinfo and getinfo failed " << __FUNCTION__;
+        }
+    }
+
+    minTxFee   = std::max(static_cast<uint64_t>(info.relayFee * COIN), minTxFee);
+    feePerByte = std::max(static_cast<uint64_t>(minTxFee / 1024),      feePerByte);
+    dustAmount = minTxFee;
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
 std::string BtcWalletConnector::fromXAddr(const std::vector<unsigned char> & xaddr) const
 {
     xbridge::XBitcoinAddress addr;
@@ -1018,8 +1128,25 @@ bool BtcWalletConnector::requestAddressBook(std::vector<wallet::AddressBookEntry
         std::vector<std::string> addrs;
         if (rpc::getaddressesbyaccount(m_user, m_passwd, m_ip, m_port, account, addrs))
         {
-            entries.push_back(std::make_pair(account, addrs));
+            entries.emplace_back(account.empty() ? "_none" : account, addrs);
             // LOG() << acc << " - " << boost::algorithm::join(addrs, ",");
+        }
+    }
+
+    return true;
+}
+
+bool BtcWalletConnector::getInfo(rpc::WalletInfo & info) const
+{
+    if (!rpc::getblockchaininfo(m_user, m_passwd, m_ip, m_port, info) ||
+        !rpc::getnetworkinfo(m_user, m_passwd, m_ip, m_port, info))
+    {
+        LOG() << "getblockchaininfo & getnetworkinfo failed, trying call getinfo " << __FUNCTION__;
+
+        if (!rpc::getinfo(m_user, m_passwd, m_ip, m_port, info))
+        {
+            WARN() << "all calls of getblockchaininfo & getnetworkinfo and getinfo failed " << __FUNCTION__;
+            return false;
         }
     }
 
@@ -1028,12 +1155,21 @@ bool BtcWalletConnector::requestAddressBook(std::vector<wallet::AddressBookEntry
 
 //******************************************************************************
 //******************************************************************************
-bool BtcWalletConnector::getUnspent(std::vector<wallet::UtxoEntry> & inputs) const
+bool BtcWalletConnector::getUnspent(std::vector<wallet::UtxoEntry> & inputs, const bool withoutDust) const
 {
     if (!rpc::listUnspent(m_user, m_passwd, m_ip, m_port, inputs))
     {
         LOG() << "rpc::listUnspent failed " << __FUNCTION__;
         return false;
+    }
+
+    if (withoutDust)
+    {
+        std::remove_if(inputs.begin(), inputs.end(),
+                [this](const wallet::UtxoEntry & entry)
+        {
+            return isDustAmount(entry.amount);
+        });
     }
 
     return true;
@@ -1082,13 +1218,19 @@ bool BtcWalletConnector::getTxOut(wallet::UtxoEntry & entry)
 //******************************************************************************
 //******************************************************************************
 bool BtcWalletConnector::sendRawTransaction(const std::string & rawtx,
-                                                   std::string & txid,
-                                                   int32_t & errorCode)
+                                            std::string & txid,
+                                            int32_t & errorCode,
+                                            std::string & message)
 {
     if (!rpc::sendRawTransaction(m_user, m_passwd, m_ip, m_port,
-                                 rawtx, txid, errorCode))
+                                 rawtx, txid, errorCode, message))
     {
-        LOG() << "rpc::createRawTransaction failed " << __FUNCTION__;
+        LOG() << "rpc::sendRawTransaction failed, error code: <"
+              << errorCode
+              << "> message: '"
+              << message
+              << "' "
+              << __FUNCTION__;
         return false;
     }
 
@@ -1129,8 +1271,15 @@ bool BtcWalletConnector::verifyMessage(const std::string & address,
 
 //******************************************************************************
 //******************************************************************************
+bool BtcWalletConnector::isDustAmount(const double & amount) const
+{
+    return (static_cast<uint64_t>(amount * COIN) < dustAmount);
+}
+
+//******************************************************************************
+//******************************************************************************
 bool BtcWalletConnector::newKeyPair(std::vector<unsigned char> & pubkey,
-                                           std::vector<unsigned char> & privkey)
+                                    std::vector<unsigned char> & privkey)
 {
     xbridge::CKey km;
     km.MakeNewKey(true);
@@ -1171,7 +1320,7 @@ std::string BtcWalletConnector::scriptIdToString(const std::vector<unsigned char
 // calculate tx fee for deposit tx
 // output count always 1
 //******************************************************************************
-double BtcWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t outputCount)
+double BtcWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t outputCount) const
 {
     uint64_t fee = (148*inputCount + 34*outputCount + 10) * feePerByte;
     if (fee < minTxFee)
@@ -1185,7 +1334,7 @@ double BtcWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t o
 // calculate tx fee for payment/refund tx
 // input count always 1
 //******************************************************************************
-double BtcWalletConnector::minTxFee2(const uint32_t inputCount, const uint32_t outputCount)
+double BtcWalletConnector::minTxFee2(const uint32_t inputCount, const uint32_t outputCount) const
 {
     uint64_t fee = (180*inputCount + 34*outputCount + 10) * feePerByte;
     if (fee < minTxFee)
@@ -1253,11 +1402,16 @@ bool BtcWalletConnector::checkTransaction(const std::string & depositTxId,
 //******************************************************************************
 uint32_t BtcWalletConnector::lockTime(const char role) const
 {
-    rpc::Info info;
-    if (!rpc::getInfo(m_user, m_passwd, m_ip, m_port, info))
+    rpc::WalletInfo info;
+    if (!rpc::getblockchaininfo(m_user, m_passwd, m_ip, m_port, info))
     {
-        LOG() << "blockchain info not received " << __FUNCTION__;
-        return 0;
+        LOG() << "getblockchaininfo failed, trying call getinfo " << __FUNCTION__;
+
+        if (!rpc::getinfo(m_user, m_passwd, m_ip, m_port, info))
+        {
+            WARN() << "both calls of getblockchaininfo and getinfo failed " << __FUNCTION__;
+            return 0;
+        }
     }
 
     if (info.blocks == 0)
@@ -1302,7 +1456,7 @@ bool BtcWalletConnector::createDepositUnlockScript(const std::vector<unsigned ch
                 << OP_DUP << OP_HASH160 << getKeyId(myPubKey) << OP_EQUALVERIFY << OP_CHECKSIG
           << OP_ELSE
                 << OP_DUP << OP_HASH160 << getKeyId(otherPubKey) << OP_EQUALVERIFY << OP_CHECKSIGVERIFY
-                << OP_HASH160 << xdata << OP_EQUAL
+                << OP_SIZE << 33 << OP_EQUALVERIFY << OP_HASH160 << xdata << OP_EQUAL
           << OP_ENDIF;
 
 //    xbridge::XBitcoinAddress baddr;
@@ -1320,9 +1474,8 @@ bool BtcWalletConnector::createDepositTransaction(const std::vector<std::pair<st
                                                          std::string & txId,
                                                          std::string & rawTx)
 {
-    std::string raw;
     if (!rpc::createRawTransaction(m_user, m_passwd, m_ip, m_port,
-                                   inputs, outputs, 0, raw))
+                                   inputs, outputs, 0, rawTx))
     {
         // cancel transaction
         LOG() << "create transaction error, transaction canceled " << __FUNCTION__;
@@ -1331,7 +1484,7 @@ bool BtcWalletConnector::createDepositTransaction(const std::vector<std::pair<st
 
     // sign
     bool complete = false;
-    if (!rpc::signRawTransaction(m_user, m_passwd, m_ip, m_port, raw, complete))
+    if (!rpc::signRawTransaction(m_user, m_passwd, m_ip, m_port, rawTx, complete))
     {
         // do not sign, cancel
         LOG() << "sign transaction error, transaction canceled " << __FUNCTION__;
@@ -1346,14 +1499,13 @@ bool BtcWalletConnector::createDepositTransaction(const std::vector<std::pair<st
 
     std::string txid;
     std::string json;
-    if (!rpc::decodeRawTransaction(m_user, m_passwd, m_ip, m_port, raw, txid, json))
+    if (!rpc::decodeRawTransaction(m_user, m_passwd, m_ip, m_port, rawTx, txid, json))
     {
         LOG() << "decode signed transaction error, transaction canceled " << __FUNCTION__;
         return false;
     }
 
     txId = txid;
-    rawTx = raw;
 
     return true;
 }
@@ -1458,16 +1610,17 @@ bool BtcWalletConnector::createRefundTransaction(const std::vector<std::pair<std
     tx->vout      = txUnsigned->vout;
     tx->nLockTime = txUnsigned->nLockTime;
 
+    rawTx = tx->toString();
+
     std::string json;
     std::string reftxid;
-    if (!rpc::decodeRawTransaction(m_user, m_passwd, m_ip, m_port, tx->toString(), reftxid, json))
+    if (!rpc::decodeRawTransaction(m_user, m_passwd, m_ip, m_port, rawTx, reftxid, json))
     {
         LOG() << "decode signed transaction error, transaction canceled " << __FUNCTION__;
 //            sendCancelTransaction(xtx, crRpcError);
             return true;
     }
 
-    rawTx = tx->toString();
     txId  = reftxid;
 
     return true;
@@ -1526,16 +1679,17 @@ bool BtcWalletConnector::createPaymentTransaction(const std::vector<std::pair<st
     tx->vin.push_back(CTxIn(txUnsigned->vin[0].prevout, redeem));
     tx->vout      = txUnsigned->vout;
 
+    rawTx = tx->toString();
+
     std::string json;
     std::string paytxid;
-    if (!rpc::decodeRawTransaction(m_user, m_passwd, m_ip, m_port, tx->toString(), paytxid, json))
+    if (!rpc::decodeRawTransaction(m_user, m_passwd, m_ip, m_port, rawTx, paytxid, json))
     {
             LOG() << "decode signed transaction error, transaction canceled " << __FUNCTION__;
 //                sendCancelTransaction(xtx, crRpcError);
         return true;
     }
 
-    rawTx = tx->toString();
     txId  = paytxid;
 
     return true;

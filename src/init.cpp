@@ -1,7 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The BlocknetDX developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2015-2018 The Blocknet developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -163,6 +164,8 @@ static std::unique_ptr<ECCVerifyHandle> globalVerifyHandle;
 /** Preparing steps before shutting down or restarting the wallet */
 void PrepareShutdown()
 {
+    xbridge::App::instance().cancelMyXBridgeTransactions();
+
     fRequestShutdown = true;  // Needed when we shutdown the wallet
     fRestartRequested = true; // Needed when we restart the wallet
     LogPrintf("%s: In progress...\n", __func__);

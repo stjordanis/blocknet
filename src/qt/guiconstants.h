@@ -1,6 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The BlocknetDX developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2015-2018 The Blocknet developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -22,7 +23,7 @@ static const bool DEFAULT_SPLASHSCREEN = true;
 #define STYLE_INVALID "background:#FF8080"
 
 /* Transaction list -- unconfirmed transaction */
-#define COLOR_UNCONFIRMED QColor(26, 35, 64)
+#define COLOR_UNCONFIRMED QColor(26, 135, 164)
 /* Transaction list -- negative amount */
 #define COLOR_NEGATIVE QColor(255, 32, 32)
 /* Transaction list -- bare address (without label) */
@@ -49,7 +50,7 @@ static const int MAX_URI_LENGTH = 255;
 #define SPINNER_FRAMES 35
 
 #define QAPP_ORG_NAME "BlocknetDX"
-#define QAPP_ORG_DOMAIN "blocknetdx.org"
+#define QAPP_ORG_DOMAIN "blocknet.co"
 #define QAPP_APP_NAME_DEFAULT "BlocknetDX-Qt"
 #define QAPP_APP_NAME_TESTNET "BlocknetDX-Qt-testnet"
 

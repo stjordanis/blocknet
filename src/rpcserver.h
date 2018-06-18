@@ -49,7 +49,7 @@ void StopRPCThreads();
 /** Query whether RPC is running */
 bool IsRPCRunning();
 
-/** 
+/**
  * Set the RPC warmup status.  When this is done, all RPC calls will error out
  * immediately with RPC_IN_WARMUP.
  */
@@ -221,6 +221,7 @@ extern json_spirit::Value listunspent(const json_spirit::Array& params, bool fHe
 extern json_spirit::Value lockunspent(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value listlockunspent(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value createrawtransaction(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value fundrawtransaction(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value decoderawtransaction(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value decodescript(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value signrawtransaction(const json_spirit::Array& params, bool fHelp);
@@ -261,7 +262,7 @@ extern json_spirit::Value mnsync(const json_spirit::Array& params, bool fHelp);
   * @return The list of open and pending transactions as JSON value. Open transactions go first.
   * * Example:<br>
   * \verbatim
-    dxGetTransactions
+    dxGetOrders
 ￼
     [
         {
@@ -288,7 +289,7 @@ extern json_spirit::Value mnsync(const json_spirit::Array& params, bool fHelp);
   * \endverbatim
   */
 
-extern json_spirit::Value dxGetTransactions(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value dxGetOrders(const json_spirit::Array& params, bool fHelp);
 
 /**
  * @brief Returns the list of historical(closed) transactions
@@ -299,7 +300,7 @@ extern json_spirit::Value dxGetTransactions(const json_spirit::Array& params, bo
  * @return The list of historical transaction  as a JSON value
  * * Example:<br>
  * \verbatim
-    dxGetTransactionsHistory ALL
+    dxGetOrderFills ALL
 ￼
     [
         {
@@ -322,10 +323,20 @@ extern json_spirit::Value dxGetTransactions(const json_spirit::Array& params, bo
             "toAmount" : 0.00010000000000000,
             "state" : "Finished"
         }
+        {
+            "id" : "6be54829948f7e679dd96657f8bc46a3dcc69b6d5655f5870a017e005caa050a",
+            "from" : "LTC",
+            "fromAddress" : "",
+            "fromAmount" : 0.00010000000000000,
+            "to" : "SYS",
+            "toAddress" : "",
+            "toAmount" : 0.00010000000000000,
+            "state" : "Cancelled"
+        }
     ]
  * \endverbatim
  */
-extern json_spirit::Value dxGetTransactionsHistory(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value dxGetOrderFills(const json_spirit::Array& params, bool fHelp);
 
 /**
  * @brief Returns the detailed description of given a transaction
@@ -335,7 +346,7 @@ extern json_spirit::Value dxGetTransactionsHistory(const json_spirit::Array& par
  * @return The detailed description of given transaction as a JSON value
  * * Example:<br>
  * \verbatim
-    dxGetTransactionInfo 91d0ea83edc79b9a2041c51d08037cff87c181efb311a095dfdd4edbcc7993a9
+    dxGetOrder 91d0ea83edc79b9a2041c51d08037cff87c181efb311a095dfdd4edbcc7993a9
 ￼
     [
         {
@@ -351,10 +362,11 @@ extern json_spirit::Value dxGetTransactionsHistory(const json_spirit::Array& par
     ]
  * \endverbatim
  */
-extern json_spirit::Value dxGetTransactionInfo(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value dxGetOrder(const json_spirit::Array& params, bool fHelp);
+
 
 /**
- * @brief Returns the list of available currencies
+ * @brief Returns the list of the currencies supported by the wallet
  * @param params The list of input params, should be empty
  * @param fHelp If is true then an exception with parameter description message will be thrown
  * @return The list of available currencies as a JSON value
@@ -369,7 +381,25 @@ extern json_spirit::Value dxGetTransactionInfo(const json_spirit::Array& params,
     }
  * \endverbatim
  */
-extern json_spirit::Value dxGetCurrencies(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value dxGetLocalTokens(const json_spirit::Array& params, bool fHelp);
+
+/**
+ * @brief Returns the list of the currencies supported bt the network
+ * @param params The list of input params, should be empty
+ * @param fHelp If is true then an exception with parameter description message will be thrown
+ * @return The list of available currencies as a JSON value
+ * * Example:<br>
+ * \verbatim
+    {
+        "DCR" : "",
+        "DEC" : "",
+        "DOGE" : "",
+        "LTC" : "",
+        "SYS" : ""
+    }
+ * \endverbatim
+ */
+extern json_spirit::Value dxGetNetworkTokens(const json_spirit::Array& params, bool fHelp);
 
 /**
  * @brief Creates a new transaction
@@ -380,12 +410,13 @@ extern json_spirit::Value dxGetCurrencies(const json_spirit::Array& params, bool
  * params[3] : receiving address<br>
  * params[4] : currency being received<br>
  * params[5] : amount being received<br>
+ * params[6] : type of opetation<br>
  * @param fHelp If is true then an exception with parameter description message will be thrown
  * @return The transaction created, as a JSON value
  * * Example:<br>
  * \verbatim
  *
-    dxCreateTransaction  1NDqZ7piDqyDhNveWS48kDSwPdyJLEEcCp SYS 1.3 LRuXAU2fdSU7imXzk8cTy2k3heMK5vTuQ4 LTC 0.13
+    dxMakeOrder  1NDqZ7piDqyDhNveWS48kDSwPdyJLEEcCp SYS 1.3 LRuXAU2fdSU7imXzk8cTy2k3heMK5vTuQ4 LTC 0.13 exact
     {
         "from" : "1NDqZ7piDqyDhNveWS48kDSwPdyJLEEcCp",
         "fromCurrency" : "SYS",
@@ -396,7 +427,7 @@ extern json_spirit::Value dxGetCurrencies(const json_spirit::Array& params, bool
     }
  * \endverbatim
  */
-extern json_spirit::Value dxCreateTransaction(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value dxMakeOrder(const json_spirit::Array& params, bool fHelp);
 
 /**
  * @brief Accepts given transaction
@@ -416,40 +447,33 @@ extern json_spirit::Value dxCreateTransaction(const json_spirit::Array& params, 
     }
  * \endverbatim
  */
-extern json_spirit::Value dxAcceptTransaction(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value dxTakeOrder(const json_spirit::Array& params, bool fHelp);
 
 /**
- * @brief Cancels given transaction
+ * @brief Cancels given order
  * @param params The list of input params:<br>
  * params[0] : transaction id<br>
  * @param fHelp If is true then an exception with parameter description message will be thrown
  * @return The status of the operation
  * * Example:<br>
  * \verbatim ￼
-    dxCancelTransaction 6be548bc46a3dcc69b6d56529948f7e679dd96657f85f5870a017e005caa050a
+    dxCancelOrder 6be548bc46a3dcc69b6d56529948f7e679dd96657f85f5870a017e005caa050a
     {
-        "id" : "6be548bc46a3dcc69b6d56529948f7e679dd96657f85f5870a017e005caa050a"
-    }
- * \endverbatim
 
- */
-extern json_spirit::Value dxCancelTransaction(const json_spirit::Array& params, bool fHelp);
-
-/**
- * @brief Rollback given transaction
- * @param params The list of input params:<br>
- * params[0] : transaction id<br>
- * @param fHelp If is true then an exception with parameter description message will be thrown
- * @return The status of the operation
- * * Example:<br>
- * \verbatim
-    dxrollbackTransaction 6be548bc46a3dcc69b6d56529948f7e679dd96657f85f5870a017e005caa050a
-    {
         "id" : "6be548bc46a3dcc69b6d56529948f7e679dd96657f85f5870a017e005caa050a"
-    }
+        "maker" : "SYS"
+        "maker_size" : "0.1"
+        "maker_address" : "1NDqZ7piDqyDhNveWS48kDSwPdyJLEEcCp"
+        "taker" : "LTC"
+        "taker_size" : "0.01"
+        "taker_address" : "LRuXAU2fdSU7imXzk8cTy2k3heMK5vTuQ4"
+        "updated_at" : "2018-03-01-14:18:31.zzz"
+        "created_at" : "2018-03-01-13:28:31.zzz"
+        "status" : "cancelled"
+}
  * \endverbatim
  */
-extern json_spirit::Value dxrollbackTransaction(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value dxCancelOrder(const json_spirit::Array& params, bool fHelp);
 
 /**
  * @brief Returns trading history as a 'price chart'
@@ -480,7 +504,7 @@ extern json_spirit::Value dxrollbackTransaction(const json_spirit::Array& params
   ]
  * \endverbatim
  */
-extern json_spirit::Value dxGetTradeHistory(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value dxGetOrderHistory(const json_spirit::Array& params, bool fHelp);
 
 /**
  * @brief Returns transactions list in a form of 'order book'
@@ -516,6 +540,63 @@ extern json_spirit::Value dxGetTradeHistory(const json_spirit::Array& params, bo
  */
 extern json_spirit::Value dxGetOrderBook(const json_spirit::Array& params, bool fHelp);
 
+
+/**
+ * @brief Returns the list of the orders created by the user
+ * @param params The list of input params, should be empty
+ * @param fHelp If is true then an exception with parameter description message will be thrown
+ * @return The list of the orders created by the user
+ * * Example:<br>
+ * \verbatim
+  [
+    {
+      "id": "2cd2a2ac-e6ff-4beb-9b45-d460bf83a092",
+      "maker": "SYS",
+      "maker_size": "0.100",
+      "maker_address": "yFMXXUJF7pSKegHTkTYMjfNxyUGVt1uCrL",
+      "taker": "LTC",
+      "taker_size": "0.01",
+      "taker_address": "yGDmuy8m1Li4ShNe7kGYusACw4oyiGiK5b",
+      "updated_at": "2018-01-15T18:25:05.12345Z",
+      "created_at": "2018-01-15T18:15:30.12345Z",
+      "status": "filled"
+    }
+  ]
+ * \endverbatim
+ */
+extern json_spirit::Value dxGetMyOrders(const json_spirit::Array& params, bool fHelp);
+
+/**
+ * @brief Returns locked utxo list
+ * @param params The list of input params:<br>
+ * params[0] : order id
+ * @param fHelp If is true then an exception with parameter description message will be thrown
+ * @return The list of locked utxo for an order
+ * * Example:<br>
+ * \verbatim
+    dxGetLockedUtxos 91d0ea83edc79b9a2041c51d08037cff87c181efb311a095dfdd4edbcc7993a9
+    [
+        {
+            "id" : "91d0ea83edc79b9a2041c51d08037cff87c181efb311a095dfdd4edbcc7993a9",
+            "LTC" :
+            [
+                6be548bc46a3dcc69b6d56529948f7e679dd96657f85f5870a017e005caa050a,
+                6be548bc46a3dcc69b6d56529948f7e679dd96657f85f5870a017e005caa050a,
+                6be548bc46a3dcc69b6d56529948f7e679dd96657f85f5870a017e005caa050a
+            ]
+        }
+    ]
+ * \endverbatim
+ */
+extern json_spirit::Value dxGetLockedUtxos(const json_spirit::Array& params, bool fHelp);
+
+/**
+ * @brief dxGetTokenBalances
+ * @param params The list of input params, should be empty
+ * @param fHelp If is true then an exception with parameter description message will be thrown
+ * @return list of currences with balance
+ */
+extern json_spirit::Value  dxGetTokenBalances(const json_spirit::Array& params, bool fHelp);
 /** @} */
 
 

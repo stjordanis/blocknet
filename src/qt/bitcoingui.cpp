@@ -1,6 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The BlocknetDX developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2015-2018 The Blocknet developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -59,6 +60,7 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QVBoxLayout>
+#include <QDir>
 
 #if QT_VERSION < 0x050000
 #include <QTextDocument>
@@ -112,7 +114,10 @@ BitcoinGUI::BitcoinGUI(const NetworkStyle* networkStyle, QWidget* parent) : QMai
                                                                             spinnerFrame(0)
 {
     /* Open CSS when configured */
+    boost::filesystem::path pathAddr = GetDataDir() / "themes";
+    QDir::setCurrent(pathAddr.string().c_str());
     this->setStyleSheet(GUIUtil::loadStyleSheet());
+    this->update();
 
     GUIUtil::restoreWindowGeometry("nWindow", QSize(850, 550), this);
 

@@ -1,7 +1,8 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The BlocknetDX developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2015-2018 The Blocknet developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -142,6 +143,16 @@ public:
         vSeeds.push_back(CDNSSeedData("178.62.90.213", "178.62.90.213")); // seed node
         vSeeds.push_back(CDNSSeedData("138.197.73.214", "138.197.73.214")); // seed node
         vSeeds.push_back(CDNSSeedData("34.235.49.248", "34.235.49.248")); // seed node
+
+        // additional seeds
+        vSeeds.push_back(CDNSSeedData("35.157.52.158", "35.157.52.158")); // seed node
+        vSeeds.push_back(CDNSSeedData("18.196.208.65", "18.196.208.65")); // seed node
+        vSeeds.push_back(CDNSSeedData("13.251.15.150", "13.251.15.150")); // seed node
+        vSeeds.push_back(CDNSSeedData("13.229.39.34", "13.229.39.34")); // seed node
+        vSeeds.push_back(CDNSSeedData("52.56.35.74", "52.56.35.74")); // seed node
+        vSeeds.push_back(CDNSSeedData("35.177.173.53", "35.177.173.53")); // seed node
+        vSeeds.push_back(CDNSSeedData("35.178.142.231", "35.178.142.231")); // seed node
+        vSeeds.push_back(CDNSSeedData("35.176.65.103", "35.176.65.103")); // seed node
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 26);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 28);

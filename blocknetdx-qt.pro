@@ -277,6 +277,7 @@ SOURCES += \
     src/xbridge/xbridgeexchange.cpp \
     src/xbridge/xbridgesession.cpp \
     src/xbridge/xbridgetransaction.cpp \
+    src/xbridge/xbridgetransactiondescr.cpp \
     src/xbridge/xbridgetransactionmember.cpp \
     src/support/cleanse.cpp \
     src/crypto/chacha20.cpp \
@@ -300,7 +301,9 @@ SOURCES += \
     src/xbridge/xbridgewalletconnectorbcc.cpp \
     src/xbridge/xbridgewalletconnectorsys.cpp \
     src/xbridge/xbridgewalletconnectoreth.cpp \
-    src/xbridge/xbridgeethencoder.cpp
+    src/xbridge/xbridgewalletconnectordgb.cpp \
+    src/xbridge/xbridgeethencoder.cpp \
+    src/xbridge/xbridgepacket.cpp
 
 #protobuf generated
 SOURCES += \
@@ -589,10 +592,11 @@ HEADERS += \
     src/xbridge/xbridgewalletconnector.h \
     src/xbridge/xbridgewalletconnectorbtc.h \
     src/xbridge/xbridgewalletconnectorbcc.h \
-    src/xbridge/xbridgedef.h \
     src/xbridge/xbridgewalletconnectorsys.h \
     src/xbridge/xbridgewalletconnectoreth.h \
+    src/xbridge/xbridgewalletconnectordgb.h \
     src/xbridge/xbridgeethencoder.h
+    src/xbridge/xbridgedef.h \
 
 #ENABLE_ZMQ
 #    src/zmq/zmqabstractnotifier.h \
