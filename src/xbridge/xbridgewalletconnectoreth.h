@@ -59,12 +59,12 @@ public:
                                    const std::vector<unsigned char> & /*otherPubKey*/,
                                    const std::vector<unsigned char> & /*xdata*/,
                                    const uint32_t /*lockTime*/,
-                                   std::vector<unsigned char> & resultSript);
+                                   std::vector<unsigned char> & /*resultSript*/) { return false; }
 
     bool createDepositTransaction(const std::vector<std::pair<std::string, int> > & /*inputs*/,
                                   const std::vector<std::pair<std::string, double> > & /*outputs*/,
-                                  std::string & txId,
-                                  std::string & rawTx);
+                                  std::string & /*txId*/,
+                                  std::string & /*rawTx*/) { return false; }
 
     bool createRefundTransaction(const std::vector<std::pair<std::string, int> > & /*inputs*/,
                                  const std::vector<std::pair<std::string, double> > & /*outputs*/,
@@ -72,8 +72,8 @@ public:
                                  const std::vector<unsigned char> & /*mprivKey*/,
                                  const std::vector<unsigned char> & /*innerScript*/,
                                  const uint32_t /*lockTime*/,
-                                 std::string & txId,
-                                 std::string & rawTx);
+                                 std::string & /*txId*/,
+                                 std::string & /*rawTx*/) { return false; }
 
     bool createPaymentTransaction(const std::vector<std::pair<std::string, int> > & /*inputs*/,
                                   const std::vector<std::pair<std::string, double> > & /*outputs*/,
@@ -81,12 +81,23 @@ public:
                                   const std::vector<unsigned char> & /*mprivKey*/,
                                   const std::vector<unsigned char> & /*xpubKey*/,
                                   const std::vector<unsigned char> & /*innerScript*/,
-                                  std::string & txId,
-                                  std::string & rawTx);
+                                  std::string & /*txId*/,
+                                  std::string & /*rawTx*/) { return false; }
+
+    bool initiate(const bytes & hashedSecret, const bytes & responderAddress, const uint256 & refundDuration);
+    bool respond(const bytes & hashedSecret, const bytes & initiatorAddress, const uint256 & refundDuration);
+    bool refund(const bytes & hashedSecret);
+    bool redeem(const bytes & hashedSecret, const bytes & secret);
+
+    bool installFilter(const bytes & hashedSecret, uint256 & filterId);
+    bool deleteFilter(const uint256 & filterId);
+
+    bool isInitiated(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, const bytes & responderAddress, const uint256 value);
+    bool isResponded(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, const bytes & responderAddress, const uint256 value);
+    bool isRefunded(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value);
+    bool isRedeemed(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value);
 
 private:
-    std::string signTransaction(const EthTransaction & transaction);
-
     const std::string contractAddress = "";
 };
 
