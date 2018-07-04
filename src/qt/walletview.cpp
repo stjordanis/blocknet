@@ -36,6 +36,7 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QVBoxLayout>
+#include <QDateTime>
 
 WalletView::WalletView(QWidget* parent) : QStackedWidget(parent),
                                           clientModel(0),
@@ -304,6 +305,14 @@ void WalletView::encryptWallet(bool status)
 {
     if (!walletModel)
         return;
+
+    if (walletModel->passphraseAttempCnt >= 3)
+    {
+        QMessageBox::critical(this, tr("Wallet Encryption/Decryption Disabled"),
+        tr("The passphrase attempt count has been exceeded. The wallet encryption/decryption capability has been disabled for 1 day."));
+        return;
+    }
+
     AskPassphraseDialog dlg(status ? AskPassphraseDialog::Encrypt : AskPassphraseDialog::Decrypt, this, walletModel);
     dlg.exec();
 
@@ -330,6 +339,13 @@ void WalletView::backupWallet()
 
 void WalletView::changePassphrase()
 {
+    if (walletModel->passphraseAttempCnt >= 3)
+    {
+        QMessageBox::critical(this, tr("Wallet Encryption/Decryption Disabled"),
+        tr("The passphrase attempt count has been exceeded. The wallet change passphrase capability has been disabled for 1 day."));
+        return;
+    }
+
     AskPassphraseDialog dlg(AskPassphraseDialog::ChangePass, this, walletModel);
     dlg.exec();
 }
@@ -338,8 +354,25 @@ void WalletView::unlockWallet()
 {
     if (!walletModel)
         return;
-    // Unlock wallet when requested by wallet model
 
+    // Retrieve feature-security-triplestrike settings
+    QDateTime now = QDateTime::currentDateTimeUtc();
+    QSettings settings;
+    QDateTime disableTime = settings.value("nPassphraseDisableTime", now).toDateTime();
+    if (disableTime.secsTo(now) > 60)
+    {
+        QMessageBox::critical(this, tr("Debug"), tr("Enabled"));
+        walletModel->passphraseAttempCnt = 0;
+    }
+    else QMessageBox::critical(this, tr("Debug"), tr("Disabled"));
+    if (walletModel->passphraseAttempCnt >= 3)
+    {
+        QMessageBox::critical(this, tr("Wallet Encryption/Decryption Disabled"),
+        tr("The passphrase attempt count has been exceeded. The wallet unlock capability has been disabled for 1 day."));
+        return;
+    }
+
+    // Unlock wallet when requested by wallet model
     if (walletModel->getEncryptionStatus() == WalletModel::Locked || walletModel->getEncryptionStatus() == WalletModel::UnlockedForAnonymizationOnly) {
         AskPassphraseDialog dlg(AskPassphraseDialog::UnlockAnonymize, this, walletModel);
         dlg.exec();

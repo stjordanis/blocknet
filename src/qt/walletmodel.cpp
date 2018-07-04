@@ -26,6 +26,8 @@
 #include <QDebug>
 #include <QSet>
 #include <QTimer>
+#include <QSettings>
+#include <QDateTime>
 
 using namespace std;
 
@@ -49,6 +51,17 @@ WalletModel::WalletModel(CWallet* wallet, OptionsModel* optionsModel, QObject* p
     pollTimer->start(MODEL_UPDATE_DELAY);
 
     subscribeToCoreSignals();
+
+    QSettings settings;
+    if (!settings.contains("nPassphraseAttempCnt"))
+        settings.setValue("nPassphraseAttempCnt", 0);
+    passphraseAttempCnt = settings.value("nPassphraseAttempCnt", 0).toInt();
+    QDateTime now = QDateTime::currentDateTimeUtc();
+    QDateTime disableTime = settings.value("nPassphraseDisableTime", now).toDateTime();
+    if (disableTime.secsTo(now) > 60)
+    {
+        passphraseAttempCnt = 0;
+    }
 }
 
 WalletModel::~WalletModel()

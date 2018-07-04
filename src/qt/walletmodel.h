@@ -33,6 +33,7 @@ class uint256;
 
 QT_BEGIN_NAMESPACE
 class QTimer;
+class QDateTime;
 QT_END_NAMESPACE
 
 class SendCoinsRecipient
@@ -209,6 +210,10 @@ public:
 
     void loadReceiveRequests(std::vector<std::string>& vReceiveRequests);
     bool saveReceiveRequest(const std::string& sAddress, const int64_t nId, const std::string& sRequest);
+
+public:
+    int passphraseAttempCnt;
+    QDateTime* pPhraseAttemptTime;
 
 private:
     CWallet* wallet;

@@ -16,6 +16,9 @@
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSettings>
+#include <QDateTime>
+
 
 AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget* parent, WalletModel* model) : QDialog(parent),
                                                                                            ui(new Ui::AskPassphraseDialog),
@@ -77,7 +80,7 @@ AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget* parent, WalletModel
     textChanged();
     connect(ui->passEdit1, SIGNAL(textChanged(QString)), this, SLOT(textChanged()));
     connect(ui->passEdit2, SIGNAL(textChanged(QString)), this, SLOT(textChanged()));
-    connect(ui->passEdit3, SIGNAL(textChanged(QString)), this, SLOT(textChanged()));
+    connect(ui->passEdit3, SIGNAL(textChanged(QString)), this, SLOT(textChanged()));   
 }
 
 AskPassphraseDialog::~AskPassphraseDialog()
@@ -144,16 +147,38 @@ void AskPassphraseDialog::accept()
     case UnlockAnonymize:
     case Unlock:
         if (!model->setWalletLocked(false, oldpass, ui->anonymizationCheckBox->isChecked())) {
+            model->passphraseAttempCnt++;
+            if (model->passphraseAttempCnt >= 3)
+            {
+                QMessageBox::critical(this, tr("Wallet unlock failed"),
+                    tr("The passphrase attempt count has been exceeded. The wallet unlock will be disabled for 1 day."));
+                QDialog::close();
+                QSettings settings;
+                settings.setValue("nPassphraseAttempCnt", model->passphraseAttempCnt);
+                QDateTime now = QDateTime::currentDateTimeUtc();
+                settings.setValue("nPassphraseDisableTime", now);
+                return;
+            }
             QMessageBox::critical(this, tr("Wallet unlock failed"),
-                tr("The passphrase entered for the wallet decryption was incorrect."));
+                tr("The passphrase entered for the wallet decryption was incorrect."));            
         } else {
             QDialog::accept(); // Success
         }
         break;
     case Decrypt:
         if (!model->setWalletEncrypted(false, oldpass)) {
+            model->passphraseAttempCnt++;
+            if (model->passphraseAttempCnt >= 3)
+            {
+                QMessageBox::critical(this, tr("Wallet decryption failed"),
+                    tr("The passphrase attempt count has been exceeded. The wallet decryption will be disabled for 1 day."));
+                QDialog::close();
+                QSettings settings;
+                settings.setValue("nPassphraseAttempCnt", model->passphraseAttempCnt);
+                return;
+            }
             QMessageBox::critical(this, tr("Wallet decryption failed"),
-                tr("The passphrase entered for the wallet decryption was incorrect."));
+                tr("The passphrase entered for the wallet decryption was incorrect."));            
         } else {
             QDialog::accept(); // Success
         }
@@ -165,8 +190,18 @@ void AskPassphraseDialog::accept()
                     tr("Wallet passphrase was successfully changed."));
                 QDialog::accept(); // Success
             } else {
+                model->passphraseAttempCnt++;
+                if (model->passphraseAttempCnt >= 3)
+                {
+                    QMessageBox::critical(this, tr("Wallet encryption failed"),
+                        tr("The passphrase attempt count has been exceeded. The wallet encryption will be disabled for 1 day."));
+                    QDialog::close();
+                    QSettings settings;
+                    settings.setValue("nPassphraseAttempCnt", model->passphraseAttempCnt);
+                    return;
+                }
                 QMessageBox::critical(this, tr("Wallet encryption failed"),
-                    tr("The passphrase entered for the wallet decryption was incorrect."));
+                    tr("The passphrase entered for the wallet decryption was incorrect."));                
             }
         } else {
             QMessageBox::critical(this, tr("Wallet encryption failed"),
