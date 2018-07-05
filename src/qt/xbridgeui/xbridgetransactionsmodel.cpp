@@ -83,22 +83,22 @@ QVariant XBridgeTransactionsModel::data(const QModelIndex & idx, int role) const
         {
         case Total:
         {
-            double amount = (double)d->fromAmount / xbridge::TransactionDescr::COIN;
+            double amount = d->fromAmount.getdouble() / xbridge::TransactionDescr::COIN;
             QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->fromCurrency));
 
             return QVariant(text);
         }
         case Size:
         {
-            double amount = (double)d->toAmount / xbridge::TransactionDescr::COIN;
+            double amount = d->toAmount.getdouble() / xbridge::TransactionDescr::COIN;
             QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->toCurrency));
 
             return QVariant(text);
         }
         case BID:
         {
-            double amountTotal = (double)d->fromAmount / xbridge::TransactionDescr::COIN;
-            double amountSize = (double)d->toAmount / xbridge::TransactionDescr::COIN;
+            double amountTotal = d->fromAmount.getdouble() / xbridge::TransactionDescr::COIN;
+            double amountSize = d->toAmount.getdouble() / xbridge::TransactionDescr::COIN;
             double bid = amountTotal / amountSize;
             QString text = QString::number(bid, 'f', 12).remove(QRegExp("\\.?0+$"));
 

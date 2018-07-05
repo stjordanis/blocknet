@@ -178,7 +178,7 @@ const std::string iso8601(const bpt::ptime &time)
     return bpt::to_iso_extended_string(time) + "Z";
 }
 
-std::string xBridgeStringValueFromAmount(uint64_t amount)
+std::string xBridgeStringValueFromAmount(uint256 amount)
 {
     std::stringstream ss;
     ss << fixed << setprecision(xBridgeSignificantDigits(xbridge::TransactionDescr::COIN)) << xBridgeValueFromAmount(amount);
@@ -192,8 +192,8 @@ std::string xBridgeStringValueFromPrice(double price)
     return ss.str();
 }
 
-double xBridgeValueFromAmount(uint64_t amount) {
-    return boost::numeric_cast<double>(amount) /
+double xBridgeValueFromAmount(uint256 amount) {
+    return amount.getdouble() /
             boost::numeric_cast<double>(xbridge::TransactionDescr::COIN);
 }
 

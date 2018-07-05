@@ -34,10 +34,10 @@ Transaction::Transaction()
 Transaction::Transaction(const uint256                    & id,
                          const std::vector<unsigned char> & sourceAddr,
                          const std::string                & sourceCurrency,
-                         const uint64_t                   & sourceAmount,
+                         const uint256                    & sourceAmount,
                          const std::vector<unsigned char> & destAddr,
                          const std::string                & destCurrency,
-                         const uint64_t                   & destAmount,
+                         const uint256                    & destAmount,
                          const uint64_t                   & created,
                          const uint256                    & blockHash,
                          const std::vector<unsigned char> & mpubkey)
@@ -342,7 +342,7 @@ std::string Transaction::a_currency() const
 
 //*****************************************************************************
 //*****************************************************************************
-uint64_t Transaction::a_amount() const
+uint256 Transaction::a_amount() const
 {
     return m_sourceAmount;
 }
@@ -405,7 +405,7 @@ std::string Transaction::b_currency() const
 
 //*****************************************************************************
 //*****************************************************************************
-uint64_t Transaction::b_amount() const
+uint256 Transaction::b_amount() const
 {
     return m_destAmount;
 }

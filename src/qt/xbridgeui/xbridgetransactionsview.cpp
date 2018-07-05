@@ -254,8 +254,8 @@ void XBridgeTransactionsView::onAcceptTransaction()
     }
 
     m_dlg.setPendingId(d->id, d->hubAddress);
-    m_dlg.setFromAmount((double)d->toAmount / xbridge::TransactionDescr::COIN);
-    m_dlg.setToAmount((double)d->fromAmount / xbridge::TransactionDescr::COIN);
+    m_dlg.setFromAmount(d->toAmount.getdouble() / xbridge::TransactionDescr::COIN);
+    m_dlg.setToAmount(d->fromAmount.getdouble() / xbridge::TransactionDescr::COIN);
     m_dlg.setFromCurrency(QString::fromStdString(d->toCurrency));
     m_dlg.setToCurrency(QString::fromStdString(d->fromCurrency));
     m_dlg.show();

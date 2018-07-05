@@ -84,18 +84,38 @@ public:
                                   std::string & /*txId*/,
                                   std::string & /*rawTx*/) { return false; }
 
-    bool initiate(const bytes & hashedSecret, const bytes & responderAddress, const uint256 & refundDuration);
-    bool respond(const bytes & hashedSecret, const bytes & initiatorAddress, const uint256 & refundDuration);
-    bool refund(const bytes & hashedSecret);
-    bool redeem(const bytes & hashedSecret, const bytes & secret);
+    bool getAccounts(std::vector<std::string> & accounts);
+    bool getBalance(const std::string & account, uint256 & balance) const;
+    bool getGasPrice(uint256 & gasPrice) const;
+    bool getEstimateGas(const std::string & myAddress,
+                        const bytes & data,
+                        const uint256 & value,
+                        uint256 & estimateGas) const;
 
-    bool installFilter(const bytes & hashedSecret, uint256 & filterId);
-    bool deleteFilter(const uint256 & filterId);
+    bytes createInitiateData(const bytes & hashedSecret,
+                             const bytes & responderAddress,
+                             const uint256 & refundDuration) const;
 
-    bool isInitiated(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, const bytes & responderAddress, const uint256 value);
-    bool isResponded(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, const bytes & responderAddress, const uint256 value);
-    bool isRefunded(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value);
-    bool isRedeemed(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value);
+    bytes createRespondData(const bytes & hashedSecret,
+                            const bytes & initiatorAddress,
+                            const uint256 & refundDuration) const;
+
+    bytes createRefundData(const bytes & hashedSecret) const;
+    bytes createRedeemData(const bytes & hashedSecret, const bytes & secret) const;
+
+    bool callContractMethod(const std::string & myAddress,
+                            const bytes & data,
+                            const uint256 & value,
+                            const uint256 & gas,
+                            uint256 & transactionHash) const;
+
+    bool installFilter(const bytes & hashedSecret, uint256 & filterId) const;
+    bool deleteFilter(const uint256 & filterId) const;
+
+    bool isInitiated(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, const bytes & responderAddress, const uint256 value) const;
+    bool isResponded(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, const bytes & responderAddress, const uint256 value) const;
+    bool isRefunded(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value) const;
+    bool isRedeemed(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value) const;
 
 private:
     const std::string contractAddress = "";

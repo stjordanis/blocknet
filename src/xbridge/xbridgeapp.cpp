@@ -1087,10 +1087,10 @@ bool App::Impl::sendPendingTransaction(const TransactionDescrPtr & ptr)
         ptr->packet->append(ptr->id.begin(), 32);
         ptr->packet->append(ptr->from);
         ptr->packet->append(fc);
-        ptr->packet->append(ptr->fromAmount);
+        ptr->packet->append(ptr->fromAmount.begin(), 32);
         ptr->packet->append(ptr->to);
         ptr->packet->append(tc);
-        ptr->packet->append(ptr->toAmount);
+        ptr->packet->append(ptr->toAmount.begin(), 32);
         ptr->packet->append(util::timeToInt(ptr->created));
         ptr->packet->append(ptr->blockHash.begin(), 32);
 
@@ -1151,11 +1151,11 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
     }
 
     // check dust
-    if (connFrom->isDustAmount(static_cast<double>(ptr->fromAmount) / TransactionDescr::COIN))
+    if (connFrom->isDustAmount(ptr->fromAmount.getdouble() / TransactionDescr::COIN))
     {
         return xbridge::Error::DUST;
     }
-    if (connTo->isDustAmount(static_cast<double>(ptr->toAmount) / TransactionDescr::COIN))
+    if (connTo->isDustAmount(ptr->toAmount.getdouble() / TransactionDescr::COIN))
     {
         return xbridge::Error::DUST;
     }
@@ -1269,10 +1269,10 @@ bool App::Impl::sendAcceptingTransaction(const TransactionDescrPtr & ptr)
     ptr->packet->append(ptr->id.begin(), 32);
     ptr->packet->append(ptr->from);
     ptr->packet->append(fc);
-    ptr->packet->append(ptr->fromAmount);
+    ptr->packet->append(ptr->fromAmount.begin(), 32);
     ptr->packet->append(ptr->to);
     ptr->packet->append(tc);
-    ptr->packet->append(ptr->toAmount);
+    ptr->packet->append(ptr->toAmount.begin(), 32);
 
     // utxo items
     ptr->packet->append(static_cast<uint32_t>(ptr->usedCoins.size()));

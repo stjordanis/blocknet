@@ -57,10 +57,10 @@ struct TransactionDescr
 
     std::vector<unsigned char> from;
     std::string                fromCurrency;
-    uint64_t                   fromAmount;
+    uint256                    fromAmount;
     std::vector<unsigned char> to;
     std::string                toCurrency;
-    uint64_t                   toAmount;
+    uint256                    toAmount;
 
     uint32_t                   lockTimeTx1;
     uint32_t                   lockTimeTx2;

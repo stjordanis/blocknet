@@ -174,11 +174,57 @@ bool getAccounts(const std::string & rpcip,
 
 //*****************************************************************************
 //*****************************************************************************
+bool getBalance(const std::string & rpcip,
+                const std::string & rpcport,
+                const uint160 & account,
+                uint256 & balance)
+{
+    try
+    {
+        LOG() << "rpc call <eth_accounts>";
+
+        Array params;
+        params.emplace_back(account.ToString());
+        params.emplace_back("latest");
+        Object reply = CallRPC(rpcip, rpcport,
+                               "eth_accounts", params);
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            return false;
+        }
+        else if (result.type() != str_type)
+        {
+            // Result
+            LOG() << "result not an string " << write_string(result, true);
+            return false;
+        }
+
+        balance = uint256(result.get_str());
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "getAccounts exception " << e.what();
+        return false;
+    }
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
 bool sendTransaction(const std::string & rpcip,
                      const std::string & rpcport,
                      const uint160 & from,
                      const uint160 & to,
                      const uint256 & gas,
+                     const uint256 & value,
                      const bytes & data,
                      uint256 & transactionHash)
 {
@@ -192,13 +238,13 @@ bool sendTransaction(const std::string & rpcip,
         transaction.push_back(Pair("from", from.ToString()));
         transaction.push_back(Pair("to", to.ToString()));
         transaction.push_back(Pair("gas", gas.ToString()));
+        transaction.push_back(Pair("value", value.ToString()));
         transaction.push_back(Pair("data", asString(data)));
 
         params.push_back(transaction);
-        params.push_back("latest");
 
         Object reply = CallRPC(rpcip, rpcport,
-                               "eth_estimateGas", params);
+                               "eth_sendTransaction", params);
 
         // Parse reply
         const Value & result = find_value(reply, "result");
@@ -370,7 +416,7 @@ bool getEstimateGas(const std::string & rpcip,
                     const std::string & rpcport,
                     const uint160 & from,
                     const uint160 & to,
-                    const uint256 & gasPrice,
+                    const uint256 & value,
                     const bytes & data,
                     uint256 & estimateGas)
 {
@@ -383,7 +429,7 @@ bool getEstimateGas(const std::string & rpcip,
         Object transaction;
         transaction.push_back(Pair("from", from.ToString()));
         transaction.push_back(Pair("to", to.ToString()));
-        transaction.push_back(Pair("gasPrice", gasPrice.ToString()));
+        transaction.push_back(Pair("value", value.ToString()));
         transaction.push_back(Pair("data", asString(data)));
 
         params.push_back(transaction);
@@ -759,117 +805,111 @@ uint32_t EthWalletConnector::lockTime(const char role) const
     return lt.GetCompact();
 }
 
-bool EthWalletConnector::initiate(const bytes & hashedSecret,
-                                  const bytes & responderAddress,
-                                  const uint256 & refundDuration)
+bool EthWalletConnector::getAccounts(std::vector<std::string> & accounts)
+{
+    if(!rpc::getAccounts(m_ip, m_port, accounts))
+    {
+        LOG() << "can't get accounts" << __FUNCTION__;
+        return false;
+    }
+
+    return true;
+}
+
+bool EthWalletConnector::getBalance(const std::string & account, uint256 & balance) const
+{
+    if(!rpc::getBalance(m_ip, m_port, uint160(account), balance))
+    {
+        LOG() << "can't get balance" << __FUNCTION__;
+        return false;
+    }
+
+    return true;
+}
+
+bool EthWalletConnector::getGasPrice(uint256 & gasPrice) const
+{
+    if(!rpc::getGasPrice(m_ip, m_port, gasPrice))
+    {
+        LOG() << "can't get gasPrice" << __FUNCTION__;
+        return false;
+    }
+
+    return true;
+}
+
+bool EthWalletConnector::getEstimateGas(const std::string & myAddress,
+                                        const bytes & data,
+                                        const uint256 & value,
+                                        uint256 & estimateGas) const
+{
+    if(!rpc::getEstimateGas(m_ip, m_port,
+                            uint160(myAddress), uint160(contractAddress),
+                            value, data,
+                            estimateGas))
+    {
+        LOG() << "can't get estimate gas" << __FUNCTION__;
+        return false;
+    }
+
+    return true;
+}
+
+bytes EthWalletConnector::createInitiateData(const bytes & hashedSecret,
+                                             const bytes & responderAddress,
+                                             const uint256 & refundDuration) const
 {
     bytes initiateMethodSignature = EthEncoder::encodeSig("initiate(bytes20,address,uint256)");
     bytes data = initiateMethodSignature + hashedSecret + responderAddress + EthEncoder::encode(refundDuration);
 
-    uint256 gasPrice;
-    if(!rpc::getGasPrice(m_ip, m_port, gasPrice))
-    {
-        LOG() << "can't get gasPrice" << __FUNCTION__;
-        return false;
-    }
-
-    uint256 estimateGas;
-    if(!rpc::getEstimateGas(m_ip, m_port, uint160(), uint160(contractAddress), gasPrice, data, estimateGas))
-    {
-        LOG() << "can't get estimate gas" << __FUNCTION__;
-        return false;
-    }
-
-    uint256 transactionHash;
-    if(!rpc::sendTransaction(m_ip, m_port, uint160(), uint160(contractAddress), estimateGas, data, transactionHash))
-    {
-        LOG() << "can't get estimate gas" << __FUNCTION__;
-        return false;
-    }
+    return data;
 }
 
-bool EthWalletConnector::respond(const bytes& hashedSecret, const bytes& initiatorAddress, const uint256& refundDuration)
+bytes EthWalletConnector::createRespondData(const bytes & hashedSecret,
+                                            const bytes & initiatorAddress,
+                                            const uint256 & refundDuration) const
 {
     bytes respondMethodSignature = EthEncoder::encodeSig("respond(bytes20,address,uint256)");
     bytes data = respondMethodSignature + hashedSecret + initiatorAddress + EthEncoder::encode(refundDuration);
 
-    uint256 gasPrice;
-    if(!rpc::getGasPrice(m_ip, m_port, gasPrice))
-    {
-        LOG() << "can't get gasPrice" << __FUNCTION__;
-        return false;
-    }
-
-    uint256 estimateGas;
-    if(!rpc::getEstimateGas(m_ip, m_port, uint160(), uint160(contractAddress), gasPrice, data, estimateGas))
-    {
-        LOG() << "can't get estimate gas" << __FUNCTION__;
-        return false;
-    }
-
-    uint256 transactionHash;
-    if(!rpc::sendTransaction(m_ip, m_port, uint160(), uint160(contractAddress), estimateGas, data, transactionHash))
-    {
-        LOG() << "can't get estimate gas" << __FUNCTION__;
-        return false;
-    }
+    return data;
 }
 
-bool EthWalletConnector::refund(const bytes& hashedSecret)
+bytes EthWalletConnector::createRefundData(const bytes & hashedSecret) const
 {
     bytes refundMethodSignature = EthEncoder::encodeSig("refund(bytes20)");
     bytes data = refundMethodSignature + hashedSecret;
 
-    uint256 gasPrice;
-    if(!rpc::getGasPrice(m_ip, m_port, gasPrice))
-    {
-        LOG() << "can't get gasPrice" << __FUNCTION__;
-        return false;
-    }
-
-    uint256 estimateGas;
-    if(!rpc::getEstimateGas(m_ip, m_port, uint160(), uint160(contractAddress), gasPrice, data, estimateGas))
-    {
-        LOG() << "can't get estimate gas" << __FUNCTION__;
-        return false;
-    }
-
-    uint256 transactionHash;
-    if(!rpc::sendTransaction(m_ip, m_port, uint160(), uint160(contractAddress), estimateGas, data, transactionHash))
-    {
-        LOG() << "can't get estimate gas" << __FUNCTION__;
-        return false;
-    }
+    return data;
 }
 
-bool EthWalletConnector::redeem(const bytes& hashedSecret, const bytes& secret)
+bytes EthWalletConnector::createRedeemData(const bytes & hashedSecret, const bytes& secret) const
 {
     bytes redeemMethodSignature = EthEncoder::encodeSig("redeem(bytes20,bytes)");
     bytes data = redeemMethodSignature + hashedSecret + secret;
 
-    uint256 gasPrice;
-    if(!rpc::getGasPrice(m_ip, m_port, gasPrice))
-    {
-        LOG() << "can't get gasPrice" << __FUNCTION__;
-        return false;
-    }
-
-    uint256 estimateGas;
-    if(!rpc::getEstimateGas(m_ip, m_port, uint160(), uint160(contractAddress), gasPrice, data, estimateGas))
-    {
-        LOG() << "can't get estimate gas" << __FUNCTION__;
-        return false;
-    }
-
-    uint256 transactionHash;
-    if(!rpc::sendTransaction(m_ip, m_port, uint160(), uint160(contractAddress), estimateGas, data, transactionHash))
-    {
-        LOG() << "can't get estimate gas" << __FUNCTION__;
-        return false;
-    }
+    return data;
 }
 
-bool EthWalletConnector::installFilter(const bytes& hashedSecret, uint256& filterId)
+bool EthWalletConnector::callContractMethod(const std::string & myAddress,
+                                            const bytes & data,
+                                            const uint256 & value,
+                                            const uint256 & gas,
+                                            uint256 & transactionHash) const
+{
+    if(!rpc::sendTransaction(m_ip, m_port,
+                             uint160(myAddress), uint160(contractAddress),
+                             gas, value, data,
+                             transactionHash))
+    {
+        LOG() << "can't call contract method" << __FUNCTION__;
+        return false;
+    }
+
+    return true;
+}
+
+bool EthWalletConnector::installFilter(const bytes& hashedSecret, uint256& filterId) const
 {
     if(!rpc::newFilter(m_ip, m_port, uint256(contractAddress), hashedSecret, filterId));
     {
@@ -880,14 +920,14 @@ bool EthWalletConnector::installFilter(const bytes& hashedSecret, uint256& filte
     return true;
 }
 
-bool EthWalletConnector::deleteFilter(const uint256& filterId)
+bool EthWalletConnector::deleteFilter(const uint256& filterId) const
 {
-
+    return true;
 }
 
 bool splitEventParams(const std::string & paramsString, std::vector<std::string> & paramsVector)
 {
-    const unsigned int paramSize = 64;
+    const unsigned int paramSize = 32;
 
     if(paramsString.size() < paramSize)
         return false;
@@ -905,7 +945,7 @@ bool EthWalletConnector::isInitiated(const uint256& filterId,
                                      const bytes& hashedSecret,
                                      const bytes& initiatorAddress,
                                      const bytes& responderAddress,
-                                     const uint256 value)
+                                     const uint256 value) const
 {
     std::string initiatedEventSignature = asString(EthEncoder::encodeSig("Initiated(bytes20,address,address,uint256,uint256)"));
 
@@ -913,7 +953,7 @@ bool EthWalletConnector::isInitiated(const uint256& filterId,
     std::vector<std::string> data;
     if(!rpc::getFilterChanges(m_ip, m_port, filterId, events, data))
     {
-        LOG() << "can't get filter filter changes" << __FUNCTION__;
+        LOG() << "can't get filter changes" << __FUNCTION__;
         return false;
     }
 
@@ -950,7 +990,7 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
                                      const bytes& hashedSecret,
                                      const bytes& initiatorAddress,
                                      const bytes& responderAddress,
-                                     const uint256 value)
+                                     const uint256 value) const
 {
     std::string respondedEventSignature = asString(EthEncoder::encodeSig("Responded(bytes20,address,address,uint256,uint256)"));
 
@@ -958,7 +998,7 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
     std::vector<std::string> data;
     if(!rpc::getFilterChanges(m_ip, m_port, filterId, events, data))
     {
-        LOG() << "can't get filter filter changes" << __FUNCTION__;
+        LOG() << "can't get filter changes" << __FUNCTION__;
         return false;
     }
 
@@ -994,7 +1034,7 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
 bool EthWalletConnector::isRefunded(const uint256 & filterId,
                                     const bytes& hashedSecret,
                                     const bytes& recipientAddress,
-                                    const uint256 value)
+                                    const uint256 value) const
 {
     std::string refundedEventSignature = asString(EthEncoder::encodeSig("Refunded(bytes20,address,uint256)"));
 
@@ -1002,7 +1042,7 @@ bool EthWalletConnector::isRefunded(const uint256 & filterId,
     std::vector<std::string> data;
     if(!rpc::getFilterChanges(m_ip, m_port, filterId, events, data))
     {
-        LOG() << "can't get filter filter changes" << __FUNCTION__;
+        LOG() << "can't get filter changes" << __FUNCTION__;
         return false;
     }
 
@@ -1037,7 +1077,7 @@ bool EthWalletConnector::isRefunded(const uint256 & filterId,
 bool EthWalletConnector::isRedeemed(const uint256 & filterId,
                                     const bytes& hashedSecret,
                                     const bytes& recipientAddress,
-                                    const uint256 value)
+                                    const uint256 value) const
 {
     std::string redeemedEventSignature = asString(EthEncoder::encodeSig("Redeemed(bytes20,address,uint256)"));
 
@@ -1045,7 +1085,7 @@ bool EthWalletConnector::isRedeemed(const uint256 & filterId,
     std::vector<std::string> data;
     if(!rpc::getFilterChanges(m_ip, m_port, filterId, events, data))
     {
-        LOG() << "can't get filter filter changes" << __FUNCTION__;
+        LOG() << "can't get filter changes" << __FUNCTION__;
         return false;
     }
 

@@ -66,10 +66,10 @@ public:
     Transaction(const uint256                    & id,
                 const std::vector<unsigned char> & sourceAddr,
                 const std::string                & sourceCurrency,
-                const uint64_t                   & sourceAmount,
+                const uint256                    & sourceAmount,
                 const std::vector<unsigned char> & destAddr,
                 const std::string                & destCurrency,
-                const uint64_t                   & destAmount,
+                const uint256                    & destAmount,
                 const uint64_t                   & created,
                 const uint256                    & blockHash,
                 const std::vector<unsigned char> & mpubkey);
@@ -151,7 +151,7 @@ public:
     std::vector<unsigned char> a_address() const;
     std::vector<unsigned char> a_destination() const;
     std::string                a_currency() const;
-    uint64_t                   a_amount() const;
+    uint256                    a_amount() const;
     std::string                a_payTx() const;
     std::string                a_refTx() const;
     std::string                a_bintxid() const;
@@ -166,7 +166,7 @@ public:
     std::vector<unsigned char> b_address() const;
     std::vector<unsigned char> b_destination() const;
     std::string                b_currency() const;
-    uint64_t                   b_amount() const;
+    uint256                    b_amount() const;
     std::string                b_payTx() const;
     std::string                b_refTx() const;
     std::string                b_bintxid() const;
@@ -209,8 +209,8 @@ private:
     std::string                m_sourceCurrency;
     std::string                m_destCurrency;
 
-    uint64_t                   m_sourceAmount;
-    uint64_t                   m_destAmount;
+    uint256                    m_sourceAmount;
+    uint256                    m_destAmount;
 
     std::string                m_bintxid1;
     std::string                m_bintxid2;
