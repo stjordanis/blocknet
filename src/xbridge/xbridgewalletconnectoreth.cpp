@@ -620,7 +620,7 @@ std::string EthWalletConnector::fromXAddr(const std::vector<unsigned char> & xad
 //*****************************************************************************
 std::vector<unsigned char> EthWalletConnector::toXAddr(const std::string & addr) const
 {
-    std::vector<unsigned char> vch = addrPrefix[0];
+    std::vector<unsigned char> vch {'0', 'x'};
     vch.insert(vch.end(), addr.begin(), addr.end());
 
     return vch;
@@ -641,7 +641,12 @@ bool EthWalletConnector::requestAddressBook(std::vector<wallet::AddressBookEntry
 
 //******************************************************************************
 //******************************************************************************
-bool EthWalletConnector::getUnspent(std::vector<wallet::UtxoEntry> & inputs) const
+bool EthWalletConnector::getUnspent(std::vector<wallet::UtxoEntry> & /*inputs*/) const
+{
+    return true;
+}
+
+bool EthWalletConnector::lockCoins(const std::vector<wallet::UtxoEntry>& /*inputs*/, const bool /*lock*/) const
 {
     return true;
 }
@@ -653,19 +658,18 @@ bool EthWalletConnector::getNewAddress(std::string & /*addr*/)
     return true;
 }
 
-//******************************************************************************
-//******************************************************************************
-bool EthWalletConnector::sendRawTransaction(const std::string & rawtx,
-                                            std::string & txid,
-                                            int32_t & errorCode)
+bool EthWalletConnector::getTxOut(wallet::UtxoEntry& /*entry*/)
 {
-    if (!rpc::sendRawTransaction(m_ip, m_port,
-                                    rawtx, txid, errorCode))
-    {
-        LOG() << "rpc::sendRawTransaction failed" << __FUNCTION__;
-        return false;
-    }
+    return true;
+}
 
+//******************************************************************************
+//******************************************************************************
+bool EthWalletConnector::sendRawTransaction(const std::string & /*rawtx*/,
+                                            std::string & /*txid*/,
+                                            int32_t & /*errorCode*/,
+                                            std::string & /*message*/)
+{
     return true;
 }
 
@@ -688,7 +692,8 @@ bool EthWalletConnector::newKeyPair(std::vector<unsigned char> & pubkey,
 //******************************************************************************
 std::vector<unsigned char> EthWalletConnector::getKeyId(const std::vector<unsigned char> & /*pubkey*/)
 {
-    return std::vector<unsigned char>();
+    CKeyID id = xbridge::CPubKey(pubkey).GetID();
+    return std::vector<unsigned char>(id.begin(), id.end());
 }
 
 //******************************************************************************

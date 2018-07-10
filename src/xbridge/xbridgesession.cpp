@@ -501,26 +501,46 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
         }
     }
 
-    if (utxoItems.empty())
+    if(sconn->currency != "ETH")
     {
-        LOG() << "transaction rejected, utxo items are empty <" << __FUNCTION__;
-        return true;
-    }
+        if (utxoItems.empty())
+        {
+            LOG() << "transaction rejected, utxo items are empty <" << __FUNCTION__;
+            return true;
+        }
 
-    if (commonAmount * TransactionDescr::COIN < samount)
-    {
-        LOG() << "transaction rejected, amount from utxo items <" << commonAmount
-              << "> less than required <" << samount << "> " << __FUNCTION__;
-        return true;
-    }
+        if (commonAmount * TransactionDescr::COIN < samount)
+        {
+            LOG() << "transaction rejected, amount from utxo items <" << commonAmount
+                  << "> less than required <" << samount << "> " << __FUNCTION__;
+            return true;
+        }
 
-    // check dust amount
-    if (sconn->isDustAmount(static_cast<double>(samount) / TransactionDescr::COIN) ||
-        sconn->isDustAmount(commonAmount - (static_cast<double>(samount) / TransactionDescr::COIN)) ||
-        dconn->isDustAmount(static_cast<double>(damount) / TransactionDescr::COIN))
+        // check dust amount
+        if (sconn->isDustAmount(samount.getdouble() / TransactionDescr::COIN) ||
+            sconn->isDustAmount(commonAmount - (samount.getdouble() / TransactionDescr::COIN)) ||
+            dconn->isDustAmount(damount.getdouble() / TransactionDescr::COIN))
+        {
+            LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
+            return true;
+        }
+
+        // check utxo items
+        if (!e.checkUtxoItems(id, utxoItems))
+        {
+            LOG() << "transaction rejected, error check utxo items "  << id.ToString()
+                  << " " << __FUNCTION__;
+            return true;
+        }
+    }
+    else if(dconn->currency != "ETH")
     {
-        LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
-        return true;
+        // check dust amount
+        if (dconn->isDustAmount(damount.getdouble() / TransactionDescr::COIN))
+        {
+            LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
+            return true;
+        }
     }
 
     LOG() << "received transaction " << id.GetHex() << std::endl
@@ -532,7 +552,7 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
     std::string saddrStr = sconn->fromXAddr(saddr);
     std::string daddrStr = dconn->fromXAddr(daddr);
 
-    std::vector<unsigned char> firstUtxoSig = utxoItems.at(0).signature;
+    std::vector<unsigned char> firstUtxoSig = utxoItems.empty() ? std::vector<unsigned char>() : utxoItems.at(0).signature;
 
     uint256 checkId = Hash(saddrStr.begin(), saddrStr.end(),
                            scurrency.begin(), scurrency.end(),
@@ -550,14 +570,6 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
                << "body hash:" << checkId.GetHex() << std::endl
                << __FUNCTION__;
 
-        return true;
-    }
-
-    // check utxo items
-    if (!e.checkUtxoItems(id, utxoItems))
-    {
-        LOG() << "transaction rejected, error check utxo items "  << id.ToString()
-              << " " << __FUNCTION__;
         return true;
     }
 
@@ -875,19 +887,29 @@ bool Session::Impl::processTransactionAccepting(XBridgePacketPtr packet) const
         }
     }
 
-    if (commonAmount * TransactionDescr::COIN < samount)
+    if(conn->currency != "ETH")
     {
-        LOG() << "transaction rejected, amount from utxo items <" << commonAmount
-              << "> less than required <" << samount << "> " << __FUNCTION__;
-        return true;
-    }
+        if (commonAmount * TransactionDescr::COIN < samount)
+        {
+            LOG() << "transaction rejected, amount from utxo items <" << commonAmount
+                  << "> less than required <" << samount << "> " << __FUNCTION__;
+            return true;
+        }
 
-    // check dust amount
-    if (conn->isDustAmount(static_cast<double>(samount) / TransactionDescr::COIN) ||
-        conn->isDustAmount(commonAmount - (static_cast<double>(samount) / TransactionDescr::COIN)))
-    {
-        LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
-        return true;
+        // check dust amount
+        if (conn->isDustAmount(samount.getdouble() / TransactionDescr::COIN) ||
+            conn->isDustAmount(commonAmount - (samount.getdouble() / TransactionDescr::COIN)))
+        {
+            LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
+            return true;
+        }
+
+        if (!e.checkUtxoItems(id, utxoItems))
+        {
+            LOG() << "error check utxo items, transaction accept request rejected "
+                  << __FUNCTION__;
+            return true;
+        }
     }
 
     LOG() << "received accepting transaction " << id.ToString() << std::endl
@@ -895,14 +917,6 @@ bool Session::Impl::processTransactionAccepting(XBridgePacketPtr packet) const
           << "             " << scurrency << " : " << samount << std::endl
           << "    to   " << HexStr(daddr) << std::endl
           << "             " << dcurrency << " : " << damount << std::endl;
-
-
-    if (!e.checkUtxoItems(id, utxoItems))
-    {
-        LOG() << "error check utxo items, transaction accept request rejected "
-              << __FUNCTION__;
-        return true;
-    }
 
     {
         if (e.acceptTransaction(id, saddr, scurrency, samount, daddr, dcurrency, damount, mpubkey, utxoItems))
@@ -1795,6 +1809,14 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
         }
     }
 
+    if(xtx->fromCurrency == "ETH")
+    {
+        connFrom->eth().installFilter(hx, xtx->filterId);
+    }
+    else if(xtx->toCurrency == "ETH")
+    {
+        connTo->eth().installFilter(hx, xtx->filterId);
+    }
 
     // send reply
     XBridgePacketPtr reply;
@@ -2151,6 +2173,15 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
         }
     }
 
+    if(xtx->fromCurrency == "ETH")
+    {
+        connFrom->eth().installFilter(hx, xtx->filterId);
+    }
+    else if(xtx->toCurrency == "ETH")
+    {
+        connTo->eth().installFilter(hx, xtx->filterId);
+    }
+
     // send reply
     XBridgePacketPtr reply;
     reply.reset(new XBridgePacket(xbcTransactionCreatedB));
@@ -2435,6 +2466,12 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
 
     if(xtx->toCurrency == "ETH")
     {
+        if(!conn->eth().isInitiated(xtx->filterId, hx, xtx->from, xtx->to, xtx->fromAmount))
+        {
+            xapp.processLater(txid, packet);
+            return true;
+        }
+
         std::vector<unsigned char> redeemParams = conn->eth().createRedeemData(hx, xtx->xPrivKey);
 
         uint256 estimateGas;
@@ -2715,6 +2752,12 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
 
     if(xtx->toCurrency == "ETH")
     {
+        if(!conn->eth().isResponded(xtx->filterId, hx, xtx->from, xtx->to, xtx->fromAmount))
+        {
+            xapp.processLater(txid, packet);
+            return true;
+        }
+
         std::vector<unsigned char> redeemParams = conn->eth().createRedeemData(hx, xtx->xPrivKey);
 
         uint256 estimateGas;

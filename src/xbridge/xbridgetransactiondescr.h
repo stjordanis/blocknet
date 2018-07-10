@@ -81,6 +81,9 @@ struct TransactionDescr
     std::string                refTxId;
     std::string                refTx;
 
+    //eth filter id
+    uint256                    filterId;
+
     // multisig address and redeem script
     std::string                depositP2SH;
     std::vector<unsigned char> innerScript;

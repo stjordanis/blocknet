@@ -137,10 +137,10 @@ public:
      */
     Error sendXBridgeTransaction(const std::string & from,
                                  const std::string & fromCurrency,
-                                 const uint64_t & fromAmount,
+                                 const uint256 & fromAmount,
                                  const std::string & to,
                                  const std::string & toCurrency,
-                                 const uint64_t & toAmount,
+                                 const uint256 & toAmount,
                                  uint256 & id,
                                  uint256& blockHash);
     // TODO make protected
@@ -198,7 +198,7 @@ public:
      * @param fromAddress - address to pull utxo's from
      * @return xbridge::SUCCES, if all parameters valid
      */
-    xbridge::Error checkCreateParams(const std::string &fromCurrency, const std::string &toCurrency, const uint64_t &fromAmount, const std::string &fromAddress);
+    xbridge::Error checkCreateParams(const std::string &fromCurrency, const std::string &toCurrency, const uint256& fromAmount, const std::string &fromAddress);
 
     /**
      * @brief checkAmount - checks wallet balance
@@ -208,7 +208,7 @@ public:
      * @return xbridge::SUCCES, if  the session currency is open and
      * on account has sufficient funds for operations
      */
-    xbridge::Error checkAmount(const std::string &currency, const uint64_t &amount, const std::string &address = "");
+    xbridge::Error checkAmount(const std::string &currency, const uint256& amount, const std::string &address = "");
 public:
     // connectors
 
@@ -333,7 +333,7 @@ private:
      * @param fee2
      */
     bool selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEntry> &outputs, const WalletConnectorPtr &connFrom,
-                     const uint64_t &requiredAmount, std::vector<wallet::UtxoEntry> &outputsForUse,
+                     const uint256& requiredAmount, std::vector<wallet::UtxoEntry> &outputsForUse,
                      uint64_t &utxoAmount, uint64_t &fee1, uint64_t &fee2) const;
 };
 

@@ -20,19 +20,18 @@ public:
 public:
     bool requestAddressBook(std::vector<wallet::AddressBookEntry> & entries);
 
-    bool getUnspent(std::vector<wallet::UtxoEntry> & inputs) const;
+    bool getUnspent(std::vector<wallet::UtxoEntry> & /*inputs*/) const;
 
-    bool lockCoins(const std::vector<wallet::UtxoEntry> & inputs, const bool lock = true) const;
-
-    bool getRawTransaction(const std::string & /*txid*/, const bool /*verbose*/, std::string & /*tx*/);
+    bool lockCoins(const std::vector<wallet::UtxoEntry> & /*inputs*/, const bool /*lock*/ = true) const;
 
     bool getNewAddress(std::string & /*addr*/);
 
-    bool getTxOut(wallet::UtxoEntry & entry);
+    bool getTxOut(wallet::UtxoEntry & /*entry*/);
 
-    bool sendRawTransaction(const std::string & rawtx,
-                            std::string & txid,
-                            int32_t & errorCode);
+    bool sendRawTransaction(const std::string & /*rawtx*/,
+                            std::string & /*txid*/,
+                            int32_t & /*errorCode*/,
+                            std::string & /*message*/);
 
     bool signMessage(const std::string & address, const std::string & message, std::string & signature);
 
