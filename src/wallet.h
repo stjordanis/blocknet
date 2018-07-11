@@ -213,6 +213,11 @@ public:
     bool fCombineDust;
     CAmount nAutoCombineThreshold;
 
+    // Triple-strike-security settings
+    float nPassphrasedisablespan;
+    std::string sPassphrasedisablemode;
+
+
     CWallet()
     {
         SetNull();

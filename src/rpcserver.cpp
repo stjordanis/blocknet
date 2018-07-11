@@ -364,6 +364,9 @@ static const CRPCCommand vRPCCommands[] =
         {"wallet", "walletlock", &walletlock, true, false, true},
         {"wallet", "walletpassphrasechange", &walletpassphrasechange, true, false, true},
         {"wallet", "walletpassphrase", &walletpassphrase, true, false, true},
+        //{"wallet", "passphrasemaxattemptcnt", &passphrasemaxattemptcnt, true, false, true},
+        {"wallet", "passphrasedisablespan", &passphrasedisablespan, true, false, true},
+        {"wallet", "passphrasedisablemode", &passphrasedisablemode, true, false, true},
 
         {"xbridge", "dxGetOrderFills",                      &dxGetOrderFills,            true, true, true},
         {"xbridge", "dxGetOrders",                          &dxGetOrders,                true, true, true},

@@ -212,6 +212,7 @@ public:
     bool saveReceiveRequest(const std::string& sAddress, const int64_t nId, const std::string& sRequest);
 
 public:
+    bool fPassphrasedisable;
     int passphraseAttempCnt;
     QDateTime* pPhraseAttemptTime;
 

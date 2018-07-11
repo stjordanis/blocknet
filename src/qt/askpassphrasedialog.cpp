@@ -12,12 +12,14 @@
 #include "walletmodel.h"
 
 #include "allocators.h"
+#include "../init.h"
 
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
 #include <QDateTime>
+#include <QString>
 
 
 AskPassphraseDialog::AskPassphraseDialog(Mode mode, QWidget* parent, WalletModel* model) : QDialog(parent),
@@ -146,22 +148,53 @@ void AskPassphraseDialog::accept()
     } break;
     case UnlockAnonymize:
     case Unlock:
-        if (!model->setWalletLocked(false, oldpass, ui->anonymizationCheckBox->isChecked())) {
+        if (!model->setWalletLocked(false, oldpass, ui->anonymizationCheckBox->isChecked()))
+        {
+            // Passphrase triple-strike-security
             model->passphraseAttempCnt++;
-            if (model->passphraseAttempCnt >= 3)
+            if (pwalletMain->sPassphrasedisablemode == "linear") // linear mode
             {
-                QMessageBox::critical(this, tr("Wallet unlock failed"),
+                 if (model->passphraseAttempCnt >= 3)
+                 {
+                    model->fPassphrasedisable = true;
+                    QMessageBox::critical(this, tr("Wallet unlock failed"),
                     tr("The passphrase attempt count has been exceeded. The wallet unlock will be disabled for 1 day."));
-                QDialog::close();
+                    QDialog::close();
+                    QSettings settings;
+                    settings.setValue("nPassphraseAttempCnt", model->passphraseAttempCnt);
+                    QDateTime now = QDateTime::currentDateTimeUtc();
+                    settings.setValue("nPassphraseDisableTime", now);
+                    settings.setValue("nPassphrasedisablespan", pwalletMain->nPassphrasedisablespan);
+                    return;
+                }
+            }
+            // The exponential backoff algorithm is mathematically rather simple. The lockout period is calculated by raising 2 to
+            // the power of the number of previous attempts made, subtracting 1, then dividing by two. The equation looks like this:
+            // The effect of this calculation is that the timeout for the lockout period is small for the first series of attempts,
+            // but rise very quickly given a burst of attempts. If we assemble a table and a plot of previous attempts vs. lockout period,
+            // the accumulation becomes apparent with each subsequent attempt doubling the lockout period. If an attacker were to hit an
+            // application with 20 attempts in a short window, they would be locked out almost indefinitely or at least to the max lockout period.
+            else if (pwalletMain->sPassphrasedisablemode == "exponential") // exponential mode
+            {
+                model->fPassphrasedisable = true;
+                pwalletMain->nPassphrasedisablespan = 1.0/2.0 * (pow(2.0, model->passphraseAttempCnt) - 1.0);
                 QSettings settings;
                 settings.setValue("nPassphraseAttempCnt", model->passphraseAttempCnt);
                 QDateTime now = QDateTime::currentDateTimeUtc();
                 settings.setValue("nPassphraseDisableTime", now);
+                settings.setValue("nPassphrasedisablespan", pwalletMain->nPassphrasedisablespan);
+                QString msg("The passphrase attempt count has been exceeded. The wallet unlock will be disabled for ");
+                msg += QString::number(pwalletMain->nPassphrasedisablespan) + " Seconds.";
+                QMessageBox::critical(this, tr("Wallet unlock failed"), msg);
+                QDialog::close();
                 return;
             }
             QMessageBox::critical(this, tr("Wallet unlock failed"),
-                tr("The passphrase entered for the wallet decryption was incorrect."));            
-        } else {
+            tr("The passphrase entered for the wallet decryption was incorrect."));
+        }
+        else
+        {
+            model->passphraseAttempCnt = 0;
             QDialog::accept(); // Success
         }
         break;
@@ -175,6 +208,8 @@ void AskPassphraseDialog::accept()
                 QDialog::close();
                 QSettings settings;
                 settings.setValue("nPassphraseAttempCnt", model->passphraseAttempCnt);
+                QDateTime now = QDateTime::currentDateTimeUtc();
+                settings.setValue("nPassphraseDisableTime", now);
                 return;
             }
             QMessageBox::critical(this, tr("Wallet decryption failed"),
@@ -198,6 +233,8 @@ void AskPassphraseDialog::accept()
                     QDialog::close();
                     QSettings settings;
                     settings.setValue("nPassphraseAttempCnt", model->passphraseAttempCnt);
+                    QDateTime now = QDateTime::currentDateTimeUtc();
+                    settings.setValue("nPassphraseDisableTime", now);
                     return;
                 }
                 QMessageBox::critical(this, tr("Wallet encryption failed"),

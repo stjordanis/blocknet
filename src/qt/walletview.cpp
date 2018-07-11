@@ -306,6 +306,15 @@ void WalletView::encryptWallet(bool status)
     if (!walletModel)
         return;
 
+    // Retrieve feature-security-triplestrike settings, if disabled and time span is up, re-enable
+    QDateTime now = QDateTime::currentDateTimeUtc();
+    QSettings settings;
+    QDateTime disableTime = settings.value("nPassphraseDisableTime", now).toDateTime();
+    int nPassphrasedisablespan = settings.value("nPassphrasedisablespan", 86400).toInt();
+    if (disableTime.secsTo(now) > nPassphrasedisablespan)
+    {
+        walletModel->passphraseAttempCnt = 0;
+    }
     if (walletModel->passphraseAttempCnt >= 3)
     {
         QMessageBox::critical(this, tr("Wallet Encryption/Decryption Disabled"),
@@ -339,6 +348,15 @@ void WalletView::backupWallet()
 
 void WalletView::changePassphrase()
 {
+    // Retrieve feature-security-triplestrike settings, if disabled and time span is up, re-enable
+    QDateTime now = QDateTime::currentDateTimeUtc();
+    QSettings settings;
+    QDateTime disableTime = settings.value("nPassphraseDisableTime", now).toDateTime();
+    int nPassphrasedisablespan = settings.value("nPassphrasedisablespan", 86400).toInt();
+    if (disableTime.secsTo(now) > nPassphrasedisablespan)
+    {
+        walletModel->passphraseAttempCnt = 0;
+    }
     if (walletModel->passphraseAttempCnt >= 3)
     {
         QMessageBox::critical(this, tr("Wallet Encryption/Decryption Disabled"),
@@ -355,20 +373,22 @@ void WalletView::unlockWallet()
     if (!walletModel)
         return;
 
-    // Retrieve feature-security-triplestrike settings
+    // Retrieve feature-security-triplestrike settings, if disabled and time span is up, re-enable
     QDateTime now = QDateTime::currentDateTimeUtc();
     QSettings settings;
     QDateTime disableTime = settings.value("nPassphraseDisableTime", now).toDateTime();
-    if (disableTime.secsTo(now) > 60)
+    int nPassphrasedisablespan = settings.value("nPassphrasedisablespan", 86400).toInt();
+    if (disableTime.secsTo(now) > nPassphrasedisablespan)
     {
-        QMessageBox::critical(this, tr("Debug"), tr("Enabled"));
-        walletModel->passphraseAttempCnt = 0;
+        if (pwalletMain->sPassphrasedisablemode == "linear") walletModel->passphraseAttempCnt = 0;
+        walletModel->fPassphrasedisable = false;
     }
-    else QMessageBox::critical(this, tr("Debug"), tr("Disabled"));
-    if (walletModel->passphraseAttempCnt >= 3)
+    if (walletModel->fPassphrasedisable == true)
     {
-        QMessageBox::critical(this, tr("Wallet Encryption/Decryption Disabled"),
-        tr("The passphrase attempt count has been exceeded. The wallet unlock capability has been disabled for 1 day."));
+        QString msg("The passphrase attempt count has been exceeded. Wallet unlock has been disabled for ");
+        msg += QString::number(pwalletMain->nPassphrasedisablespan) + " Seconds.";
+
+        QMessageBox::critical(this, tr("Wallet Encryption/Decryption Disabled"), msg);
         return;
     }
 

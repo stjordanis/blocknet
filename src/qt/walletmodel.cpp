@@ -53,11 +53,20 @@ WalletModel::WalletModel(CWallet* wallet, OptionsModel* optionsModel, QObject* p
     subscribeToCoreSignals();
 
     QSettings settings;
+    if (!settings.contains("fPassphrasedisable"))
+        settings.setValue("fPassphrasedisable", false);
     if (!settings.contains("nPassphraseAttempCnt"))
         settings.setValue("nPassphraseAttempCnt", 0);
+    if (!settings.contains("nPassphrasedisablespan"))
+        settings.value("nPassphrasedisablespan", 86400);
+    fPassphrasedisable = settings.value("fPassphrasedisable", false).toBool();
     passphraseAttempCnt = settings.value("nPassphraseAttempCnt", 0).toInt();
     QDateTime now = QDateTime::currentDateTimeUtc();
     QDateTime disableTime = settings.value("nPassphraseDisableTime", now).toDateTime();
+    pwalletMain->nPassphrasedisablespan = settings.value("nPassphrasedisablespan", 86400).toInt();
+    //settings.setValue("sPassphrasedisablemode", "exponential");
+    pwalletMain->sPassphrasedisablemode = settings.value("sPassphrasedisablemode", "exponential").toString().toStdString();
+
     if (disableTime.secsTo(now) > 60)
     {
         passphraseAttempCnt = 0;

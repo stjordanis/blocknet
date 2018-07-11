@@ -24,6 +24,7 @@
 #include "json/json_spirit_utils.h"
 #include "json/json_spirit_value.h"
 #include <boost/assign/list_of.hpp>
+//#include <QSettings>
 
 using namespace std;
 using namespace boost;
@@ -1766,6 +1767,56 @@ Value encryptwallet(const Array& params, bool fHelp)
     StartShutdown();
     return "wallet encrypted; blocknetdx server stopping, restart to run with encrypted wallet. The keypool has been flushed, you need to make a new backup.";
 }
+
+
+// Sets the disable time span in seconds for the passphrase-triple-strike-security feature. Used only in linear mode.
+Value passphrasedisablespan(const Array& params, bool fHelp)
+{
+    if (/*!pwalletMain->IsCrypted() && */(fHelp || params.size() != 2))
+        throw runtime_error(
+            "passphrasedisablespan \"passphrase\" spansecs\n"
+            "\nSets the amount of time the passpahrase input will be disabled.\n"
+            "\nArguments:\n"
+            "1. \"passphrase\"  (string) The pass phrase, only if one is set otherwise leave empty."
+            "2. \"spansecs\"    (int) The amount of time any function requiring a pass phrase will be disabled.\n"
+            "\nExamples:\n"
+            "\nSet pass phrase disable time\n" +
+            HelpExampleCli("passphrasedisablespan", "\"my pass phrase\"" "\"number of seconds\"") +
+            "\nAs a json rpc call\n" + HelpExampleRpc("passphrasedisablespan", "\"my pass phrase\", \"number of sesconds\""));
+
+    if (fHelp)
+        return true;
+
+    pwalletMain->nPassphrasedisablespan = params[1].get_int();
+
+    return "Setting change successful."; // Value::null;
+}
+
+
+// Sets the disable time span in seconds for the passphrase-triple-strike-security feature. Used only in linear mode.
+Value passphrasedisablemode(const Array& params, bool fHelp)
+{
+    if (/*!pwalletMain->IsCrypted() && */(fHelp || params.size() != 2))
+        throw runtime_error(
+            "passphrasedisablemode \"passphrase\" mode {linear|exponential}\n"
+            "\nSets the disable mode.\n"
+            "\nArguments:\n"
+            "1. \"passphrase\"  (string) The pass phrase, only if one is set otherwise leave empty."
+            "2. \"mode\"        (string) The disable mode, either \"linear\" or \"exponential\".\n"
+            "\nExamples:\n"
+            "\nSet pass phrase disable mode\n" +
+            HelpExampleCli("passphrasedisablemode", "\"my pass phrase\"" "\"linear\"") +
+            "\nAs a json rpc call\n" + HelpExampleRpc("passphrasedisablemode", "\"my pass phrase\", \"linear\""));
+
+    if (fHelp)
+        return true;
+
+    pwalletMain->sPassphrasedisablemode = params[1].get_str().c_str();
+
+    return "Setting change successful."; // Value::null;
+}
+
+
 
 Value lockunspent(const Array& params, bool fHelp)
 {
