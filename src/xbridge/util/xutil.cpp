@@ -259,7 +259,7 @@ double price(const xbridge::TransactionDescrPtr ptr)
     if(ptr == nullptr) {
         return .0;
     }
-    if(fabs(ptr->fromAmount)  < std::numeric_limits<double>::epsilon()) {
+    if(ptr->fromAmount.getdouble()  < std::numeric_limits<double>::epsilon()) {
         return  .0;
     }
     return xBridgeValueFromAmount(ptr->toAmount) / xBridgeValueFromAmount(ptr->fromAmount);
@@ -269,7 +269,7 @@ double priceBid(const xbridge::TransactionDescrPtr ptr)
     if(ptr == nullptr) {
         return .0;
     }
-    if(fabs(ptr->toAmount)  < std::numeric_limits<double>::epsilon()) {
+    if(ptr->toAmount.getdouble()  < std::numeric_limits<double>::epsilon()) {
         return  .0;
     }
     return xBridgeValueFromAmount(ptr->fromAmount) / xBridgeValueFromAmount(ptr->toAmount);

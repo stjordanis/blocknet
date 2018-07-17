@@ -12,19 +12,22 @@ class EthWalletConnector : public WalletConnector
 public:
     EthWalletConnector();
 
+    bool init() { return true; }
 public:
     // reimplement for currency
     std::string fromXAddr(const std::vector<unsigned char> & xaddr) const;
     std::vector<unsigned char> toXAddr(const std::string & addr) const;
 
 public:
+    bool getNewAddress(std::string & /*addr*/);
+
     bool requestAddressBook(std::vector<wallet::AddressBookEntry> & entries);
 
-    bool getUnspent(std::vector<wallet::UtxoEntry> & /*inputs*/) const;
+    bool getInfo(rpc::WalletInfo & info) const;
+
+    bool getUnspent(std::vector<wallet::UtxoEntry> & /*inputs*/, const bool /*withoutDust*/ = true) const;
 
     bool lockCoins(const std::vector<wallet::UtxoEntry> & /*inputs*/, const bool /*lock*/ = true) const;
-
-    bool getNewAddress(std::string & /*addr*/);
 
     bool getTxOut(wallet::UtxoEntry & /*entry*/);
 
@@ -33,19 +36,20 @@ public:
                             int32_t & /*errorCode*/,
                             std::string & /*message*/);
 
-    bool signMessage(const std::string & address, const std::string & message, std::string & signature);
-
-    bool verifyMessage(const std::string & address, const std::string & message, const std::string & signature);
+    bool signMessage(const std::string & /*address*/, const std::string & /*message*/, std::string & /*signature*/);
+    bool verifyMessage(const std::string & /*address*/, const std::string & /*message*/, const std::string & /*signature*/);
 
 public:
+    bool isDustAmount(const double & /*amount*/) const { return false; }
+
     bool newKeyPair(std::vector<unsigned char> & pubkey, std::vector<unsigned char> & privkey);
 
-    std::vector<unsigned char> getKeyId(const std::vector<unsigned char> & /*pubkey*/);
+    std::vector<unsigned char> getKeyId(const std::vector<unsigned char> & pubkey);
     std::vector<unsigned char> getScriptId(const std::vector<unsigned char> & /*script*/);
     std::string scriptIdToString(const std::vector<unsigned char> & /*id*/) const;
 
-    double minTxFee1(const uint32_t inputCount, const uint32_t outputCount);
-    double minTxFee2(const uint32_t inputCount, const uint32_t outputCount);
+    double minTxFee1(const uint32_t inputCount, const uint32_t outputCount) const;
+    double minTxFee2(const uint32_t inputCount, const uint32_t outputCount) const;
 
     bool checkTransaction(const std::string & depositTxId,
                           const std::string & /*destination*/,

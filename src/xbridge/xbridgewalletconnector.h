@@ -5,7 +5,6 @@
 #define XBRIDGEWALLETCONNECTOR_H
 
 #include "xbridgewallet.h"
-#include "xbridgewalletconnectoreth.h"
 
 #include <vector>
 #include <string>
@@ -49,12 +48,6 @@ public:
     }
 
     virtual bool init() = 0;
-
-public:
-    EthWalletConnector & eth()
-    {
-        return *static_cast<EthWalletConnector>(this);
-    }
 
 public:
     // reimplement for currency

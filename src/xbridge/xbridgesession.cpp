@@ -512,7 +512,7 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
         if (commonAmount * TransactionDescr::COIN < samount)
         {
             LOG() << "transaction rejected, amount from utxo items <" << commonAmount
-                  << "> less than required <" << samount << "> " << __FUNCTION__;
+                  << "> less than required <" << samount.getdouble() << "> " << __FUNCTION__;
             return true;
         }
 
@@ -545,9 +545,9 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
 
     LOG() << "received transaction " << id.GetHex() << std::endl
           << "    from " << HexStr(saddr) << std::endl
-          << "             " << scurrency << " : " << samount << std::endl
+          << "             " << scurrency << " : " << samount.getdouble() << std::endl
           << "    to   " << HexStr(daddr) << std::endl
-          << "             " << dcurrency << " : " << damount << std::endl;
+          << "             " << dcurrency << " : " << damount.getdouble() << std::endl;
 
     std::string saddrStr = sconn->fromXAddr(saddr);
     std::string daddrStr = dconn->fromXAddr(daddr);
@@ -892,7 +892,7 @@ bool Session::Impl::processTransactionAccepting(XBridgePacketPtr packet) const
         if (commonAmount * TransactionDescr::COIN < samount)
         {
             LOG() << "transaction rejected, amount from utxo items <" << commonAmount
-                  << "> less than required <" << samount << "> " << __FUNCTION__;
+                  << "> less than required <" << samount.getdouble() << "> " << __FUNCTION__;
             return true;
         }
 
@@ -914,9 +914,9 @@ bool Session::Impl::processTransactionAccepting(XBridgePacketPtr packet) const
 
     LOG() << "received accepting transaction " << id.ToString() << std::endl
           << "    from " << HexStr(saddr) << std::endl
-          << "             " << scurrency << " : " << samount << std::endl
+          << "             " << scurrency << " : " << samount.getdouble() << std::endl
           << "    to   " << HexStr(daddr) << std::endl
-          << "             " << dcurrency << " : " << damount << std::endl;
+          << "             " << dcurrency << " : " << damount.getdouble() << std::endl;
 
     {
         if (e.acceptTransaction(id, saddr, scurrency, samount, daddr, dcurrency, damount, mpubkey, utxoItems))
@@ -1578,6 +1578,8 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
         return true;
     }
 
+    xtx->xHash = hx;
+
     // lock time
     xtx->lockTimeTx1 = connFrom->lockTime(xtx->role);
     if (xtx->lockTimeTx1 == 0)
@@ -1601,17 +1603,19 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
 
     if(xtx->fromCurrency == "ETH")
     {
-        std::vector<unsigned char> initiateParams = connFrom->eth().createInitiateData(hx, xtx->from, xtx->lockTimeTx1);
+        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connFrom.get());
+
+        std::vector<unsigned char> initiateParams = connEth->createInitiateData(hx, xtx->from, xtx->lockTimeTx1);
 
         uint256 estimateGas;
-        if(!connFrom->eth().getEstimateGas("", initiateParams, xtx->fromAmount, estimateGas))
+        if(!connEth->getEstimateGas("", initiateParams, xtx->fromAmount, estimateGas))
         {
             LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
         }
 
         uint256 gasPrice;
-        if(!connFrom->eth().getGasPrice(gasPrice))
+        if(!connEth->getGasPrice(gasPrice))
         {
             LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
@@ -1620,7 +1624,7 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
         uint256 totalValue = estimateGas * gasPrice + xtx->fromAmount;
 
         std::vector<std::string> accounts;
-        if(!connFrom->eth().getAccounts(accounts))
+        if(!connEth->getAccounts(accounts))
         {
             LOG() << "can't process without accounts, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
@@ -1630,7 +1634,7 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
         for(const std::string & account : accounts)
         {
             uint256 avaliableAmount;
-            if(!connFrom->eth().getBalance(account, avaliableAmount))
+            if(!connEth->getBalance(account, avaliableAmount))
             {
                 LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
                 xapp.processLater(txid, packet);
@@ -1652,7 +1656,7 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
 
         //send money to contract
         uint256 trHash;
-        if(!connFrom->eth().callContractMethod(accountWithMoney, initiateParams, xtx->fromAmount, estimateGas, trHash))
+        if(!connEth->callContractMethod(accountWithMoney, initiateParams, xtx->fromAmount, estimateGas, trHash))
         {
             LOG() << "deposit tx not send, transaction canceled " << __FUNCTION__;
             sendCancelTransaction(xtx, crRpcError);
@@ -1811,11 +1815,13 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
 
     if(xtx->fromCurrency == "ETH")
     {
-        connFrom->eth().installFilter(hx, xtx->filterId);
+        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connFrom.get());
+        connEth->installFilter(hx, xtx->filterId);
     }
     else if(xtx->toCurrency == "ETH")
     {
-        connTo->eth().installFilter(hx, xtx->filterId);
+        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connTo.get());
+        connEth->installFilter(hx, xtx->filterId);
     }
 
     // send reply
@@ -1926,6 +1932,8 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
         return true;
     }
 
+    xtx->xHash = hx;
+
     bool isGood = false;
     if (!connTo->checkTransaction(binATxId, std::string(), 0, isGood))
     {
@@ -1967,17 +1975,19 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
 
     if(xtx->fromCurrency == "ETH")
     {
-        std::vector<unsigned char> respondParams = connFrom->eth().createRespondData(hx, xtx->from, xtx->lockTimeTx1);
+        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connTo.get());
+
+        std::vector<unsigned char> respondParams = connEth->createRespondData(hx, xtx->from, xtx->lockTimeTx1);
 
         uint256 estimateGas;
-        if(!connFrom->eth().getEstimateGas("", respondParams, xtx->fromAmount, estimateGas))
+        if(!connEth->getEstimateGas("", respondParams, xtx->fromAmount, estimateGas))
         {
             LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
         }
 
         uint256 gasPrice;
-        if(!connFrom->eth().getGasPrice(gasPrice))
+        if(!connEth->getGasPrice(gasPrice))
         {
             LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
@@ -1986,7 +1996,7 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
         uint256 totalValue = estimateGas * gasPrice + xtx->fromAmount;
 
         std::vector<std::string> accounts;
-        if(!connFrom->eth().getAccounts(accounts))
+        if(!connEth->getAccounts(accounts))
         {
             LOG() << "can't process without accounts, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
@@ -1996,7 +2006,7 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
         for(const std::string & account : accounts)
         {
             uint256 avaliableAmount;
-            if(!connFrom->eth().getBalance(account, avaliableAmount))
+            if(!connEth->getBalance(account, avaliableAmount))
             {
                 LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
                 xapp.processLater(txid, packet);
@@ -2018,7 +2028,7 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
 
         //send money to contract
         uint256 trHash;
-        if(!connFrom->eth().callContractMethod(accountWithMoney, respondParams, xtx->fromAmount, estimateGas, trHash))
+        if(!connEth->callContractMethod(accountWithMoney, respondParams, xtx->fromAmount, estimateGas, trHash))
         {
             LOG() << "deposit tx not send, transaction canceled " << __FUNCTION__;
             sendCancelTransaction(xtx, crRpcError);
@@ -2175,11 +2185,13 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
 
     if(xtx->fromCurrency == "ETH")
     {
-        connFrom->eth().installFilter(hx, xtx->filterId);
+        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connFrom.get());
+        connEth->installFilter(hx, xtx->filterId);
     }
     else if(xtx->toCurrency == "ETH")
     {
-        connTo->eth().installFilter(hx, xtx->filterId);
+        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connTo.get());
+        connEth->installFilter(hx, xtx->filterId);
     }
 
     // send reply
@@ -2466,23 +2478,25 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
 
     if(xtx->toCurrency == "ETH")
     {
-        if(!conn->eth().isInitiated(xtx->filterId, hx, xtx->from, xtx->to, xtx->fromAmount))
+        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(conn.get());
+
+        if(!connEth->isInitiated(xtx->filterId, xtx->xHash, xtx->from, xtx->to, xtx->fromAmount))
         {
             xapp.processLater(txid, packet);
             return true;
         }
 
-        std::vector<unsigned char> redeemParams = conn->eth().createRedeemData(hx, xtx->xPrivKey);
+        std::vector<unsigned char> redeemParams = connEth->createRedeemData(xtx->xHash, xtx->xPrivKey);
 
         uint256 estimateGas;
-        if(!conn->eth().getEstimateGas("", redeemParams, 0, estimateGas))
+        if(!connEth->getEstimateGas("", redeemParams, 0, estimateGas))
         {
             LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
         }
 
         uint256 gasPrice;
-        if(!conn->eth().getGasPrice(gasPrice))
+        if(!connEth->getGasPrice(gasPrice))
         {
             LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
@@ -2491,7 +2505,7 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
         uint256 totalValue = estimateGas * gasPrice;
 
         std::vector<std::string> accounts;
-        if(!conn->eth().getAccounts(accounts))
+        if(!connEth->getAccounts(accounts))
         {
             LOG() << "can't process without accounts, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
@@ -2501,7 +2515,7 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
         for(const std::string & account : accounts)
         {
             uint256 avaliableAmount;
-            if(!conn->eth().getBalance(account, avaliableAmount))
+            if(!connEth->getBalance(account, avaliableAmount))
             {
                 LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
                 xapp.processLater(txid, packet);
@@ -2523,7 +2537,7 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
 
         //send money to contract
         uint256 trHash;
-        if(!conn->eth().callContractMethod(accountWithMoney, redeemParams, 0, estimateGas, trHash))
+        if(!connEth->callContractMethod(accountWithMoney, redeemParams, 0, estimateGas, trHash))
         {
             LOG() << "deposit tx not send, transaction canceled " << __FUNCTION__;
             sendCancelTransaction(xtx, crRpcError);
@@ -2542,7 +2556,7 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
 
             // outputs
             {
-                double outAmount = static_cast<double>(xtx->toAmount)/TransactionDescr::COIN;
+                double outAmount = xtx->toAmount.getdouble()/TransactionDescr::COIN;
                 outputs.push_back(std::make_pair(conn->fromXAddr(xtx->to), outAmount));
             }
 
@@ -2752,23 +2766,25 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
 
     if(xtx->toCurrency == "ETH")
     {
-        if(!conn->eth().isResponded(xtx->filterId, hx, xtx->from, xtx->to, xtx->fromAmount))
+        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(conn.get());
+
+        if(!connEth->isResponded(xtx->filterId, xtx->xHash, xtx->from, xtx->to, xtx->fromAmount))
         {
             xapp.processLater(txid, packet);
             return true;
         }
 
-        std::vector<unsigned char> redeemParams = conn->eth().createRedeemData(hx, xtx->xPrivKey);
+        std::vector<unsigned char> redeemParams = connEth->createRedeemData(xtx->xHash, xtx->xPrivKey);
 
         uint256 estimateGas;
-        if(!conn->eth().getEstimateGas("", redeemParams, 0, estimateGas))
+        if(!connEth->getEstimateGas("", redeemParams, 0, estimateGas))
         {
             LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
         }
 
         uint256 gasPrice;
-        if(!conn->eth().getGasPrice(gasPrice))
+        if(!connEth->getGasPrice(gasPrice))
         {
             LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
@@ -2777,7 +2793,7 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
         uint256 totalValue = estimateGas * gasPrice;
 
         std::vector<std::string> accounts;
-        if(!conn->eth().getAccounts(accounts))
+        if(!connEth->getAccounts(accounts))
         {
             LOG() << "can't process without accounts, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
@@ -2787,7 +2803,7 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
         for(const std::string & account : accounts)
         {
             uint256 avaliableAmount;
-            if(!conn->eth().getBalance(account, avaliableAmount))
+            if(!connEth->getBalance(account, avaliableAmount))
             {
                 LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
                 xapp.processLater(txid, packet);
@@ -2809,7 +2825,7 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
 
         //send money to contract
         uint256 trHash;
-        if(!conn->eth().callContractMethod(accountWithMoney, redeemParams, 0, estimateGas, trHash))
+        if(!connEth->callContractMethod(accountWithMoney, redeemParams, 0, estimateGas, trHash))
         {
             LOG() << "deposit tx not send, transaction canceled " << __FUNCTION__;
             sendCancelTransaction(xtx, crRpcError);
@@ -2828,7 +2844,7 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
 
             // outputs
             {
-                double outAmount = static_cast<double>(xtx->toAmount)/TransactionDescr::COIN;
+                double outAmount = xtx->toAmount.getdouble()/TransactionDescr::COIN;
                 outputs.push_back(std::make_pair(conn->fromXAddr(xtx->to), outAmount));
             }
 
@@ -3223,9 +3239,9 @@ void Session::sendListOfTransactions() const
 
         packet->append(ptr->id().begin(), 32);
         packet->append(fc);
-        packet->append(ptr->a_amount());
+        packet->append(ptr->a_amount().begin(), 32);
         packet->append(tc);
-        packet->append(ptr->b_amount());
+        packet->append(ptr->b_amount().begin(), 32);
         packet->append(m_p->m_myid);
         packet->append(util::timeToInt(ptr->createdTime()));
         packet->append(ptr->blockHash().begin(), 32);

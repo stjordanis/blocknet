@@ -308,7 +308,7 @@ bool App::Impl::start()
                 }
 
                 xbridge::WalletConnectorPtr conn;
-                if (wp.method == "ETHER")
+                if (wp.method == "ETH")
                 {
                     conn.reset(new EthWalletConnector);
                     *conn = wp;
@@ -942,7 +942,7 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
         LOG() << "fee1: " << (static_cast<double>(fee1) / TransactionDescr::COIN);
         LOG() << "fee2: " << (static_cast<double>(fee2) / TransactionDescr::COIN);
         LOG() << "amount of used utxo items: " << (static_cast<double>(utxoAmount) / TransactionDescr::COIN)
-              << " required amount + fees: " << (static_cast<double>(fromAmount + fee1 + fee2) / TransactionDescr::COIN);
+              << " required amount + fees: " << ((fromAmount + fee1 + fee2).getdouble() / TransactionDescr::COIN);
 
         // sign used coins
         for (wallet::UtxoEntry & entry : outputsForUse)
@@ -1181,7 +1181,7 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
         LOG() << "fee1: " << (static_cast<double>(fee1) / TransactionDescr::COIN);
         LOG() << "fee2: " << (static_cast<double>(fee2) / TransactionDescr::COIN);
         LOG() << "amount of used utxo items: " << (static_cast<double>(utxoAmount) / TransactionDescr::COIN)
-              << " required amount + fees: " << (static_cast<double>(ptr->fromAmount + fee1 + fee2) / TransactionDescr::COIN);
+              << " required amount + fees: " << ((ptr->fromAmount + fee1 + fee2).getdouble() / TransactionDescr::COIN);
 
         // sign used coins
         for (wallet::UtxoEntry & entry : outputsForUse)
@@ -1530,11 +1530,11 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
 
             uint256 fullAmount = requiredAmount + fee1 + fee2;
 
-            uint256 utxosAmount = std::accumulate(outputsSmallerThanTarget.begin(), outputsSmallerThanTarget.end(), 0,
-                                                  [](uint256 accumulator, const wallet::UtxoEntry & entry)
+            uint256 utxosAmount;
+            for(const wallet::UtxoEntry & entry : outputsSmallerThanTarget)
             {
-                return accumulator += (entry.amount * TransactionDescr::COIN);
-            });
+                utxosAmount += uint64_t(entry.amount * TransactionDescr::COIN);
+            }
 
             if (utxosAmount == fullAmount)
             {

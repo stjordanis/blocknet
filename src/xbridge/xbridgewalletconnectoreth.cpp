@@ -38,7 +38,7 @@ using namespace std;
 using namespace boost;
 using namespace boost::asio;
 
-int readHTTP(std::basic_istream<char>& stream, map<string, string>& mapHeadersRet, string& strMessageRet)
+int readHTTPEth(std::basic_istream<char>& stream, map<string, string>& mapHeadersRet, string& strMessageRet)
 {
     mapHeadersRet.clear();
     strMessageRet = "";
@@ -97,7 +97,7 @@ Object CallRPC(const std::string & rpcip, const std::string & rpcport,
     // Receive reply
     map<string, string> mapHeaders;
     string strReply;
-    int nStatus = readHTTP(stream, mapHeaders, strReply);
+    int nStatus = readHTTPEth(stream, mapHeaders, strReply);
 
     if (nStatus == HTTP_UNAUTHORIZED)
         throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
@@ -484,7 +484,7 @@ bool newFilter(const std::string & rpcip,
         filter.push_back(Pair("fromBlock", "latest"));
         filter.push_back(Pair("toBlock", "latest"));
         filter.push_back(Pair("address", address.ToString()));
-        filter.push_back(Pair("topics", Array(asString(topic))));
+        filter.push_back(Pair("topics", Array{asString(topic)}));
 
         params.push_back(filter);
 
@@ -604,6 +604,8 @@ bool getFilterChanges(const std::string & rpcip,
 
 } // namespace rpc
 
+//*****************************************************************************
+//*****************************************************************************
 EthWalletConnector::EthWalletConnector()
 {
 
@@ -639,9 +641,14 @@ bool EthWalletConnector::requestAddressBook(std::vector<wallet::AddressBookEntry
     return true;
 }
 
+bool EthWalletConnector::getInfo(rpc::WalletInfo& info) const
+{
+    return true;
+}
+
 //******************************************************************************
 //******************************************************************************
-bool EthWalletConnector::getUnspent(std::vector<wallet::UtxoEntry> & /*inputs*/) const
+bool EthWalletConnector::getUnspent(std::vector<wallet::UtxoEntry> & /*inputs*/, const bool /*withoutDust*/) const
 {
     return true;
 }
@@ -673,6 +680,16 @@ bool EthWalletConnector::sendRawTransaction(const std::string & /*rawtx*/,
     return true;
 }
 
+bool EthWalletConnector::signMessage(const string& /*address*/, const string& /*message*/, string& /*signature*/)
+{
+    return true;
+}
+
+bool EthWalletConnector::verifyMessage(const string& /*address*/, const string& /*message*/, const string& /*signature*/)
+{
+    return true;
+}
+
 //******************************************************************************
 //******************************************************************************
 bool EthWalletConnector::newKeyPair(std::vector<unsigned char> & pubkey,
@@ -690,7 +707,7 @@ bool EthWalletConnector::newKeyPair(std::vector<unsigned char> & pubkey,
 
 //******************************************************************************
 //******************************************************************************
-std::vector<unsigned char> EthWalletConnector::getKeyId(const std::vector<unsigned char> & /*pubkey*/)
+std::vector<unsigned char> EthWalletConnector::getKeyId(const std::vector<unsigned char> & pubkey)
 {
     CKeyID id = xbridge::CPubKey(pubkey).GetID();
     return std::vector<unsigned char>(id.begin(), id.end());
@@ -714,7 +731,7 @@ std::string EthWalletConnector::scriptIdToString(const std::vector<unsigned char
 // calculate tx fee for deposit tx
 // output count always 1
 //******************************************************************************
-double EthWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t outputCount)
+double EthWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t outputCount) const
 {
     uint64_t fee = (148*inputCount + 34*outputCount + 10) * feePerByte;
     if (fee < minTxFee)
@@ -728,7 +745,7 @@ double EthWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t o
 // calculate tx fee for payment/refund tx
 // input count always 1
 //******************************************************************************
-double EthWalletConnector::minTxFee2(const uint32_t inputCount, const uint32_t outputCount)
+double EthWalletConnector::minTxFee2(const uint32_t inputCount, const uint32_t outputCount) const
 {
     uint64_t fee = (180*inputCount + 34*outputCount + 10) * feePerByte;
     if (fee < minTxFee)
@@ -980,9 +997,9 @@ bool EthWalletConnector::isInitiated(const uint256& filterId,
                 return false;
             }
 
-            if(params.at(0) == hashedSecret &&
-               params.at(1) == initiatorAddress &&
-               params.at(2) == responderAddress &&
+            if(params.at(0) == asString(hashedSecret) &&
+               params.at(1) == asString(initiatorAddress) &&
+               params.at(2) == asString(responderAddress) &&
                params.at(3) == value.ToString())
                 return true;
         }
@@ -1025,9 +1042,9 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
                 return false;
             }
 
-            if(params.at(0) == hashedSecret &&
-               params.at(1) == initiatorAddress &&
-               params.at(2) == responderAddress &&
+            if(params.at(0) == asString(hashedSecret) &&
+               params.at(1) == asString(initiatorAddress) &&
+               params.at(2) == asString(responderAddress) &&
                params.at(3) == value.ToString())
                 return true;
         }
@@ -1069,8 +1086,8 @@ bool EthWalletConnector::isRefunded(const uint256 & filterId,
                 return false;
             }
 
-            if(params.at(0) == hashedSecret &&
-               params.at(1) == recipientAddress &&
+            if(params.at(0) == asString(hashedSecret) &&
+               params.at(1) == asString(recipientAddress) &&
                params.at(2) == value.ToString())
                 return true;
         }
@@ -1112,8 +1129,8 @@ bool EthWalletConnector::isRedeemed(const uint256 & filterId,
                 return false;
             }
 
-            if(params.at(0) == hashedSecret &&
-               params.at(1) == recipientAddress &&
+            if(params.at(0) == asString(hashedSecret) &&
+               params.at(1) == asString(recipientAddress) &&
                params.at(2) == value.ToString())
                 return true;
         }

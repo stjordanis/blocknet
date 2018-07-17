@@ -103,6 +103,7 @@ struct TransactionDescr
     // X key (secret data)
     std::vector<unsigned char>    xPubKey;
     std::vector<unsigned char>    xPrivKey;
+    std::vector<unsigned char>    xHash;
 
     // service node pub key
     std::vector<unsigned char>    sPubKey;
