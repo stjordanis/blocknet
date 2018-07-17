@@ -303,8 +303,7 @@ SOURCES += \
     src/xbridge/xbridgewalletconnectoreth.cpp \
     src/xbridge/xbridgewalletconnectordgb.cpp \
     src/xbridge/xbridgeethencoder.cpp \
-    src/xbridge/xbridgepacket.cpp \
-    src/xbridge/xbridgeethsession.cpp
+    src/xbridge/xbridgepacket.cpp
 
 #protobuf generated
 SOURCES += \
@@ -597,8 +596,7 @@ HEADERS += \
     src/xbridge/xbridgewalletconnectoreth.h \
     src/xbridge/xbridgewalletconnectordgb.h \
     src/xbridge/xbridgeethencoder.h \
-    src/xbridge/xbridgedef.h \
-    src/xbridge/xbridgeethsession.h
+    src/xbridge/xbridgedef.h
 
 #ENABLE_ZMQ
 #    src/zmq/zmqabstractnotifier.h \

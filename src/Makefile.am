@@ -353,6 +353,7 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/bitcoinrpcconnector.cpp \
   xbridge/xbridgepacket.cpp \
   xbridge/xbridgeapp.cpp \
+  xbridge/xbridgeethencoder.cpp \
   xbridge/xbridgeexchange.cpp \
   xbridge/xbridgesession.cpp \
   xbridge/xbridgetransaction.cpp \
@@ -363,6 +364,7 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/xbridgewalletconnectorbcc.cpp \
   xbridge/xbridgewalletconnectorsys.cpp \
   xbridge/xbridgewalletconnectordgb.cpp \
+  xbridge/xbridgewalletconnectoreth.cpp \
   xbridge/xkey.cpp \
   xbridge/xpubkey.cpp \
   xbridge/xbitcoinaddress.cpp \
@@ -378,6 +380,7 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/xbitcointransaction.h \
   xbridge/xbridgedef.h \
   xbridge/xbridgeapp.h \
+  xbridge/xbridgeethencoder.h \
   xbridge/xbridgeexchange.h \
   xbridge/xbridgepacket.h \
   xbridge/xbridgerpc.h \
@@ -390,6 +393,7 @@ libxbridge_xbridge_a_SOURCES = \
   xbridge/xbridgewalletconnectorbcc.h \
   xbridge/xbridgewalletconnectorsys.h \
   xbridge/xbridgewalletconnectordgb.h \
+  xbridge/xbridgewalletconnectoreth.h \
   xbridge/xbridgewallet.h \
   xbridge/xkey.h \
   xbridge/xpubkey.h \
