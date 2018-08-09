@@ -415,7 +415,7 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
     offset += XBridgePacket::addressSize;
     std::string dcurrency((const char *)packet->data()+offset);
     offset += 8;
-    uint256 damount = (packet->data()+offset);
+    uint256 damount(packet->data()+offset);
     offset += XBridgePacket::amountSize;
 
     uint64_t timestamp = *static_cast<uint64_t *>(static_cast<void *>(packet->data()+offset));
