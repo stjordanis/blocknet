@@ -31,6 +31,27 @@ inline std::string asString(const bytes & value)
     return std::string((const char*)value.data(), (const char*)(value.data() + value.size()));
 }
 
+inline std::string as0xString(const bytes & value)
+{
+    std::string result("0x");
+    std::move((const char*)value.data(), (const char*)(value.data() + value.size()), std::back_inserter(result));
+    return result;
+}
+
+inline std::string as0xString(const uint256 & value)
+{
+    std::string result("0x");
+    result.append(std::move(value.ToString()));
+    return result;
+}
+
+inline std::string as0xString(const uint160 & value)
+{
+    std::string result("0x");
+    result.append(std::move(value.ToString()));
+    return result;
+}
+
 // Concatenate the contents of a container onto a vector
 template <class T, class U> std::vector<T>& operator+=(std::vector<T>& _a, const U & _b)
 {

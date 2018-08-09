@@ -121,7 +121,7 @@ public:
     bool isRedeemed(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value) const;
 
 private:
-    const std::string contractAddress = "";
+    const std::string contractAddress = "0xb4573a002e0762c52ef07948bc1cb779ef4e3b10";
 };
 
 }

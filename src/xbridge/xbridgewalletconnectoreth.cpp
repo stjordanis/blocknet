@@ -235,11 +235,11 @@ bool sendTransaction(const std::string & rpcip,
         Array params;
 
         Object transaction;
-        transaction.push_back(Pair("from", from.ToString()));
-        transaction.push_back(Pair("to", to.ToString()));
-        transaction.push_back(Pair("gas", gas.ToString()));
-        transaction.push_back(Pair("value", value.ToString()));
-        transaction.push_back(Pair("data", asString(data)));
+        transaction.push_back(Pair("from", as0xString(from)));
+        transaction.push_back(Pair("to", as0xString(to)));
+        transaction.push_back(Pair("gas", as0xString(gas)));
+        transaction.push_back(Pair("value", as0xString(value)));
+        transaction.push_back(Pair("data", as0xString(data)));
 
         params.push_back(transaction);
 
@@ -427,10 +427,10 @@ bool getEstimateGas(const std::string & rpcip,
         Array params;
 
         Object transaction;
-        transaction.push_back(Pair("from", from.ToString()));
-        transaction.push_back(Pair("to", to.ToString()));
-        transaction.push_back(Pair("value", value.ToString()));
-        transaction.push_back(Pair("data", asString(data)));
+        transaction.push_back(Pair("from", as0xString(from)));
+        transaction.push_back(Pair("to", as0xString(to)));
+        transaction.push_back(Pair("value", as0xString(value)));
+        transaction.push_back(Pair("data", as0xString(data)));
 
         params.push_back(transaction);
         params.push_back("latest");
@@ -483,8 +483,8 @@ bool newFilter(const std::string & rpcip,
         Object filter;
         filter.push_back(Pair("fromBlock", "latest"));
         filter.push_back(Pair("toBlock", "latest"));
-        filter.push_back(Pair("address", address.ToString()));
-        filter.push_back(Pair("topics", Array{asString(topic)}));
+        filter.push_back(Pair("address", as0xString(address)));
+        filter.push_back(Pair("topics", Array{as0xString(topic)}));
 
         params.push_back(filter);
 
@@ -532,7 +532,7 @@ bool getFilterChanges(const std::string & rpcip,
         LOG() << "rpc call <eth_newFilter>";
 
         Array params;
-        params.push_back(filterId.ToString());
+        params.push_back(as0xString(filterId));
 
         Object reply = CallRPC(rpcip, rpcport,
                                "eth_getFilterChanges", params);
@@ -933,7 +933,7 @@ bool EthWalletConnector::callContractMethod(const std::string & myAddress,
 
 bool EthWalletConnector::installFilter(const bytes& hashedSecret, uint256& filterId) const
 {
-    if(!rpc::newFilter(m_ip, m_port, uint256(contractAddress), hashedSecret, filterId));
+    if(!rpc::newFilter(m_ip, m_port, uint256(contractAddress), hashedSecret, filterId))
     {
         LOG() << "can't install new filter" << __FUNCTION__;
         return false;
@@ -954,10 +954,11 @@ bool splitEventParams(const std::string & paramsString, std::vector<std::string>
     if(paramsString.size() < paramSize)
         return false;
 
-    if(paramsString.size() / paramSize != 0)
+    if((paramsString.size() - 2) / paramSize != 0)
         return false;
 
-    for(unsigned int i = 0; i < paramsString.size(); i += paramSize)
+    //first 2 chars is 0x, so skip it
+    for(unsigned int i = 2; i < paramsString.size(); i += paramSize)
         paramsVector.emplace_back(paramsString.substr(i, paramSize));
 
     return true;

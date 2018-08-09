@@ -1603,7 +1603,7 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
 
     if(xtx->fromCurrency == "ETH")
     {
-        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connFrom.get());
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connFrom);
 
         std::vector<unsigned char> initiateParams = connEth->createInitiateData(hx, xtx->from, xtx->lockTimeTx1);
 
@@ -1815,12 +1815,12 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
 
     if(xtx->fromCurrency == "ETH")
     {
-        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connFrom.get());
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connFrom);
         connEth->installFilter(hx, xtx->filterId);
     }
     else if(xtx->toCurrency == "ETH")
     {
-        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connTo.get());
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connTo);
         connEth->installFilter(hx, xtx->filterId);
     }
 
@@ -1975,7 +1975,7 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
 
     if(xtx->fromCurrency == "ETH")
     {
-        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connTo.get());
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connTo);
 
         std::vector<unsigned char> respondParams = connEth->createRespondData(hx, xtx->from, xtx->lockTimeTx1);
 
@@ -2185,12 +2185,12 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
 
     if(xtx->fromCurrency == "ETH")
     {
-        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connFrom.get());
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connFrom);
         connEth->installFilter(hx, xtx->filterId);
     }
     else if(xtx->toCurrency == "ETH")
     {
-        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(connTo.get());
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connTo);
         connEth->installFilter(hx, xtx->filterId);
     }
 
@@ -2478,7 +2478,7 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
 
     if(xtx->toCurrency == "ETH")
     {
-        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(conn.get());
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
 
         if(!connEth->isInitiated(xtx->filterId, xtx->xHash, xtx->from, xtx->to, xtx->fromAmount))
         {
@@ -2766,7 +2766,7 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
 
     if(xtx->toCurrency == "ETH")
     {
-        EthWalletConnector* connEth = static_cast<EthWalletConnector*>(conn.get());
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
 
         if(!connEth->isResponded(xtx->filterId, xtx->xHash, xtx->from, xtx->to, xtx->fromAmount))
         {

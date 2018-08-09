@@ -19,6 +19,8 @@ namespace xbridge
 
 class WalletConnector;
 typedef std::shared_ptr<WalletConnector> WalletConnectorPtr;
+class EthWalletConnector;
+typedef std::shared_ptr<EthWalletConnector> EthWalletConnectorPtr;
 
 typedef std::vector<WalletConnectorPtr> Connectors;
 typedef std::map<std::vector<unsigned char>, WalletConnectorPtr> ConnectorsAddrMap;
