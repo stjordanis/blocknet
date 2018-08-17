@@ -615,16 +615,17 @@ EthWalletConnector::EthWalletConnector()
 //*****************************************************************************
 std::string EthWalletConnector::fromXAddr(const std::vector<unsigned char> & xaddr) const
 {
-    return std::string(xaddr.begin() + 2, xaddr.end());
+    std::string result("0x");
+    result.append(HexStr(xaddr));
+    return result;
 }
 
 //*****************************************************************************
 //*****************************************************************************
 std::vector<unsigned char> EthWalletConnector::toXAddr(const std::string & addr) const
 {
-    std::vector<unsigned char> vch {'0', 'x'};
-    vch.insert(vch.end(), addr.begin(), addr.end());
-
+    std::string addressWithout0x(addr.begin() + 2, addr.end());
+    std::vector<unsigned char> vch = ParseHex(addressWithout0x);
     return vch;
 }
 

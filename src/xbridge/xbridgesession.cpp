@@ -389,11 +389,11 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
 
     DEBUG_TRACE();
 
-    // size must be > 200 bytes
-    if (packet->size() < 200)
+    // size must be > 196 bytes
+    if (packet->size() < 196)
     {
         ERR() << "invalid packet size for xbcTransaction "
-              << "need min 200 bytes, received " << packet->size() << " "
+              << "need min 196 bytes, received " << packet->size() << " "
               << __FUNCTION__;
         return false;
     }
@@ -517,9 +517,9 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
         }
 
         // check dust amount
-        if (sconn->isDustAmount((samount / sconn->COIN).getdouble()) ||
-            sconn->isDustAmount(commonAmount - (samount / sconn->COIN).getdouble()) ||
-            dconn->isDustAmount((damount / sconn->COIN).getdouble()))
+        if (sconn->isDustAmount(samount.divide(sconn->COIN)) ||
+            sconn->isDustAmount(commonAmount - samount.divide(sconn->COIN)) ||
+            dconn->isDustAmount(damount.divide(sconn->COIN)))
         {
             LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
             return true;
@@ -536,7 +536,7 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
     else if(dconn->currency != "ETH")
     {
         // check dust amount
-        if (dconn->isDustAmount((damount / dconn->COIN).getdouble()))
+        if (dconn->isDustAmount(damount.divide(dconn->COIN)))
         {
             LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
             return true;
