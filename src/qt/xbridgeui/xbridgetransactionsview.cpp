@@ -253,9 +253,12 @@ void XBridgeTransactionsView::onAcceptTransaction()
         return;
     }
 
+    xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(d->fromCurrency);
+    xbridge::WalletConnectorPtr connTo = xbridge::App::instance().connectorByCurrency(d->toCurrency);
+
     m_dlg.setPendingId(d->id, d->hubAddress);
-    m_dlg.setFromAmount(d->toAmount.getdouble() / xbridge::TransactionDescr::COIN);
-    m_dlg.setToAmount(d->fromAmount.getdouble() / xbridge::TransactionDescr::COIN);
+    m_dlg.setFromAmount(d->toAmount.divide(connTo->COIN));
+    m_dlg.setToAmount(d->fromAmount.divide(connFrom->COIN));
     m_dlg.setFromCurrency(QString::fromStdString(d->toCurrency));
     m_dlg.setToCurrency(QString::fromStdString(d->fromCurrency));
     m_dlg.show();

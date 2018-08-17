@@ -36,7 +36,7 @@ enum
 xbridge::CTransactionPtr createTransaction();
 xbridge::CTransactionPtr createTransaction(const std::vector<std::pair<std::string, int> > & inputs,
                                            const std::vector<std::pair<std::string, double> >  & outputs,
-                                           const uint64_t COIN,
+                                           const uint256 COIN,
                                            const uint32_t txversion,
                                            const uint32_t lockTime);
 
@@ -51,13 +51,13 @@ BccWalletConnector::BccWalletConnector()
 //******************************************************************************
 //******************************************************************************
 bool BccWalletConnector::createRefundTransaction(const std::vector<std::pair<std::string, int> > & inputs,
-                                                        const std::vector<std::pair<std::string, double> > & outputs,
-                                                        const std::vector<unsigned char> & mpubKey,
-                                                        const std::vector<unsigned char> & mprivKey,
-                                                        const std::vector<unsigned char> & innerScript,
-                                                        const uint32_t lockTime,
-                                                        std::string & txId,
-                                                        std::string & rawTx)
+                                                 const std::vector<std::pair<std::string, double> > & outputs,
+                                                 const std::vector<unsigned char> & mpubKey,
+                                                 const std::vector<unsigned char> & mprivKey,
+                                                 const std::vector<unsigned char> & innerScript,
+                                                 const uint32_t lockTime,
+                                                 std::string & txId,
+                                                 std::string & rawTx)
 {
     xbridge::CTransactionPtr txUnsigned = createTransaction(inputs, outputs, COIN, txVersion, lockTime);
     txUnsigned->vin[0].nSequence = std::numeric_limits<uint32_t>::max()-1;

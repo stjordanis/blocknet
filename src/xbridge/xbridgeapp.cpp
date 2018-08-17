@@ -286,13 +286,13 @@ bool App::Impl::start()
                 wp.addrPrefix[0]               = s.get<int>(*i + ".AddressPrefix", 0);
                 wp.scriptPrefix[0]             = s.get<int>(*i + ".ScriptPrefix", 0);
                 wp.secretPrefix[0]             = s.get<int>(*i + ".SecretPrefix", 0);
-                wp.COIN                        = s.get<uint64_t>(*i + ".COIN", 0);
                 wp.txVersion                   = s.get<uint32_t>(*i + ".TxVersion", 1);
                 wp.minTxFee                    = s.get<uint64_t>(*i + ".MinTxFee", 0);
                 wp.feePerByte                  = s.get<uint64_t>(*i + ".FeePerByte", 200);
                 wp.method                      = s.get<std::string>(*i + ".CreateTxMethod");
                 wp.blockTime                   = s.get<int>(*i + ".BlockTime", 0);
                 wp.requiredConfirmations       = s.get<int>(*i + ".Confirmations", 0);
+                wp.COIN                        = uint256(s.get<std::string>(*i + ".COIN"));
 
                 if (wp.m_ip.empty() || wp.m_port.empty() ||
                     wp.m_user.empty() || wp.m_passwd.empty() ||
@@ -906,12 +906,12 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
         return xbridge::Error::NO_SESSION;
     }
 
-    if (connFrom->isDustAmount(fromAmount.getdouble() / TransactionDescr::COIN))
+    if (connFrom->isDustAmount(fromAmount.divide(connFrom->COIN)))
     {
         return xbridge::Error::DUST;
     }
 
-    if (connTo->isDustAmount(toAmount.getdouble() / TransactionDescr::COIN))
+    if (connTo->isDustAmount(toAmount.divide(connTo->COIN)))
     {
         return xbridge::Error::DUST;
     }
@@ -1159,7 +1159,7 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
     if(connFrom->currency != "ETH")
     {
         // check dust
-        if (connFrom->isDustAmount(ptr->fromAmount.getdouble() / TransactionDescr::COIN))
+        if (connFrom->isDustAmount(ptr->fromAmount.divide(connFrom->COIN)))
         {
             return xbridge::Error::DUST;
         }
@@ -1218,7 +1218,7 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
     else if(connTo->currency != "ETH")
     {
         // check dust
-        if (connTo->isDustAmount(ptr->toAmount.getdouble() / TransactionDescr::COIN))
+        if (connTo->isDustAmount(ptr->toAmount.divide(connTo->COIN)))
         {
             return xbridge::Error::DUST;
         }
@@ -1440,7 +1440,7 @@ Error App::checkAmount(const string & currency, const uint256 & amount, const st
     }
 
     // Check that wallet balance is larger than the smallest supported balance
-    if (conn->getWalletBalance(address) < (amount.getdouble() / TransactionDescr::COIN)) {
+    if (conn->getWalletBalance(address) < amount.divide(conn->COIN)) {
         WARN() << "insufficient funds for <" << currency << "> " << __FUNCTION__;
         return xbridge::INSIFFICIENT_FUNDS;
     }

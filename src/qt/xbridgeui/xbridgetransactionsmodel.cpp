@@ -77,28 +77,31 @@ QVariant XBridgeTransactionsModel::data(const QModelIndex & idx, int role) const
 
     const xbridge::TransactionDescrPtr & d = m_transactions[idx.row()];
 
+    xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(d->fromCurrency);
+    xbridge::WalletConnectorPtr connTo = xbridge::App::instance().connectorByCurrency(d->toCurrency);
+
     if (role == Qt::DisplayRole)
     {
         switch (idx.column())
         {
         case Total:
         {
-            double amount = d->fromAmount.getdouble() / xbridge::TransactionDescr::COIN;
+            double amount = d->fromAmount.divide(connFrom->COIN);
             QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->fromCurrency));
 
             return QVariant(text);
         }
         case Size:
         {
-            double amount = d->toAmount.getdouble() / xbridge::TransactionDescr::COIN;
+            double amount = d->toAmount.divide(connTo->COIN);
             QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->toCurrency));
 
             return QVariant(text);
         }
         case BID:
         {
-            double amountTotal = d->fromAmount.getdouble() / xbridge::TransactionDescr::COIN;
-            double amountSize = d->toAmount.getdouble() / xbridge::TransactionDescr::COIN;
+            double amountTotal = d->fromAmount.divide(connFrom->COIN);
+            double amountSize = d->toAmount.divide(connTo->COIN);
             double bid = amountTotal / amountSize;
             QString text = QString::number(bid, 'f', 12).remove(QRegExp("\\.?0+$"));
 
@@ -203,10 +206,13 @@ xbridge::Error XBridgeTransactionsModel::newTransaction(const std::string & from
 {
     xbridge::App & xapp = xbridge::App::instance();
 
+    xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(fromCurrency);
+    xbridge::WalletConnectorPtr connTo = xbridge::App::instance().connectorByCurrency(toCurrency);
+
     uint256 id, blockHash;
     const auto code = xapp.sendXBridgeTransaction
-            (from, fromCurrency, uint256(fromAmount * xbridge::TransactionDescr::COIN),
-             to,   toCurrency,   uint256(toAmount * xbridge::TransactionDescr::COIN),
+            (from, fromCurrency, uint256(fromAmount * connFrom->COIN),
+             to,   toCurrency,   uint256(toAmount * connTo->COIN),
              id, blockHash);
 
     return code;

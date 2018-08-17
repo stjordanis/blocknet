@@ -9,6 +9,7 @@
 #include <set>
 #include <stdint.h>
 #include <cstring>
+#include "uint256.h"
 
 //*****************************************************************************
 //*****************************************************************************
@@ -48,7 +49,6 @@ class WalletParam
 public:
     WalletParam()
         : txVersion(1)
-        , COIN(0)
         , minTxFee(10000)
         , feePerByte(200)
         , dustAmount(0)
@@ -105,7 +105,7 @@ public:
     char                       scriptPrefix[8];
     char                       secretPrefix[8];
     uint32_t                   txVersion;
-    uint64_t                   COIN;
+    uint256                    COIN;
     uint64_t                   minTxFee;
     uint64_t                   feePerByte;
     uint64_t                   dustAmount;

@@ -509,7 +509,7 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
             return true;
         }
 
-        if (commonAmount * TransactionDescr::COIN < samount)
+        if (commonAmount * sconn->COIN < samount)
         {
             LOG() << "transaction rejected, amount from utxo items <" << commonAmount
                   << "> less than required <" << samount.getdouble() << "> " << __FUNCTION__;
@@ -517,9 +517,9 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
         }
 
         // check dust amount
-        if (sconn->isDustAmount(samount.getdouble() / TransactionDescr::COIN) ||
-            sconn->isDustAmount(commonAmount - (samount.getdouble() / TransactionDescr::COIN)) ||
-            dconn->isDustAmount(damount.getdouble() / TransactionDescr::COIN))
+        if (sconn->isDustAmount((samount / sconn->COIN).getdouble()) ||
+            sconn->isDustAmount(commonAmount - (samount / sconn->COIN).getdouble()) ||
+            dconn->isDustAmount((damount / sconn->COIN).getdouble()))
         {
             LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
             return true;
@@ -536,7 +536,7 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
     else if(dconn->currency != "ETH")
     {
         // check dust amount
-        if (dconn->isDustAmount(damount.getdouble() / TransactionDescr::COIN))
+        if (dconn->isDustAmount((damount / dconn->COIN).getdouble()))
         {
             LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
             return true;
@@ -889,7 +889,7 @@ bool Session::Impl::processTransactionAccepting(XBridgePacketPtr packet) const
 
     if(conn->currency != "ETH")
     {
-        if (commonAmount * TransactionDescr::COIN < samount)
+        if (commonAmount * conn->COIN < samount)
         {
             LOG() << "transaction rejected, amount from utxo items <" << commonAmount
                   << "> less than required <" << samount.getdouble() << "> " << __FUNCTION__;
@@ -897,8 +897,8 @@ bool Session::Impl::processTransactionAccepting(XBridgePacketPtr packet) const
         }
 
         // check dust amount
-        if (conn->isDustAmount(samount.getdouble() / TransactionDescr::COIN) ||
-            conn->isDustAmount(commonAmount - (samount.getdouble() / TransactionDescr::COIN)))
+        if (conn->isDustAmount(samount.divide(conn->COIN)) ||
+            conn->isDustAmount(commonAmount - samount.divide(conn->COIN)))
         {
             LOG() << "reject dust amount transaction " << id.ToString() << " " << __FUNCTION__;
             return true;
@@ -1667,7 +1667,7 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
     }
     else
     {
-        double outAmount = xtx->fromAmount.getdouble() / TransactionDescr::COIN;
+        double outAmount = xtx->fromAmount.divide(connFrom->COIN);
 
         double fee1      = 0;
         double fee2      = connFrom->minTxFee2(1, 1);
@@ -2039,7 +2039,7 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
     }
     else
     {
-        double outAmount = xtx->fromAmount.getdouble() / TransactionDescr::COIN;
+        double outAmount = xtx->fromAmount.divide(connFrom->COIN);
 
         double fee1      = 0;
         double fee2      = connFrom->minTxFee2(1, 1);
@@ -2556,7 +2556,7 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
 
             // outputs
             {
-                double outAmount = xtx->toAmount.getdouble()/TransactionDescr::COIN;
+                double outAmount = xtx->toAmount.divide(conn->COIN);
                 outputs.push_back(std::make_pair(conn->fromXAddr(xtx->to), outAmount));
             }
 
@@ -2844,7 +2844,7 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
 
             // outputs
             {
-                double outAmount = xtx->toAmount.getdouble()/TransactionDescr::COIN;
+                double outAmount = xtx->toAmount.divide(conn->COIN);
                 outputs.push_back(std::make_pair(conn->fromXAddr(xtx->to), outAmount));
             }
 

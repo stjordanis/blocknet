@@ -1085,7 +1085,7 @@ bool BtcWalletConnector::init()
         }
     }
 
-    minTxFee   = std::max(static_cast<uint64_t>(info.relayFee * COIN), minTxFee);
+    minTxFee   = std::max((info.relayFee * COIN).Get64(), minTxFee);
     feePerByte = std::max(static_cast<uint64_t>(minTxFee / 1024),      feePerByte);
     dustAmount = minTxFee;
 
@@ -1273,7 +1273,7 @@ bool BtcWalletConnector::verifyMessage(const std::string & address,
 //******************************************************************************
 bool BtcWalletConnector::isDustAmount(const double & amount) const
 {
-    return (static_cast<uint64_t>(amount * COIN) < dustAmount);
+    return ((amount * COIN).Get64() < dustAmount);
 }
 
 //******************************************************************************
@@ -1327,7 +1327,7 @@ double BtcWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t o
     {
         fee = minTxFee;
     }
-    return (double)fee / COIN;
+    return (double)fee / COIN.Get64();
 }
 
 //******************************************************************************
@@ -1341,7 +1341,7 @@ double BtcWalletConnector::minTxFee2(const uint32_t inputCount, const uint32_t o
     {
         fee = minTxFee;
     }
-    return (double)fee / COIN;
+    return (double)fee / COIN.Get64();
 }
 
 //******************************************************************************
@@ -1521,7 +1521,7 @@ xbridge::CTransactionPtr createTransaction()
 //******************************************************************************
 xbridge::CTransactionPtr createTransaction(const std::vector<std::pair<std::string, int> > & inputs,
                                            const std::vector<std::pair<std::string, double> >  & outputs,
-                                           const uint64_t COIN,
+                                           const uint256 COIN,
                                            const uint32_t txversion,
                                            const uint32_t lockTime)
 {
@@ -1544,7 +1544,7 @@ xbridge::CTransactionPtr createTransaction(const std::vector<std::pair<std::stri
     for (const std::pair<std::string, double> & out : outputs)
     {
         CScript scr = GetScriptForDestination(xbridge::XBitcoinAddress(out.first).Get());
-        tx->vout.push_back(CTxOut(out.second * COIN, scr));
+        tx->vout.push_back(CTxOut((out.second * COIN).Get64(), scr));
     }
 
     return tx;

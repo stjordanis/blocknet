@@ -733,12 +733,7 @@ std::string EthWalletConnector::scriptIdToString(const std::vector<unsigned char
 //******************************************************************************
 double EthWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t outputCount) const
 {
-    uint64_t fee = (148*inputCount + 34*outputCount + 10) * feePerByte;
-    if (fee < minTxFee)
-    {
-        fee = minTxFee;
-    }
-    return (double)fee / COIN;
+    return 0;
 }
 
 //******************************************************************************
@@ -747,12 +742,7 @@ double EthWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t o
 //******************************************************************************
 double EthWalletConnector::minTxFee2(const uint32_t inputCount, const uint32_t outputCount) const
 {
-    uint64_t fee = (180*inputCount + 34*outputCount + 10) * feePerByte;
-    if (fee < minTxFee)
-    {
-        fee = minTxFee;
-    }
-    return (double)fee / COIN;
+    return 0;
 }
 
 //******************************************************************************
