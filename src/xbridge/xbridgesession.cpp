@@ -509,7 +509,7 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
             return true;
         }
 
-        if (commonAmount * sconn->COIN < samount)
+        if (sconn->COIN.multiply(commonAmount) < samount)
         {
             LOG() << "transaction rejected, amount from utxo items <" << commonAmount
                   << "> less than required <" << samount.getdouble() << "> " << __FUNCTION__;
@@ -889,7 +889,7 @@ bool Session::Impl::processTransactionAccepting(XBridgePacketPtr packet) const
 
     if(conn->currency != "ETH")
     {
-        if (commonAmount * conn->COIN < samount)
+        if (conn->COIN.multiply(commonAmount) < samount)
         {
             LOG() << "transaction rejected, amount from utxo items <" << commonAmount
                   << "> less than required <" << samount.getdouble() << "> " << __FUNCTION__;

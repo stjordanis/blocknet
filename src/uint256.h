@@ -111,6 +111,14 @@ public:
         return result;
     }
 
+    base_uint multiply(const double b, const uint64_t& precision = 1000000) const
+    {
+        uint64_t multipliedB = uint64_t(b * precision);
+        base_uint result = (*this * base_uint(multipliedB)) / precision;
+
+        return result;
+    }
+
     base_uint& operator=(uint64_t b)
     {
         pn[0] = (unsigned int)b;

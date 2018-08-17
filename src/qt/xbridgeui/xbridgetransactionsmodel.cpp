@@ -211,8 +211,8 @@ xbridge::Error XBridgeTransactionsModel::newTransaction(const std::string & from
 
     uint256 id, blockHash;
     const auto code = xapp.sendXBridgeTransaction
-            (from, fromCurrency, uint256(fromAmount * connFrom->COIN),
-             to,   toCurrency,   uint256(toAmount * connTo->COIN),
+            (from, fromCurrency, connFrom->COIN.multiply(fromAmount),
+             to,   toCurrency,   connTo->COIN.multiply(toAmount),
              id, blockHash);
 
     return code;

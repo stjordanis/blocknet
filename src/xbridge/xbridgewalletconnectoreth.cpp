@@ -181,13 +181,13 @@ bool getBalance(const std::string & rpcip,
 {
     try
     {
-        LOG() << "rpc call <eth_accounts>";
+        LOG() << "rpc call <eth_getBalance>";
 
         Array params;
-        params.emplace_back(account.ToString());
+        params.emplace_back(as0xString(account));
         params.emplace_back("latest");
         Object reply = CallRPC(rpcip, rpcport,
-                               "eth_accounts", params);
+                               "eth_getBalance", params);
 
         // Parse reply
         const Value & result = find_value(reply, "result");
@@ -639,6 +639,34 @@ bool EthWalletConnector::requestAddressBook(std::vector<wallet::AddressBookEntry
     entries.push_back(std::make_pair("default", accounts));
 
     return true;
+}
+
+double EthWalletConnector::getWalletBalance(const string& addr) const
+{
+    uint256 balance;
+
+    if(addr.empty())
+    {
+        std::vector<std::string> accounts;
+        if(!rpc::getAccounts(m_ip, m_port, accounts))
+            return 0;
+
+        for(const std::string & account : accounts)
+        {
+            uint256 accountBalance;
+            if(!rpc::getBalance(m_ip, m_port, uint160(account), accountBalance))
+                return 0;
+
+            balance += accountBalance;
+        }
+    }
+    else
+    {
+        if(!rpc::getBalance(m_ip, m_port, uint160(addr), balance))
+            return 0;
+    }
+
+    return balance.divide(COIN);
 }
 
 bool EthWalletConnector::getInfo(rpc::WalletInfo& info) const

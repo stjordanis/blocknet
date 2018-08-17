@@ -1085,7 +1085,7 @@ bool BtcWalletConnector::init()
         }
     }
 
-    minTxFee   = std::max((info.relayFee * COIN).Get64(), minTxFee);
+    minTxFee   = std::max(COIN.multiply(info.relayFee).Get64(), minTxFee);
     feePerByte = std::max(static_cast<uint64_t>(minTxFee / 1024),      feePerByte);
     dustAmount = minTxFee;
 
@@ -1273,7 +1273,7 @@ bool BtcWalletConnector::verifyMessage(const std::string & address,
 //******************************************************************************
 bool BtcWalletConnector::isDustAmount(const double & amount) const
 {
-    return ((amount * COIN).Get64() < dustAmount);
+    return (COIN.multiply(amount).Get64() < dustAmount);
 }
 
 //******************************************************************************
