@@ -988,10 +988,10 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
 
     id = Hash(from.begin(), from.end(),
               fromCurrency.begin(), fromCurrency.end(),
-              BEGIN(fromAmount), END(fromAmount),
+              fromAmount.begin(), fromAmount.end(),
               to.begin(), to.end(),
               toCurrency.begin(), toCurrency.end(),
-              BEGIN(toAmount), END(toAmount),
+              toAmount.begin(), toAmount.end(),
               BEGIN(timestampValue), END(timestampValue),
               blockHash.begin(), blockHash.end(),
               firstUtxoSig.begin(), firstUtxoSig.end());
