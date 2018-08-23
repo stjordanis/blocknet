@@ -984,8 +984,6 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
 
     blockHash = chainActive.Tip()->pprev->GetBlockHash();
 
-    std::vector<unsigned char> firstUtxoSig = outputsForUse.empty() ? std::vector<unsigned char>() : outputsForUse.at(0).signature;
-
     id = Hash(from.begin(), from.end(),
               fromCurrency.begin(), fromCurrency.end(),
               fromAmount.begin(), fromAmount.end(),
@@ -993,8 +991,7 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
               toCurrency.begin(), toCurrency.end(),
               toAmount.begin(), toAmount.end(),
               BEGIN(timestampValue), END(timestampValue),
-              blockHash.begin(), blockHash.end(),
-              firstUtxoSig.begin(), firstUtxoSig.end());
+              blockHash.begin(), blockHash.end());
 
     TransactionDescrPtr ptr(new TransactionDescr);
     ptr->created      = timestamp;
@@ -1086,7 +1083,7 @@ bool App::Impl::sendPendingTransaction(const TransactionDescrPtr & ptr)
         // 2x
         // 20 bytes - address
         //  8 bytes - currency
-        //  8 bytes - amount
+        // 32 bytes - amount
         // 32 bytes - hash of block when tr created
         ptr->packet->append(ptr->id.begin(), 32);
         ptr->packet->append(ptr->from);

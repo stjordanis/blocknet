@@ -552,8 +552,6 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
     std::string saddrStr = sconn->fromXAddr(saddr);
     std::string daddrStr = dconn->fromXAddr(daddr);
 
-    std::vector<unsigned char> firstUtxoSig = utxoItems.empty() ? std::vector<unsigned char>() : utxoItems.at(0).signature;
-
     uint256 checkId = Hash(saddrStr.begin(), saddrStr.end(),
                            scurrency.begin(), scurrency.end(),
                            samount.begin(), samount.end(),
@@ -561,13 +559,12 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
                            dcurrency.begin(), dcurrency.end(),
                            damount.begin(), damount.end(),
                            BEGIN(timestamp), END(timestamp),
-                           blockHash.begin(), blockHash.end(),
-                           firstUtxoSig.begin(), firstUtxoSig.end());
+                           blockHash.begin(), blockHash.end());
     if(checkId != id)
     {
         WARN() << "id from packet is differs from body hash:" << std::endl
                << "packet id: " << id.GetHex() << std::endl
-               << "body hash:" << checkId.GetHex() << std::endl
+               << "body hash: " << checkId.GetHex() << std::endl
                << __FUNCTION__;
 
         return true;
