@@ -543,14 +543,16 @@ bool Session::Impl::processTransaction(XBridgePacketPtr packet) const
         }
     }
 
-    LOG() << "received transaction " << id.GetHex() << std::endl
-          << "    from " << HexStr(saddr) << std::endl
-          << "             " << scurrency << " : " << samount.getdouble() << std::endl
-          << "    to   " << HexStr(daddr) << std::endl
-          << "             " << dcurrency << " : " << damount.getdouble() << std::endl;
-
     std::string saddrStr = sconn->fromXAddr(saddr);
     std::string daddrStr = dconn->fromXAddr(daddr);
+
+    LOG() << "received transaction " << id.ToString() << std::endl
+          << "from " << saddrStr << std::endl
+          << scurrency << " : " << samount.divide(sconn->COIN) << std::endl
+          << "to   " << daddrStr << std::endl
+          << dcurrency << " : " << damount.divide(dconn->COIN) << std::endl
+          << "blockhash " << blockHash.ToString() << std::endl
+          << "timestamtp " << timestamp;
 
     uint256 checkId = Hash(saddrStr.begin(), saddrStr.end(),
                            scurrency.begin(), scurrency.end(),
