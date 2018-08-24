@@ -122,7 +122,7 @@ enum XBridgeCommand
     //    uint256 block hash
     xbcPendingTransaction = 4,
     //
-    // xbcTransactionAccepting (212 bytes min)
+    // xbcTransactionAccepting (176 bytes min)
     // client accepting opened tx
     //    uint160  hub address
     //    uint256  client transaction id
@@ -152,7 +152,7 @@ enum XBridgeCommand
     xbcTransactionHoldApply = 7,
 
     //
-    // xbcTransactionInit (192 bytes min)
+    // xbcTransactionInit (192 bytes)
     //    uint160 client address
     //    uint160 hub address
     //    uint256 hub transaction id

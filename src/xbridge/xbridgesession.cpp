@@ -776,11 +776,11 @@ bool Session::Impl::processTransactionAccepting(XBridgePacketPtr packet) const
         return true;
     }
 
-    // size must be >= 212 bytes
-    if (packet->size() < 212)
+    // size must be >= 176 bytes
+    if (packet->size() < 176)
     {
         ERR() << "invalid packet size for xbcTransactionAccepting "
-              << "need min 212 bytes, received " << packet->size() << " "
+              << "need min 176 bytes, received " << packet->size() << " "
               << __FUNCTION__;
         return false;
     }
