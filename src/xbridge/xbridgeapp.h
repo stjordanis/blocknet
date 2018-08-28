@@ -334,7 +334,7 @@ private:
      */
     bool selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEntry> &outputs, const WalletConnectorPtr &connFrom,
                      const uint256& requiredAmount, std::vector<wallet::UtxoEntry> &outputsForUse,
-                     uint64_t &utxoAmount, uint64_t &fee1, uint64_t &fee2) const;
+                     uint256 &utxoAmount, uint256& fee1, uint256& fee2) const;
 };
 
 } // namespace xbridge
