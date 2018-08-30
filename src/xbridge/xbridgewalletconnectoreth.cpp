@@ -237,8 +237,8 @@ bool sendTransaction(const std::string & rpcip,
         Object transaction;
         transaction.push_back(Pair("from", as0xString(from)));
         transaction.push_back(Pair("to", as0xString(to)));
-        transaction.push_back(Pair("gas", as0xString(gas)));
-        transaction.push_back(Pair("value", as0xString(value)));
+        transaction.push_back(Pair("gas", as0xStringNumber(gas)));
+        transaction.push_back(Pair("value", as0xStringNumber(value)));
         transaction.push_back(Pair("data", as0xString(data)));
 
         params.push_back(transaction);
@@ -429,11 +429,10 @@ bool getEstimateGas(const std::string & rpcip,
         Object transaction;
         transaction.push_back(Pair("from", as0xString(from)));
         transaction.push_back(Pair("to", as0xString(to)));
-        transaction.push_back(Pair("value", as0xString(value)));
+        transaction.push_back(Pair("value", as0xStringNumber(value)));
         transaction.push_back(Pair("data", as0xString(data)));
 
         params.push_back(transaction);
-        params.push_back("latest");
 
         Object reply = CallRPC(rpcip, rpcport,
                                "eth_estimateGas", params);
@@ -885,7 +884,7 @@ bool EthWalletConnector::getEstimateGas(const bytes & myAddress,
                                         uint256 & estimateGas) const
 {
     if(!rpc::getEstimateGas(m_ip, m_port,
-                            uint160(myAddress), uint160(contractAddress),
+                            uint160(HexStr(myAddress)), uint160(contractAddress),
                             value, data,
                             estimateGas))
     {
@@ -939,7 +938,7 @@ bool EthWalletConnector::callContractMethod(const bytes & myAddress,
                                             uint256 & transactionHash) const
 {
     if(!rpc::sendTransaction(m_ip, m_port,
-                             uint160(myAddress), uint160(contractAddress),
+                             uint160(HexStr(myAddress)), uint160(contractAddress),
                              gas, value, data,
                              transactionHash))
     {

@@ -7,6 +7,7 @@
 
 #include "uint256.h"
 #include "hash.h"
+#include "utilstrencodings.h"
 
 using byte = unsigned char;
 using bytes = std::vector<byte>;
@@ -31,25 +32,41 @@ inline std::string asString(const bytes & value)
     return std::string((const char*)value.data(), (const char*)(value.data() + value.size()));
 }
 
-inline std::string as0xString(const bytes & value)
+inline std::string as0xString(const std::string & value)
 {
     std::string result("0x");
-    std::move((const char*)value.data(), (const char*)(value.data() + value.size()), std::back_inserter(result));
+    result.append(std::move(value));
     return result;
+}
+
+inline std::string as0xString(const bytes & value)
+{
+    return as0xString(HexStr(value));
 }
 
 inline std::string as0xString(const uint256 & value)
 {
-    std::string result("0x");
-    result.append(std::move(value.ToString()));
-    return result;
+    return as0xString(value.ToString());
+}
+
+inline std::string as0xStringNumber(const uint256 & value)
+{
+    std::string number = value.ToString();
+
+    for(auto iter = number.begin(); iter != number.end();)
+    {
+        if(*iter == '0')
+            iter = number.erase(iter);
+        else
+            break;
+    }
+
+    return as0xString(number);
 }
 
 inline std::string as0xString(const uint160 & value)
 {
-    std::string result("0x");
-    result.append(std::move(value.ToString()));
-    return result;
+    return as0xString(value.ToString());
 }
 
 // Concatenate the contents of a container onto a vector
