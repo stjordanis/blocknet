@@ -879,7 +879,7 @@ bool EthWalletConnector::getGasPrice(uint256 & gasPrice) const
     return true;
 }
 
-bool EthWalletConnector::getEstimateGas(const std::string & myAddress,
+bool EthWalletConnector::getEstimateGas(const bytes & myAddress,
                                         const bytes & data,
                                         const uint256 & value,
                                         uint256 & estimateGas) const
@@ -932,7 +932,7 @@ bytes EthWalletConnector::createRedeemData(const bytes & hashedSecret, const byt
     return data;
 }
 
-bool EthWalletConnector::callContractMethod(const std::string & myAddress,
+bool EthWalletConnector::callContractMethod(const bytes & myAddress,
                                             const bytes & data,
                                             const uint256 & value,
                                             const uint256 & gas,
@@ -983,10 +983,10 @@ bool splitEventParams(const std::string & paramsString, std::vector<std::string>
     return true;
 }
 
-bool EthWalletConnector::isInitiated(const uint256& filterId,
-                                     const bytes& hashedSecret,
-                                     const bytes& initiatorAddress,
-                                     const bytes& responderAddress,
+bool EthWalletConnector::isInitiated(const uint256 & filterId,
+                                     const bytes & hashedSecret,
+                                     bytes & initiatorAddress,
+                                     const bytes & responderAddress,
                                      const uint256 value) const
 {
     std::string initiatedEventSignature = asString(EthEncoder::encodeSig("Initiated(bytes20,address,address,uint256,uint256)"));
@@ -1018,10 +1018,12 @@ bool EthWalletConnector::isInitiated(const uint256& filterId,
             }
 
             if(params.at(0) == asString(hashedSecret) &&
-               params.at(1) == asString(initiatorAddress) &&
                params.at(2) == asString(responderAddress) &&
                params.at(3) == value.ToString())
+            {
+                initiatorAddress = asBytes(params.at(1));
                 return true;
+            }
         }
     }
 
@@ -1029,9 +1031,9 @@ bool EthWalletConnector::isInitiated(const uint256& filterId,
 }
 
 bool EthWalletConnector::isResponded(const uint256 & filterId,
-                                     const bytes& hashedSecret,
-                                     const bytes& initiatorAddress,
-                                     const bytes& responderAddress,
+                                     const bytes & hashedSecret,
+                                     const bytes & initiatorAddress,
+                                     bytes & responderAddress,
                                      const uint256 value) const
 {
     std::string respondedEventSignature = asString(EthEncoder::encodeSig("Responded(bytes20,address,address,uint256,uint256)"));
@@ -1064,9 +1066,11 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
 
             if(params.at(0) == asString(hashedSecret) &&
                params.at(1) == asString(initiatorAddress) &&
-               params.at(2) == asString(responderAddress) &&
                params.at(3) == value.ToString())
+            {
+                responderAddress = asBytes(params.at(2));
                 return true;
+            }
         }
     }
 
@@ -1074,8 +1078,8 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
 }
 
 bool EthWalletConnector::isRefunded(const uint256 & filterId,
-                                    const bytes& hashedSecret,
-                                    const bytes& recipientAddress,
+                                    const bytes & hashedSecret,
+                                    const bytes & recipientAddress,
                                     const uint256 value) const
 {
     std::string refundedEventSignature = asString(EthEncoder::encodeSig("Refunded(bytes20,address,uint256)"));
@@ -1117,8 +1121,8 @@ bool EthWalletConnector::isRefunded(const uint256 & filterId,
 }
 
 bool EthWalletConnector::isRedeemed(const uint256 & filterId,
-                                    const bytes& hashedSecret,
-                                    const bytes& recipientAddress,
+                                    const bytes & hashedSecret,
+                                    const bytes & recipientAddress,
                                     const uint256 value) const
 {
     std::string redeemedEventSignature = asString(EthEncoder::encodeSig("Redeemed(bytes20,address,uint256)"));

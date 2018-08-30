@@ -1142,9 +1142,8 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
         ptr = m_p->m_transactions[id];
     }
 
-    //as we accept we must be opposite from\to
-    WalletConnectorPtr connFrom = connectorByCurrency(ptr->toCurrency);
-    WalletConnectorPtr connTo   = connectorByCurrency(ptr->fromCurrency);
+    WalletConnectorPtr connFrom = connectorByCurrency(ptr->fromCurrency);
+    WalletConnectorPtr connTo   = connectorByCurrency(ptr->toCurrency);
     if (!connFrom || !connTo)
     {
         // no session

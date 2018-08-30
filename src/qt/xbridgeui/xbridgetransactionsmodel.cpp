@@ -241,6 +241,10 @@ xbridge::Error XBridgeTransactionsModel::newTransactionFromPending(const uint256
             xbridge::WalletConnectorPtr connTo   = xapp.connectorByCurrency(d->toCurrency);
             if (!connFrom || !connTo)
             {
+                //reverse swap
+                std::swap(d->fromCurrency, d->toCurrency);
+                std::swap(d->fromAmount, d->toAmount);
+
                 return xbridge::NO_SESSION;
             }
 
@@ -253,6 +257,10 @@ xbridge::Error XBridgeTransactionsModel::newTransactionFromPending(const uint256
             const auto error = xbridge::App::instance().acceptXBridgeTransaction(d->id, from, to);
             if (error != xbridge::SUCCESS)
             {
+                //reverse swap
+                std::swap(d->fromCurrency, d->toCurrency);
+                std::swap(d->fromAmount, d->toAmount);
+
                 return error;
             }
 

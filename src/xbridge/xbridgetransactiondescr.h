@@ -62,6 +62,9 @@ struct TransactionDescr
     std::string                toCurrency;
     uint256                    toAmount;
 
+    // opponent address
+    std::vector<unsigned char> dest;
+
     uint32_t                   lockTimeTx1;
     uint32_t                   lockTimeTx2;
 

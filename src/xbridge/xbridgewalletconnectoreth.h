@@ -92,7 +92,7 @@ public:
     bool getAccounts(std::vector<std::string> & accounts);
     bool getBalance(const std::string & account, uint256 & balance) const;
     bool getGasPrice(uint256 & gasPrice) const;
-    bool getEstimateGas(const std::string & myAddress,
+    bool getEstimateGas(const bytes & myAddress,
                         const bytes & data,
                         const uint256 & value,
                         uint256 & estimateGas) const;
@@ -108,7 +108,7 @@ public:
     bytes createRefundData(const bytes & hashedSecret) const;
     bytes createRedeemData(const bytes & hashedSecret, const bytes & secret) const;
 
-    bool callContractMethod(const std::string & myAddress,
+    bool callContractMethod(const bytes & myAddress,
                             const bytes & data,
                             const uint256 & value,
                             const uint256 & gas,
@@ -117,8 +117,8 @@ public:
     bool installFilter(const bytes & hashedSecret, uint256 & filterId) const;
     bool deleteFilter(const uint256 & filterId) const;
 
-    bool isInitiated(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, const bytes & responderAddress, const uint256 value) const;
-    bool isResponded(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, const bytes & responderAddress, const uint256 value) const;
+    bool isInitiated(const uint256 & filterId, const bytes & hashedSecret, bytes& initiatorAddress, const bytes & responderAddress, const uint256 value) const;
+    bool isResponded(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, bytes & responderAddress, const uint256 value) const;
     bool isRefunded(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value) const;
     bool isRedeemed(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value) const;
 
