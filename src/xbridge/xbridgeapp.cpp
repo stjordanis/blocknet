@@ -1012,8 +1012,9 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
     assert(ptr->mPubKey.size() == 33 && "bad pubkey size");
 
     // x key
-    connTo->newKeyPair(ptr->xPubKey, ptr->xPrivKey);
-    assert(ptr->xPubKey.size() == 33 && "bad pubkey size");
+    std::vector<unsigned char> xPrivKey;
+    connTo->newKeyPair(ptr->xSecret, xPrivKey);
+    assert(ptr->xSecret.size() == 33 && "bad pubkey size");
 
 #ifdef LOG_KEYPAIR_VALUES
     LOG() << "generated M keypair " << std::endl <<
@@ -1021,9 +1022,8 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
              "    pub id " << HexStr(connTo->getKeyId(ptr->mPubKey)) << std::endl <<
              "    priv   " << HexStr(ptr->mPrivKey);
     LOG() << "generated X keypair " << std::endl <<
-             "    pub    " << HexStr(ptr->xPubKey) << std::endl <<
-             "    pub id " << HexStr(connTo->getKeyId(ptr->xPubKey)) << std::endl <<
-             "    priv   " << HexStr(ptr->xPrivKey);
+             "    secret " << HexStr(ptr->xSecret) << std::endl <<
+             "    hash   " << HexStr(connTo->getKeyId(ptr->xSecret)) << std::endl;
 #endif
 
     // notify ui about new order

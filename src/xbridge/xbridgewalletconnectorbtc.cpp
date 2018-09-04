@@ -1350,9 +1350,9 @@ double BtcWalletConnector::minTxFee2(const uint32_t inputCount, const uint32_t o
 // isGood == true id depost tx is OK
 //******************************************************************************
 bool BtcWalletConnector::checkTransaction(const std::string & depositTxId,
-                                                 const std::string & /*destination*/,
-                                                 const uint64_t & /*amount*/,
-                                                 bool & isGood)
+                                          const std::string & /*destination*/,
+                                          const uint64_t & /*amount*/,
+                                          bool & isGood)
 {
     isGood  = false;
 

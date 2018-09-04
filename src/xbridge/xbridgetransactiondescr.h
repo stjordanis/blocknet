@@ -63,7 +63,7 @@ struct TransactionDescr
     uint256                    toAmount;
 
     // opponent address
-    std::vector<unsigned char> dest;
+    std::vector<unsigned char> oAddress;
 
     uint32_t                   lockTimeTx1;
     uint32_t                   lockTimeTx2;
@@ -104,8 +104,7 @@ struct TransactionDescr
     std::vector<unsigned char>    oPubKey;
 
     // X key (secret data)
-    std::vector<unsigned char>    xPubKey;
-    std::vector<unsigned char>    xPrivKey;
+    std::vector<unsigned char>    xSecret;
     std::vector<unsigned char>    xHash;
 
     // service node pub key
@@ -244,8 +243,7 @@ private:
         mPrivKey      = d.mPrivKey;
 
         // X key
-        xPubKey      = d.xPubKey;
-        xPrivKey      = d.xPrivKey;
+        xSecret      = d.xSecret;
 
         hubAddress     = d.hubAddress;
         confirmAddress = d.confirmAddress;

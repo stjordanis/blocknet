@@ -90,7 +90,7 @@ public:
                                   std::string & /*rawTx*/) { return false; }
 
     bool getAccounts(std::vector<std::string> & accounts);
-    bool getBalance(const std::string & account, uint256 & balance) const;
+    bool getBalance(const bytes & account, uint256 & balance) const;
     bool getGasPrice(uint256 & gasPrice) const;
     bool getEstimateGas(const bytes & myAddress,
                         const bytes & data,

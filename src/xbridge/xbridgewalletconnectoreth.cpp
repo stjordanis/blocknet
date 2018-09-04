@@ -856,9 +856,9 @@ bool EthWalletConnector::getAccounts(std::vector<std::string> & accounts)
     return true;
 }
 
-bool EthWalletConnector::getBalance(const std::string & account, uint256 & balance) const
+bool EthWalletConnector::getBalance(const bytes & account, uint256 & balance) const
 {
-    if(!rpc::getBalance(m_ip, m_port, uint160(account), balance))
+    if(!rpc::getBalance(m_ip, m_port, uint160(HexStr(account)), balance))
     {
         LOG() << "can't get balance" << __FUNCTION__;
         return false;

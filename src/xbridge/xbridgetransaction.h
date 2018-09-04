@@ -162,6 +162,9 @@ public:
     uint256                    a_datatxid() const;
     std::vector<unsigned char> a_pk1() const;
 
+    std::vector<unsigned char> a_xHash() const { return m_a_xHash; }
+    void set_a_xHash(const std::vector<unsigned char> & hash){ m_a_xHash = hash; }
+
     // uint256                    secondId() const;
     std::vector<unsigned char> b_address() const;
     std::vector<unsigned char> b_destination() const;
@@ -176,6 +179,9 @@ public:
 
     // uint256                    b_datatxid() const;
     std::vector<unsigned char> b_pk1() const;
+
+    std::vector<unsigned char> b_xHash() const { return m_b_xHash; }
+    void set_b_xHash(const std::vector<unsigned char> & hash){ m_b_xHash = hash; }
 
     bool tryJoin(const TransactionPtr other);
 
@@ -223,6 +229,9 @@ private:
 
     uint256                    m_a_datatxid;
     uint256                    m_b_datatxid;
+
+    std::vector<unsigned char> m_a_xHash;
+    std::vector<unsigned char> m_b_xHash;
 };
 
 } // namespace xbridge
