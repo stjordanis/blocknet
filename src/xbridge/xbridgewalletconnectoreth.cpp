@@ -278,7 +278,7 @@ bool sendTransaction(const std::string & rpcip,
 //*****************************************************************************
 bool getTransactionByHash(const std::string & rpcip,
                           const std::string & rpcport,
-                          const std::string & txHash,
+                          const uint256 & txHash,
                           uint256 & txBlockNumber)
 {
     try
@@ -286,7 +286,7 @@ bool getTransactionByHash(const std::string & rpcip,
         LOG() << "rpc call <eth_getTransactionByHash>";
 
         Array params;
-        params.push_back(txHash);
+        params.push_back(as0xString(txHash));
         Object reply = CallRPC(rpcip, rpcport,
                                "eth_getTransactionByHash", params);
 
@@ -469,8 +469,8 @@ bool getEstimateGas(const std::string & rpcip,
 //*****************************************************************************
 bool newFilter(const std::string & rpcip,
                const std::string & rpcport,
-               const uint256 & address,
-               const bytes & topic,
+               const uint160 & address,
+               const std::string & topic,
                uint256 & filterId)
 {
     try
@@ -480,10 +480,10 @@ bool newFilter(const std::string & rpcip,
         Array params;
 
         Object filter;
-        filter.push_back(Pair("fromBlock", "latest"));
+        filter.push_back(Pair("fromBlock", "0x3C9EDB"));
         filter.push_back(Pair("toBlock", "latest"));
         filter.push_back(Pair("address", as0xString(address)));
-        filter.push_back(Pair("topics", Array{as0xString(topic)}));
+        filter.push_back(Pair("topics", Array{Value(), as0xString(topic)}));
 
         params.push_back(filter);
 
@@ -528,13 +528,13 @@ bool getFilterChanges(const std::string & rpcip,
 {
     try
     {
-        LOG() << "rpc call <eth_newFilter>";
+        LOG() << "rpc call <eth_getFilterChanges>";
 
         Array params;
-        params.push_back(as0xString(filterId));
+        params.push_back(as0xStringNumber(filterId));
 
         Object reply = CallRPC(rpcip, rpcport,
-                               "eth_getFilterChanges", params);
+                               "eth_getFilterLogs", params);
 
         // Parse reply
         const Value & result = find_value(reply, "result");
@@ -785,25 +785,25 @@ bool EthWalletConnector::checkTransaction(const std::string & depositTxId,
 {
     isGood  = false;
 
-    uint256 txBlockNumber;
-    if (!rpc::getTransactionByHash(m_ip, m_port, depositTxId, txBlockNumber))
-    {
-        LOG() << "no tx found " << depositTxId << " " << __FUNCTION__;
-        return false;
-    }
+//    uint256 txBlockNumber;
+//    if (!rpc::getTransactionByHash(m_ip, m_port, uint256(depositTxId), txBlockNumber))
+//    {
+//        LOG() << "no tx found " << depositTxId << " " << __FUNCTION__;
+//        return false;
+//    }
 
-    uint256 lastBlockNumber;
-    if (!rpc::getBlockNumber(m_ip, m_port, lastBlockNumber))
-    {
-        LOG() << "can't get last block number " << depositTxId << " " << __FUNCTION__;
-        return false;
-    }
+//    uint256 lastBlockNumber;
+//    if (!rpc::getBlockNumber(m_ip, m_port, lastBlockNumber))
+//    {
+//        LOG() << "can't get last block number " << depositTxId << " " << __FUNCTION__;
+//        return false;
+//    }
 
-    if (requiredConfirmations > 0 && requiredConfirmations > (lastBlockNumber - txBlockNumber))
-    {
-        LOG() << "tx " << depositTxId << " unconfirmed, need " << requiredConfirmations << " " << __FUNCTION__;
-        return false;
-    }
+//    if (requiredConfirmations > 0 && requiredConfirmations > (lastBlockNumber - txBlockNumber))
+//    {
+//        LOG() << "tx " << depositTxId << " unconfirmed, need " << requiredConfirmations << " " << __FUNCTION__;
+//        return false;
+//    }
 
     // TODO check amount in tx
 
@@ -895,12 +895,32 @@ bool EthWalletConnector::getEstimateGas(const bytes & myAddress,
     return true;
 }
 
+bool splitEventParams(const std::string & paramsString, std::vector<std::string> & paramsVector)
+{
+    const unsigned int paramSize = 64;
+
+    if(paramsString.size() < paramSize)
+        return false;
+
+    if((paramsString.size() - 2) % paramSize != 0)
+        return false;
+
+    //first 2 chars is 0x, so skip it
+    for(unsigned int i = 2; i < paramsString.size(); i += paramSize)
+        paramsVector.emplace_back(paramsString.substr(i, paramSize));
+
+    return true;
+}
+
 bytes EthWalletConnector::createInitiateData(const bytes & hashedSecret,
                                              const bytes & responderAddress,
                                              const uint256 & refundDuration) const
 {
     bytes initiateMethodSignature = EthEncoder::encodeSig("initiate(bytes20,address,uint256)");
-    bytes data = initiateMethodSignature + hashedSecret + responderAddress + EthEncoder::encode(refundDuration);
+    bytes data = initiateMethodSignature +
+            EthEncoder::encode(hashedSecret, false) +
+            EthEncoder::encode(responderAddress) +
+            EthEncoder::encode(refundDuration);
 
     return data;
 }
@@ -910,7 +930,10 @@ bytes EthWalletConnector::createRespondData(const bytes & hashedSecret,
                                             const uint256 & refundDuration) const
 {
     bytes respondMethodSignature = EthEncoder::encodeSig("respond(bytes20,address,uint256)");
-    bytes data = respondMethodSignature + hashedSecret + initiatorAddress + EthEncoder::encode(refundDuration);
+    bytes data = respondMethodSignature +
+            EthEncoder::encode(hashedSecret, false) +
+            EthEncoder::encode(initiatorAddress) +
+            EthEncoder::encode(refundDuration);
 
     return data;
 }
@@ -918,7 +941,8 @@ bytes EthWalletConnector::createRespondData(const bytes & hashedSecret,
 bytes EthWalletConnector::createRefundData(const bytes & hashedSecret) const
 {
     bytes refundMethodSignature = EthEncoder::encodeSig("refund(bytes20)");
-    bytes data = refundMethodSignature + hashedSecret;
+    bytes data = refundMethodSignature +
+            EthEncoder::encode(hashedSecret, false);
 
     return data;
 }
@@ -926,7 +950,11 @@ bytes EthWalletConnector::createRefundData(const bytes & hashedSecret) const
 bytes EthWalletConnector::createRedeemData(const bytes & hashedSecret, const bytes& secret) const
 {
     bytes redeemMethodSignature = EthEncoder::encodeSig("redeem(bytes20,bytes)");
-    bytes data = redeemMethodSignature + hashedSecret + secret;
+    bytes data = redeemMethodSignature +
+            EthEncoder::encode(hashedSecret, false) +
+            EthEncoder::encode(64) +                   // secret data offset
+            EthEncoder::encode(hashedSecret.size()) +  // size of secret data
+            EthEncoder::encode(secret, false);
 
     return data;
 }
@@ -951,7 +979,9 @@ bool EthWalletConnector::callContractMethod(const bytes & myAddress,
 
 bool EthWalletConnector::installFilter(const bytes& hashedSecret, uint256& filterId) const
 {
-    if(!rpc::newFilter(m_ip, m_port, uint256(contractAddress), hashedSecret, filterId))
+    std::string topic = HexStr(EthEncoder::encode(hashedSecret, false));
+
+    if(!rpc::newFilter(m_ip, m_port, uint160(contractAddress), topic, filterId))
     {
         LOG() << "can't install new filter" << __FUNCTION__;
         return false;
@@ -965,30 +995,12 @@ bool EthWalletConnector::deleteFilter(const uint256& filterId) const
     return true;
 }
 
-bool splitEventParams(const std::string & paramsString, std::vector<std::string> & paramsVector)
-{
-    const unsigned int paramSize = 32;
-
-    if(paramsString.size() < paramSize)
-        return false;
-
-    if((paramsString.size() - 2) / paramSize != 0)
-        return false;
-
-    //first 2 chars is 0x, so skip it
-    for(unsigned int i = 2; i < paramsString.size(); i += paramSize)
-        paramsVector.emplace_back(paramsString.substr(i, paramSize));
-
-    return true;
-}
-
 bool EthWalletConnector::isInitiated(const uint256 & filterId,
-                                     const bytes & hashedSecret,
                                      bytes & initiatorAddress,
                                      const bytes & responderAddress,
                                      const uint256 value) const
 {
-    std::string initiatedEventSignature = asString(EthEncoder::encodeSig("Initiated(bytes20,address,address,uint256,uint256)"));
+    std::string initiatedEventSignature = as0xString(HexStr(EthEncoder::encodeSig("Initiated(bytes20,address,address,uint256,uint256)")));
 
     std::vector<std::string> events;
     std::vector<std::string> data;
@@ -998,10 +1010,11 @@ bool EthWalletConnector::isInitiated(const uint256 & filterId,
         return false;
     }
 
-
     for(unsigned int i = 0; i < events.size(); ++i)
     {
-        if(events.at(i) == initiatedEventSignature)
+        std::string event(events.at(i).begin(), events.at(i).begin() + 10);
+
+        if(event == initiatedEventSignature)
         {
             std::vector<std::string> params;
             if(!splitEventParams(data.at(i), params))
@@ -1010,17 +1023,16 @@ bool EthWalletConnector::isInitiated(const uint256 & filterId,
                 return false;
             }
 
-            if(params.size() < 4)
+            if(params.size() < 3)
             {
                 LOG() << "wrong params count" << __FUNCTION__;
                 return false;
             }
 
-            if(params.at(0) == asString(hashedSecret) &&
-               params.at(2) == asString(responderAddress) &&
-               params.at(3) == value.ToString())
+            if(params.at(1) == HexStr(EthEncoder::encode(responderAddress)) &&
+               params.at(2) == value.ToString())
             {
-                initiatorAddress = asBytes(params.at(1));
+                initiatorAddress = toBigEndian(uint160(params.at(0)));
                 return true;
             }
         }
@@ -1030,12 +1042,11 @@ bool EthWalletConnector::isInitiated(const uint256 & filterId,
 }
 
 bool EthWalletConnector::isResponded(const uint256 & filterId,
-                                     const bytes & hashedSecret,
                                      const bytes & initiatorAddress,
                                      bytes & responderAddress,
                                      const uint256 value) const
 {
-    std::string respondedEventSignature = asString(EthEncoder::encodeSig("Responded(bytes20,address,address,uint256,uint256)"));
+    std::string respondedEventSignature = as0xString(HexStr(EthEncoder::encodeSig("Responded(bytes20,address,address,uint256,uint256)")));
 
     std::vector<std::string> events;
     std::vector<std::string> data;
@@ -1048,7 +1059,9 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
 
     for(unsigned int i = 0; i < events.size(); ++i)
     {
-        if(events.at(i) == respondedEventSignature)
+        std::string event(events.at(i).begin(), events.at(i).begin() + 10);
+
+        if(event == respondedEventSignature)
         {
             std::vector<std::string> params;
             if(!splitEventParams(data.at(i), params))
@@ -1057,17 +1070,16 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
                 return false;
             }
 
-            if(params.size() < 4)
+            if(params.size() < 3)
             {
                 LOG() << "wrong params count" << __FUNCTION__;
                 return false;
             }
 
-            if(params.at(0) == asString(hashedSecret) &&
-               params.at(1) == asString(initiatorAddress) &&
-               params.at(3) == value.ToString())
+            if(params.at(0) == HexStr(EthEncoder::encode(initiatorAddress)) &&
+               params.at(2) == value.ToString())
             {
-                responderAddress = asBytes(params.at(2));
+                responderAddress = toBigEndian(uint160(params.at(1)));
                 return true;
             }
         }
@@ -1077,11 +1089,10 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
 }
 
 bool EthWalletConnector::isRefunded(const uint256 & filterId,
-                                    const bytes & hashedSecret,
                                     const bytes & recipientAddress,
                                     const uint256 value) const
 {
-    std::string refundedEventSignature = asString(EthEncoder::encodeSig("Refunded(bytes20,address,uint256)"));
+    std::string refundedEventSignature = as0xString(HexStr(EthEncoder::encodeSig("Refunded(bytes20,address,uint256)")));
 
     std::vector<std::string> events;
     std::vector<std::string> data;
@@ -1094,7 +1105,9 @@ bool EthWalletConnector::isRefunded(const uint256 & filterId,
 
     for(unsigned int i = 0; i < events.size(); ++i)
     {
-        if(events.at(i) == refundedEventSignature)
+        std::string event(events.at(i).begin(), events.at(i).begin() + 10);
+
+        if(event == refundedEventSignature)
         {
             std::vector<std::string> params;
             if(!splitEventParams(data.at(i), params))
@@ -1103,15 +1116,14 @@ bool EthWalletConnector::isRefunded(const uint256 & filterId,
                 return false;
             }
 
-            if(params.size() < 3)
+            if(params.size() < 2)
             {
                 LOG() << "wrong params count" << __FUNCTION__;
                 return false;
             }
 
-            if(params.at(0) == asString(hashedSecret) &&
-               params.at(1) == asString(recipientAddress) &&
-               params.at(2) == value.ToString())
+            if(params.at(0) == HexStr(EthEncoder::encode(recipientAddress)) &&
+               params.at(1) == value.ToString())
                 return true;
         }
     }
@@ -1120,11 +1132,10 @@ bool EthWalletConnector::isRefunded(const uint256 & filterId,
 }
 
 bool EthWalletConnector::isRedeemed(const uint256 & filterId,
-                                    const bytes & hashedSecret,
                                     const bytes & recipientAddress,
                                     const uint256 value) const
 {
-    std::string redeemedEventSignature = asString(EthEncoder::encodeSig("Redeemed(bytes20,address,uint256)"));
+    std::string redeemedEventSignature = as0xString(HexStr(EthEncoder::encodeSig("Redeemed(bytes20,address,uint256)")));
 
     std::vector<std::string> events;
     std::vector<std::string> data;
@@ -1137,7 +1148,9 @@ bool EthWalletConnector::isRedeemed(const uint256 & filterId,
 
     for(unsigned int i = 0; i < events.size(); ++i)
     {
-        if(events.at(i) == redeemedEventSignature)
+        std::string event(events.at(i).begin(), events.at(i).begin() + 10);
+
+        if(event == redeemedEventSignature)
         {
             std::vector<std::string> params;
             if(!splitEventParams(data.at(i), params))
@@ -1146,15 +1159,14 @@ bool EthWalletConnector::isRedeemed(const uint256 & filterId,
                 return false;
             }
 
-            if(params.size() < 3)
+            if(params.size() < 2)
             {
                 LOG() << "wrong params count" << __FUNCTION__;
                 return false;
             }
 
-            if(params.at(0) == asString(hashedSecret) &&
-               params.at(1) == asString(recipientAddress) &&
-               params.at(2) == value.ToString())
+            if(params.at(0) == HexStr(EthEncoder::encode(recipientAddress)) &&
+               params.at(1) == value.ToString())
                 return true;
         }
     }

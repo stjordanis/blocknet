@@ -64,6 +64,24 @@ inline std::string as0xStringNumber(const uint256 & value)
     return as0xString(number);
 }
 
+inline std::string as0xStringNumberAligned(const uint256 & value)
+{
+    std::string number = value.ToString();
+
+    for(auto iter = number.begin(); iter != number.end();)
+    {
+        if(*iter == '0')
+        {
+            number.push_back(*iter);
+            iter = number.erase(iter);
+        }
+        else
+            break;
+    }
+
+    return as0xString(number);
+}
+
 inline std::string as0xString(const uint160 & value)
 {
     return as0xString(value.ToString());

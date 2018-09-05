@@ -114,16 +114,16 @@ public:
                             const uint256 & gas,
                             uint256 & transactionHash) const;
 
-    bool installFilter(const bytes & hashedSecret, uint256 & filterId) const;
+    bool installFilter(const bytes & method, uint256 & filterId) const;
     bool deleteFilter(const uint256 & filterId) const;
 
-    bool isInitiated(const uint256 & filterId, const bytes & hashedSecret, bytes& initiatorAddress, const bytes & responderAddress, const uint256 value) const;
-    bool isResponded(const uint256 & filterId, const bytes & hashedSecret, const bytes & initiatorAddress, bytes & responderAddress, const uint256 value) const;
-    bool isRefunded(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value) const;
-    bool isRedeemed(const uint256 & filterId, const bytes & hashedSecret, const bytes & recipientAddress, const uint256 value) const;
+    bool isInitiated(const uint256 & filterId, bytes& initiatorAddress, const bytes & responderAddress, const uint256 value) const;
+    bool isResponded(const uint256 & filterId, const bytes & initiatorAddress, bytes & responderAddress, const uint256 value) const;
+    bool isRefunded(const uint256 & filterId, const bytes & recipientAddress, const uint256 value) const;
+    bool isRedeemed(const uint256 & filterId, const bytes & recipientAddress, const uint256 value) const;
 
 private:
-    const std::string contractAddress = "0xb4573a002e0762c52ef07948bc1cb779ef4e3b10";
+    const std::string contractAddress = "0x19A11864cb7eaE71c82eEbF35f1261Ea57B4Aa06";
 };
 
 }

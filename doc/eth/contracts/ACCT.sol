@@ -34,7 +34,7 @@ contract ACCT {
      * \param refundTimePoint From when the initiator can get its coins back
      */
     event Initiated(
-        bytes20 hashedSecret,
+        bytes20 indexed hashedSecret,
         address initiator,
         address responder,
         uint256 value,
@@ -50,7 +50,7 @@ contract ACCT {
      * \param refundTimePoint From when the responder can get its coins back
      */
     event Responded(
-        bytes20 hashedSecret,
+        bytes20 indexed hashedSecret,
         address initiator,
         address responder,
         uint256 value,
@@ -63,7 +63,9 @@ contract ACCT {
      * \param receipient   Address where the coins where sent back
      * \param value        How many wei were sent
      */
-    event Refunded(bytes20 hashedSecret, address recipient, uint256 value);
+    event Refunded(bytes20 indexed hashedSecret, 
+                   address recipient, 
+                   uint256 value);
 
     /** Event: Peer redeemed the coins
      *
@@ -72,7 +74,10 @@ contract ACCT {
      * \param receipient   Address where the coins where sent
      * \param value        How many wei were sent
      */
-    event Redeemed(bytes20 hashedSecret, bytes secret, address recipient, uint256 value);
+    event Redeemed(bytes20 indexed hashedSecret, 
+                   bytes secret, 
+                   address recipient, 
+                   uint256 value);
 
     /** Check that the swap identified by `hashedSecret` is empty */
     modifier isEmpty(bytes20 hashedSecret) {

@@ -1362,6 +1362,23 @@ bool Session::Impl::processTransactionInit(XBridgePacketPtr packet) const
 
         xtx->xHash = xHash;
 
+        if(xtx->fromCurrency == "ETH")
+        {
+            WalletConnectorPtr connFrom = xapp.connectorByCurrency(xtx->fromCurrency);
+            if (!connFrom)
+            {
+                WARN() << "no connector for <" << xtx->fromCurrency << "> " << __FUNCTION__;
+                return true;
+            }
+
+            EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connFrom);
+            if(!connEth->installFilter(xtx->xHash, xtx->filterId))
+            {
+                ERR() << "can't install filter " << __FUNCTION__;
+                return false;
+            }
+        }
+
         std::string strtxid;
         if (!rpc::storeDataIntoBlockchain(snodeAddress, conn->serviceNodeFee,
                                           std::vector<unsigned char>(xHash.begin(), xHash.end()), strtxid))
@@ -1379,29 +1396,6 @@ bool Session::Impl::processTransactionInit(XBridgePacketPtr packet) const
             xapp.processLater(txid, packet);
             return true;
         }
-    }
-
-    if(xtx->fromCurrency == "ETH")
-    {
-        WalletConnectorPtr conn = xapp.connectorByCurrency(xtx->fromCurrency);
-        if (!conn)
-        {
-            WARN() << "no connector for <" << xtx->fromCurrency << "> " << __FUNCTION__;
-            return true;
-        }
-        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
-        connEth->installFilter(xtx->xHash, xtx->filterId);
-    }
-    else if(xtx->toCurrency == "ETH")
-    {
-        WalletConnectorPtr conn = xapp.connectorByCurrency(xtx->toCurrency);
-        if (!conn)
-        {
-            WARN() << "no connector for <" << xtx->toCurrency << "> " << __FUNCTION__;
-            return true;
-        }
-        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
-        connEth->installFilter(xtx->xHash, xtx->filterId);
     }
 
     LOG() << __FUNCTION__ << xtx;
@@ -1930,21 +1924,21 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
 
     xtx->xHash = hx;
 
-    if(xtx->fromCurrency == "ETH")
+    if(xtx->fromCurrency == "ETH" && xtx->filterId.IsNull())
     {
         EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connFrom);
-        if(!connEth->installFilter(xtx->xHash, xtx->filterId))
+        if(!connEth->installFilter(hx, xtx->filterId))
         {
-            LOG() << "can't install filter for ETH hash: " << asString(xtx->xHash) << " " << __FUNCTION__;
+            LOG() << "can't install filter for ETH hash: " << asString(hx) << " " << __FUNCTION__;
             return true;
         }
     }
-    else if(xtx->toCurrency == "ETH")
+    else if(xtx->toCurrency == "ETH" && xtx->filterId.IsNull())
     {
         EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connTo);
-        if(!connEth->installFilter(xtx->xHash, xtx->filterId))
+        if(!connEth->installFilter(hx, xtx->filterId))
         {
-            LOG() << "can't install filter for ETH hash: " << asString(xtx->xHash) << " " << __FUNCTION__;
+            LOG() << "can't install filter for ETH hash: " << asString(hx) << " " << __FUNCTION__;
             return true;
         }
     }
@@ -1967,7 +1961,7 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
     {
         EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connTo);
 
-        if(!connEth->isInitiated(xtx->filterId, xtx->xHash, xtx->oAddress, xtx->to, xtx->toAmount))
+        if(!connEth->isInitiated(xtx->filterId, xtx->oAddress, xtx->to, xtx->toAmount))
         {
             // move packet to pending
             xapp.processLater(txid, packet);
@@ -2479,7 +2473,7 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
         {
             EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
 
-            if(!connEth->isResponded(xtx->filterId, xtx->xHash, xtx->to, xtx->oAddress, xtx->toAmount))
+            if(!connEth->isResponded(xtx->filterId, xtx->to, xtx->oAddress, xtx->toAmount))
             {
                 // move packet to pending
                 xapp.processLater(txid, packet);
@@ -2493,12 +2487,6 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
     if(xtx->toCurrency == "ETH")
     {
         EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
-
-        if(!connEth->isInitiated(xtx->filterId, xtx->xHash, xtx->oAddress, xtx->to, xtx->toAmount))
-        {
-            xapp.processLater(txid, packet);
-            return true;
-        }
 
         std::vector<unsigned char> redeemParams = connEth->createRedeemData(xtx->xHash, xtx->xSecret);
 
