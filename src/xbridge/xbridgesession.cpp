@@ -1362,16 +1362,9 @@ bool Session::Impl::processTransactionInit(XBridgePacketPtr packet) const
 
         xtx->xHash = xHash;
 
-        if(xtx->fromCurrency == "ETH")
+        if(xtx->toCurrency == "ETH")
         {
-            WalletConnectorPtr connFrom = xapp.connectorByCurrency(xtx->fromCurrency);
-            if (!connFrom)
-            {
-                WARN() << "no connector for <" << xtx->fromCurrency << "> " << __FUNCTION__;
-                return true;
-            }
-
-            EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connFrom);
+            EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
             if(!connEth->installFilter(xtx->xHash, xtx->filterId))
             {
                 ERR() << "can't install filter " << __FUNCTION__;

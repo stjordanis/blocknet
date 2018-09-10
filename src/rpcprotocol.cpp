@@ -38,7 +38,7 @@ const size_t POST_READ_SIZE = 256 * 1024;
 
 /**
  * HTTP protocol
- * 
+ *
  * This ain't Apache.  We're just using HTTP header for the length field
  * and to be compatible with other JSON-RPC implementations.
  */
@@ -210,6 +210,25 @@ int ReadHTTPHeaders(std::basic_istream<char>& stream, map<string, string>& mapHe
     return nLen;
 }
 
+int ReadHTTPChunk(std::basic_istream<char>& stream)
+{
+    int nLen = 0;
+    while (true) {
+        string str;
+        std::getline(stream, str);
+        if (str == "\n" || str == "\r")
+            continue;
+
+        str.erase(std::remove(str.begin(), str.end(), '\r'),
+                      str.end());
+        str.erase(std::remove(str.begin(), str.end(), '\n'),
+                      str.end());
+
+        nLen = strtoul(str.c_str(), NULL, 16);
+
+        return nLen;
+    }
+}
 
 int ReadHTTPMessage(std::basic_istream<char>& stream, map<string, string>& mapHeadersRet, string& strMessageRet, int nProto, size_t max_size)
 {
@@ -252,7 +271,7 @@ int ReadHTTPMessage(std::basic_istream<char>& stream, map<string, string>& mapHe
  * JSON-RPC protocol.  BlocknetDX speaks version 1.0 for maximum compatibility,
  * but uses JSON-RPC 1.1/2.0 standards for parts of the 1.0 standard that were
  * unspecified (HTTP errors and contents of 'error').
- * 
+ *
  * 1.0 spec: http://json-rpc.org/wiki/specification
  * 1.2 spec: http://jsonrpc.org/historical/json-rpc-over-http.html
  * http://www.codeproject.com/KB/recipes/JSON_Spirit.aspx
@@ -261,6 +280,7 @@ int ReadHTTPMessage(std::basic_istream<char>& stream, map<string, string>& mapHe
 string JSONRPCRequest(const string& strMethod, const Array& params, const Value& id)
 {
     Object request;
+    request.push_back(Pair("jsonrpc", "2.0"));
     request.push_back(Pair("method", strMethod));
     request.push_back(Pair("params", params));
     request.push_back(Pair("id", id));

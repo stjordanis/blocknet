@@ -59,6 +59,18 @@ int readHTTPEth(std::basic_istream<char>& stream, map<string, string>& mapHeader
         stream.read(&vch[0], nLen);
         strMessageRet = string(vch.begin(), vch.end());
     }
+    else
+    {
+        nLen = ReadHTTPChunk(stream);
+        while (nLen)
+        {
+            vector<char> vch(nLen);
+            stream.read(&vch[0], nLen);
+            strMessageRet += string(vch.begin(), vch.end());
+
+            nLen = ReadHTTPChunk(stream);
+        }
+    }
 
     string sConHdr = mapHeadersRet["connection"];
 
