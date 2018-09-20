@@ -15,6 +15,19 @@
 namespace xbridge
 {
 
+struct XTxIn
+{
+    std::string txid;
+    uint32_t    n;
+    double      amount;
+
+    XTxIn(std::string _txid, uint32_t _n, double _amount)
+        : txid(_txid)
+        , n(_n)
+        , amount(_amount)
+    {}
+};
+
 //*****************************************************************************
 //*****************************************************************************
 namespace rpc

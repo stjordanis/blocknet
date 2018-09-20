@@ -4,7 +4,7 @@ pragma solidity ^0.4.15;
  *
  * Case 1: A wants to exchange some ETH against some BTC with B:
  *
- *  - A creates a secret X (up to 32 bytes) and hashes it H(X) (with the ripemd160 algorithm)
+ *  - A creates a secret X (up to 32 bytes) and hashes it H(X) (with the hash160 (sha256 + ripemd160) algorithm)
  *  - A calls `initiate()` and sends some ETH to the smart contract, specifing H(X) and the
  *    time when A can get back its coins
  *  - B gets notified via the `Initiated` event and verifies it is happy with: (1) the amount of
@@ -87,7 +87,7 @@ contract ACCT {
 
     /** Check that the swap identified by `hashedSecret` can be refunded to the sender */
     modifier isRefundable(bytes20 hashedSecret) {
-        Swap storage swap = swaps[hashedSecret];
+        Swap memory swap = swaps[hashedSecret];
         require(swap.swapType != SwapType.None);
         if (swap.swapType == SwapType.Initiated) {
             require(msg.sender == swap.initiator);
@@ -99,9 +99,13 @@ contract ACCT {
     }
 
     /** Check that the swap identified by `hashedSecret` can be redeemed to the sender */
-    modifier isRedeemable(bytes20 hashedSecret, bytes secret) {
-        require(ripemd160(secret) == hashedSecret);
-        Swap storage swap = swaps[hashedSecret];
+    modifier isRedeemable(bytes20 hashedSecret, bytes memory secret) {
+        bytes32 sha256hash = sha256(secret);
+        bytes memory sha256hashEnc = abi.encodePacked(sha256hash);
+        bytes20 ripemd160hash = ripemd160(sha256hashEnc);
+
+        require(ripemd160hash == hashedSecret);
+        Swap memory swap = swaps[hashedSecret];
         require(swap.swapType != SwapType.None);
         if (swap.swapType == SwapType.Initiated) {
             require(msg.sender == swap.responder);
@@ -180,7 +184,7 @@ contract ACCT {
      * \param hashedSecret Hash of initiator's secret
      * \param secret       Initiator's secret
      */
-    function redeem(bytes20 hashedSecret, bytes secret) public isRedeemable(hashedSecret, secret) {
+    function redeem(bytes20 hashedSecret, bytes memory secret) public isRedeemable(hashedSecret, secret) {
         Swap storage swap = swaps[hashedSecret];
         uint256 value = swap.value;
         swap.value = 0;

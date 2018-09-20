@@ -1753,7 +1753,7 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
             std::vector<std::pair<std::string, double> > outputs;
 
             // inputs from binTx
-            inputs.push_back(std::make_pair(xtx->binTxId, 0));
+            inputs.push_back(std::make_pair(xtx->binTxId, outAmount+fee2));
 
             // outputs
             {
@@ -2483,38 +2483,40 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
 
         std::vector<unsigned char> redeemParams = connEth->createRedeemData(xtx->xHash, xtx->xSecret);
 
+        TXLOG() << "A redeemParams " << asString(redeemParams);
+
         uint256 estimateGas;
-        if(!connEth->getEstimateGas(xtx->to, redeemParams, 0, estimateGas))
-        {
-            LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
-            xapp.processLater(txid, packet);
-            return true;
-        }
+//        if(!connEth->getEstimateGas(xtx->to, redeemParams, 0, estimateGas))
+//        {
+//            LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
+//            xapp.processLater(txid, packet);
+//            return true;
+//        }
 
-        uint256 gasPrice;
-        if(!connEth->getGasPrice(gasPrice))
-        {
-            LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
-            xapp.processLater(txid, packet);
-            return true;
-        }
+//        uint256 gasPrice;
+//        if(!connEth->getGasPrice(gasPrice))
+//        {
+//            LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
+//            xapp.processLater(txid, packet);
+//            return true;
+//        }
 
-        uint256 totalValue = estimateGas * gasPrice;
+//        uint256 totalValue = estimateGas * gasPrice;
 
-        uint256 avaliableAmount;
-        if(!connEth->getBalance(xtx->to, avaliableAmount))
-        {
-            LOG() << "can't process without balance, process packet later" << __FUNCTION__;
-            xapp.processLater(txid, packet);
-            return true;
-        }
+//        uint256 avaliableAmount;
+//        if(!connEth->getBalance(xtx->to, avaliableAmount))
+//        {
+//            LOG() << "can't process without balance, process packet later" << __FUNCTION__;
+//            xapp.processLater(txid, packet);
+//            return true;
+//        }
 
-        if(avaliableAmount < totalValue)
-        {
-            LOG() << "client doesn't have enough amount on account, transaction canceled" << __FUNCTION__;
-            sendCancelTransaction(xtx, crNoMoney);
-            return true;
-        }
+//        if(avaliableAmount < totalValue)
+//        {
+//            LOG() << "client doesn't have enough amount on account, transaction canceled" << __FUNCTION__;
+//            sendCancelTransaction(xtx, crNoMoney);
+//            return true;
+//        }
 
         //redeem transaction
         uint256 trHash;
@@ -2756,6 +2758,7 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
         {
             LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
+            return true;
         }
 
         uint256 gasPrice;
@@ -2763,6 +2766,7 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
         {
             LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
             xapp.processLater(txid, packet);
+            return true;
         }
 
         uint256 totalValue = estimateGas * gasPrice;

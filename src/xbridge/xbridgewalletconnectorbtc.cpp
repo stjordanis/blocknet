@@ -1322,12 +1322,12 @@ std::string BtcWalletConnector::scriptIdToString(const std::vector<unsigned char
 //******************************************************************************
 double BtcWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t outputCount) const
 {
-    uint64_t fee = (148*inputCount + 34*outputCount + 10) * feePerByte;
+    uint256 fee = (148*inputCount + 34*outputCount + 10) * feePerByte;
     if (fee < minTxFee)
     {
         fee = minTxFee;
     }
-    return (double)fee / COIN.Get64();
+    return fee.divide(COIN);
 }
 
 //******************************************************************************
@@ -1336,12 +1336,12 @@ double BtcWalletConnector::minTxFee1(const uint32_t inputCount, const uint32_t o
 //******************************************************************************
 double BtcWalletConnector::minTxFee2(const uint32_t inputCount, const uint32_t outputCount) const
 {
-    uint64_t fee = (180*inputCount + 34*outputCount + 10) * feePerByte;
+    uint256 fee = (180*inputCount + 34*outputCount + 10) * feePerByte;
     if (fee < minTxFee)
     {
         fee = minTxFee;
     }
-    return (double)fee / COIN.Get64();
+    return fee.divide(COIN);
 }
 
 //******************************************************************************
@@ -1544,7 +1544,7 @@ xbridge::CTransactionPtr createTransaction(const std::vector<std::pair<std::stri
     for (const std::pair<std::string, double> & out : outputs)
     {
         CScript scr = GetScriptForDestination(xbridge::XBitcoinAddress(out.first).Get());
-        tx->vout.push_back(CTxOut((out.second * COIN).Get64(), scr));
+        tx->vout.push_back(CTxOut(COIN.multiply(out.second).Get64(), scr));
     }
 
     return tx;

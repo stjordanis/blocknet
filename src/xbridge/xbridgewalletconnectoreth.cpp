@@ -249,8 +249,10 @@ bool sendTransaction(const std::string & rpcip,
         Object transaction;
         transaction.push_back(Pair("from", as0xString(from)));
         transaction.push_back(Pair("to", as0xString(to)));
-        transaction.push_back(Pair("gas", as0xStringNumber(gas)));
-        transaction.push_back(Pair("value", as0xStringNumber(value)));
+        if(!gas.IsNull())
+            transaction.push_back(Pair("gas", as0xStringNumber(gas)));
+        if(!value.IsNull())
+            transaction.push_back(Pair("value", as0xStringNumber(value)));
         transaction.push_back(Pair("data", as0xString(data)));
 
         params.push_back(transaction);
@@ -441,7 +443,8 @@ bool getEstimateGas(const std::string & rpcip,
         Object transaction;
         transaction.push_back(Pair("from", as0xString(from)));
         transaction.push_back(Pair("to", as0xString(to)));
-        transaction.push_back(Pair("value", as0xStringNumber(value)));
+        if(!value.IsNull())
+            transaction.push_back(Pair("value", as0xStringNumber(value)));
         transaction.push_back(Pair("data", as0xString(data)));
 
         params.push_back(transaction);
@@ -828,33 +831,47 @@ bool EthWalletConnector::checkTransaction(const std::string & depositTxId,
 //******************************************************************************
 uint32_t EthWalletConnector::lockTime(const char role) const
 {
-    uint256 lastBlockNumber;
-    if (!rpc::getBlockNumber(m_ip, m_port, lastBlockNumber))
-    {
-        LOG() << "blockchain info not received " << __FUNCTION__;
-        return 0;
-    }
-
-    if (lastBlockNumber == 0)
-    {
-        LOG() << "block count not defined in blockchain info " << __FUNCTION__;
-        return 0;
-    }
-
-    // lock time
-    uint256 lt = 0;
+    uint32_t lt = 0;
     if (role == 'A')
     {
         // 2h in seconds
-        lt = lastBlockNumber + 120 / blockTime;
+        lt = 7200;
     }
     else if (role == 'B')
     {
         // 1h in seconds
-        lt = lastBlockNumber + 36 / blockTime;
+        lt = 3600;
     }
 
-    return lt.GetCompact();
+    return lt;
+
+//    uint256 lastBlockNumber;
+//    if (!rpc::getBlockNumber(m_ip, m_port, lastBlockNumber))
+//    {
+//        LOG() << "blockchain info not received " << __FUNCTION__;
+//        return 0;
+//    }
+
+//    if (lastBlockNumber == 0)
+//    {
+//        LOG() << "block count not defined in blockchain info " << __FUNCTION__;
+//        return 0;
+//    }
+
+//    // lock time
+//    uint256 lt = 0;
+//    if (role == 'A')
+//    {
+//        // 2h in seconds
+//        lt = lastBlockNumber + 120 / blockTime;
+//    }
+//    else if (role == 'B')
+//    {
+//        // 1h in seconds
+//        lt = lastBlockNumber + 36 / blockTime;
+//    }
+
+//    return lt.GetCompact();
 }
 
 bool EthWalletConnector::getAccounts(std::vector<std::string> & accounts)
@@ -959,13 +976,13 @@ bytes EthWalletConnector::createRefundData(const bytes & hashedSecret) const
     return data;
 }
 
-bytes EthWalletConnector::createRedeemData(const bytes & hashedSecret, const bytes& secret) const
+bytes EthWalletConnector::createRedeemData(const bytes & hashedSecret, const bytes & secret) const
 {
     bytes redeemMethodSignature = EthEncoder::encodeSig("redeem(bytes20,bytes)");
     bytes data = redeemMethodSignature +
             EthEncoder::encode(hashedSecret, false) +
-            EthEncoder::encode(64) +                   // secret data offset
-            EthEncoder::encode(hashedSecret.size()) +  // size of secret data
+            EthEncoder::encode(64) +            // secret data offset
+            EthEncoder::encode(secret.size()) + // size of secret data
             EthEncoder::encode(secret, false);
 
     return data;
