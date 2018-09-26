@@ -96,6 +96,7 @@ public:
                         const bytes & data,
                         const uint256 & value,
                         uint256 & estimateGas) const;
+    bool getLastBlockTime(uint256 & blockTime) const;
 
     bytes createInitiateData(const bytes & hashedSecret,
                              const bytes & responderAddress,

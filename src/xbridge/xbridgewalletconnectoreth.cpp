@@ -384,6 +384,54 @@ bool getBlockNumber(const std::string & rpcip,
 
 //*****************************************************************************
 //*****************************************************************************
+bool getLastBlockTime(const std::string & rpcip,
+                      const std::string & rpcport,
+                      uint256 & blockTimestamp)
+{
+    try
+    {
+        LOG() << "rpc call <eth_blockNumber>";
+
+        Object reply = CallRPC(rpcip, rpcport,
+                               "eth_getBlockByNumber", Array{"latest", true});
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            return false;
+        }
+        else if (result.type() != obj_type)
+        {
+            // Result
+            LOG() << "result not an object " << write_string(result, true);
+            return false;
+        }
+
+        const Value & blockTimestampValue = find_value(result.get_obj(), "timestamp");
+        if(blockTimestampValue.type() != str_type)
+        {
+            LOG() << "timestamp not an string " << write_string(blockTimestampValue, true);
+            return false;
+        }
+
+        blockTimestamp = uint256(blockTimestampValue.get_str());
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "getBlockNumber exception " << e.what();
+        return false;
+    }
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
 bool getGasPrice(const std::string & rpcip,
                  const std::string & rpcport,
                  uint256 & gasPrice)
@@ -844,34 +892,6 @@ uint32_t EthWalletConnector::lockTime(const char role) const
     }
 
     return lt;
-
-//    uint256 lastBlockNumber;
-//    if (!rpc::getBlockNumber(m_ip, m_port, lastBlockNumber))
-//    {
-//        LOG() << "blockchain info not received " << __FUNCTION__;
-//        return 0;
-//    }
-
-//    if (lastBlockNumber == 0)
-//    {
-//        LOG() << "block count not defined in blockchain info " << __FUNCTION__;
-//        return 0;
-//    }
-
-//    // lock time
-//    uint256 lt = 0;
-//    if (role == 'A')
-//    {
-//        // 2h in seconds
-//        lt = lastBlockNumber + 120 / blockTime;
-//    }
-//    else if (role == 'B')
-//    {
-//        // 1h in seconds
-//        lt = lastBlockNumber + 36 / blockTime;
-//    }
-
-//    return lt.GetCompact();
 }
 
 bool EthWalletConnector::getAccounts(std::vector<std::string> & accounts)
@@ -918,6 +938,17 @@ bool EthWalletConnector::getEstimateGas(const bytes & myAddress,
                             estimateGas))
     {
         LOG() << "can't get estimate gas" << __FUNCTION__;
+        return false;
+    }
+
+    return true;
+}
+
+bool EthWalletConnector::getLastBlockTime(uint256 & blockTime) const
+{
+    if (!rpc::getLastBlockTime(m_ip, m_port, blockTime))
+    {
+        LOG() << "can't get last block time " << __FUNCTION__;
         return false;
     }
 

@@ -251,7 +251,25 @@ enum XBridgeCommand
     //    uint160 client address
     //    uint256 hub transaction id
     //
-    xbcTransactionFinished = 24
+    xbcTransactionFinished = 24,
+
+    //
+    //xbcEthVerifyTransactionConfirmA (72 bytes min)
+    //    uint160 hub address
+    //    uint160 client address
+    //    uint256 hub transaction id
+    xbcEthVerifyTransactionConfirmA = 25,
+    //
+    // xbcEthVerifyTransactionConfirmB (72 bytes min)
+    //    uint160 hub address
+    //    uint160 client address
+    //    uint256 hub transaction id
+    xbcEthVerifyTransactionConfirmB = 26,
+    //
+    // xbcEthVerifyTransactionCancel (36 bytes)
+    //    uint256  hub transaction id
+    //    uint32_t reason
+    xbcEthVerifyTransactionCancel = 27
 };
 
 //******************************************************************************

@@ -108,9 +108,11 @@ protected:
     bool processTransactionCreatedB(XBridgePacketPtr packet) const;
 
     bool processTransactionConfirmA(XBridgePacketPtr packet) const;
+    bool processEthVerifyTransactionConfirmA(XBridgePacketPtr packet) const;
     bool processTransactionConfirmedA(XBridgePacketPtr packet) const;
 
     bool processTransactionConfirmB(XBridgePacketPtr packet) const;
+    bool processEthVerifyTransactionConfirmB(XBridgePacketPtr packet) const;
     bool processTransactionConfirmedB(XBridgePacketPtr packet) const;
 
     bool finishTransaction(TransactionPtr tr) const;
@@ -121,6 +123,7 @@ protected:
                                const TxCancelReason & reason) const;
 
     bool processTransactionCancel(XBridgePacketPtr packet) const;
+    bool processEthVerifyTransactionCancel(XBridgePacketPtr packet) const;
 
     bool processTransactionFinished(XBridgePacketPtr packet) const;
 
@@ -185,19 +188,22 @@ void Session::Impl::init()
     else
     {
         // client side
-        m_handlers[xbcPendingTransaction]    .bind(this, &Impl::processPendingTransaction);
-        m_handlers[xbcTransactionHold]       .bind(this, &Impl::processTransactionHold);
-        m_handlers[xbcTransactionInit]       .bind(this, &Impl::processTransactionInit);
-        m_handlers[xbcTransactionCreateA]    .bind(this, &Impl::processTransactionCreateA);
-        m_handlers[xbcTransactionCreateB]    .bind(this, &Impl::processTransactionCreateB);
-        m_handlers[xbcTransactionConfirmA]   .bind(this, &Impl::processTransactionConfirmA);
-        m_handlers[xbcTransactionConfirmB]   .bind(this, &Impl::processTransactionConfirmB);
+        m_handlers[xbcPendingTransaction]          .bind(this, &Impl::processPendingTransaction);
+        m_handlers[xbcTransactionHold]             .bind(this, &Impl::processTransactionHold);
+        m_handlers[xbcTransactionInit]             .bind(this, &Impl::processTransactionInit);
+        m_handlers[xbcTransactionCreateA]          .bind(this, &Impl::processTransactionCreateA);
+        m_handlers[xbcTransactionCreateB]          .bind(this, &Impl::processTransactionCreateB);
+        m_handlers[xbcTransactionConfirmA]         .bind(this, &Impl::processTransactionConfirmA);
+        m_handlers[xbcEthVerifyTransactionConfirmA].bind(this, &Impl::processEthVerifyTransactionConfirmA);
+        m_handlers[xbcTransactionConfirmB]         .bind(this, &Impl::processTransactionConfirmB);
+        m_handlers[xbcEthVerifyTransactionConfirmB].bind(this, &Impl::processEthVerifyTransactionConfirmB);
     }
 
     {
         // common handlers
-        m_handlers[xbcTransactionCancel]     .bind(this, &Impl::processTransactionCancel);
-        m_handlers[xbcTransactionFinished]   .bind(this, &Impl::processTransactionFinished);
+        m_handlers[xbcTransactionCancel]         .bind(this, &Impl::processTransactionCancel);
+        m_handlers[xbcEthVerifyTransactionCancel].bind(this, &Impl::processEthVerifyTransactionCancel);
+        m_handlers[xbcTransactionFinished]       .bind(this, &Impl::processTransactionFinished);
     }
 
     // xchat ()
@@ -2483,49 +2489,25 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
 
         std::vector<unsigned char> redeemParams = connEth->createRedeemData(xtx->xHash, xtx->xSecret);
 
-        TXLOG() << "A redeemParams " << asString(redeemParams);
+        TXLOG() << "A redeem params " << HexStr(redeemParams) << " to " << connEth->fromXAddr(xtx->to);
 
-        uint256 estimateGas;
-//        if(!connEth->getEstimateGas(xtx->to, redeemParams, 0, estimateGas))
-//        {
-//            LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
-//            xapp.processLater(txid, packet);
-//            return true;
-//        }
-
-//        uint256 gasPrice;
-//        if(!connEth->getGasPrice(gasPrice))
-//        {
-//            LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
-//            xapp.processLater(txid, packet);
-//            return true;
-//        }
-
-//        uint256 totalValue = estimateGas * gasPrice;
-
-//        uint256 avaliableAmount;
-//        if(!connEth->getBalance(xtx->to, avaliableAmount))
-//        {
-//            LOG() << "can't process without balance, process packet later" << __FUNCTION__;
-//            xapp.processLater(txid, packet);
-//            return true;
-//        }
-
-//        if(avaliableAmount < totalValue)
-//        {
-//            LOG() << "client doesn't have enough amount on account, transaction canceled" << __FUNCTION__;
-//            sendCancelTransaction(xtx, crNoMoney);
-//            return true;
-//        }
-
+        //we can't calc estimate gas for methods that write anything into eth blockchain so just pass 0
         //redeem transaction
         uint256 trHash;
-        if(!connEth->callContractMethod(xtx->to, redeemParams, 0, estimateGas, trHash))
+        if(!connEth->callContractMethod(xtx->to, redeemParams, 0, 0, trHash))
         {
             LOG() << "redeem tx not send, transaction canceled " << __FUNCTION__;
             sendCancelTransaction(xtx, crRpcError);
             return true;
         }
+
+        XBridgePacketPtr verifyPacket(new XBridgePacket(xbcEthVerifyTransactionConfirmA));
+        verifyPacket->append(hubAddress);
+        verifyPacket->append(thisAddress);
+        verifyPacket->append(txid.begin(), 32);
+
+        xapp.processLater(txid, verifyPacket);
+        return true;
     }
     else
     {
@@ -2587,6 +2569,77 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
     xtx->state = TransactionDescr::trCommited;
 
     LOG() << __FUNCTION__ << xtx;
+
+    xuiConnector.NotifyXBridgeTransactionChanged(txid);
+
+    // send reply
+    XBridgePacketPtr reply(new XBridgePacket(xbcTransactionConfirmedA));
+    reply->append(hubAddress);
+    reply->append(thisAddress);
+    reply->append(txid.begin(), 32);
+    reply->append(xtx->xSecret);
+
+    reply->sign(xtx->mPubKey, xtx->mPrivKey);
+
+    sendPacket(hubAddress, reply);
+
+    return true;
+}
+
+//******************************************************************************
+//******************************************************************************
+bool Session::Impl::processEthVerifyTransactionConfirmA(XBridgePacketPtr packet) const
+{
+    DEBUG_TRACE();
+
+    // size must be > 72 bytes
+    if (packet->size() < 72)
+    {
+        LOG() << "incorrect packet size for xbcEthVerifyTransactionConfirmA "
+              << "need more than 72 received " << packet->size() << " "
+              << __FUNCTION__;
+        return false;
+    }
+
+    std::vector<unsigned char> thisAddress(packet->data(), packet->data()+20);
+    std::vector<unsigned char> hubAddress(packet->data()+20, packet->data()+40);
+
+    uint256 txid(packet->data()+40);
+
+    xbridge::App & xapp = xbridge::App::instance();
+
+    TransactionDescrPtr xtx = xapp.transaction(txid);
+    if (!xtx)
+    {
+        LOG() << "unknown transaction " << HexStr(txid) << " " << __FUNCTION__;
+        return true;
+    }
+
+    WalletConnectorPtr conn = xapp.connectorByCurrency(xtx->toCurrency);
+    if (!conn)
+    {
+        WARN() << "no connector for <" << xtx->toCurrency << "> " << __FUNCTION__;
+        sendCancelTransaction(xtx, crBadBDepositTx);
+        return true;
+    }
+
+    if(xtx->toCurrency == "ETH")
+    {
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
+
+        if(!connEth->isRedeemed(xtx->filterId, xtx->to, xtx->toAmount))
+        {
+            // move packet to pending
+            xapp.processLater(txid, packet);
+            return true;
+        }
+    }
+    else
+    {
+        return true;
+    }
+
+    xtx->state = TransactionDescr::trCommited;
 
     xuiConnector.NotifyXBridgeTransactionChanged(txid);
 
@@ -2753,47 +2806,25 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
 
         std::vector<unsigned char> redeemParams = connEth->createRedeemData(xtx->xHash, x);
 
-        uint256 estimateGas;
-        if(!connEth->getEstimateGas(xtx->to, redeemParams, 0, estimateGas))
-        {
-            LOG() << "can't process without estimate gas, process packet later" << __FUNCTION__;
-            xapp.processLater(txid, packet);
-            return true;
-        }
+        TXLOG() << "B redeem params " << HexStr(redeemParams) << " to " << connEth->fromXAddr(xtx->to);
 
-        uint256 gasPrice;
-        if(!connEth->getGasPrice(gasPrice))
-        {
-            LOG() << "can't process without gas price, process packet later" << __FUNCTION__;
-            xapp.processLater(txid, packet);
-            return true;
-        }
-
-        uint256 totalValue = estimateGas * gasPrice;
-
-        uint256 avaliableAmount;
-        if(!connEth->getBalance(xtx->to, avaliableAmount))
-        {
-            LOG() << "can't process without balance, process packet later" << __FUNCTION__;
-            xapp.processLater(txid, packet);
-            return true;
-        }
-
-        if(avaliableAmount < totalValue)
-        {
-            LOG() << "client doesn't have enough amount on account, transaction canceled" << __FUNCTION__;
-            sendCancelTransaction(xtx, crNoMoney);
-            return true;
-        }
-
+        //we can't calc estimate gas for methods that write anything into eth blockchain so just pass 0
         //call redeem contract method
         uint256 trHash;
-        if(!connEth->callContractMethod(xtx->to, redeemParams, 0, estimateGas, trHash))
+        if(!connEth->callContractMethod(xtx->to, redeemParams, 0, 0, trHash))
         {
             LOG() << "deposit tx not send, transaction canceled " << __FUNCTION__;
             sendCancelTransaction(xtx, crRpcError);
             return true;
         }
+
+        XBridgePacketPtr verifyPacket(new XBridgePacket(xbcEthVerifyTransactionConfirmB));
+        verifyPacket->append(hubAddress);
+        verifyPacket->append(thisAddress);
+        verifyPacket->append(txid.begin(), 32);
+
+        xapp.processLater(txid, verifyPacket);
+        return true;
     }
     else
     {
@@ -2856,6 +2887,76 @@ bool Session::Impl::processTransactionConfirmB(XBridgePacketPtr packet) const
     xtx->state = TransactionDescr::trCommited;
 
     LOG() << __FUNCTION__ << xtx;
+
+    xuiConnector.NotifyXBridgeTransactionChanged(txid);
+
+    // send reply
+    XBridgePacketPtr reply(new XBridgePacket(xbcTransactionConfirmedB));
+    reply->append(hubAddress);
+    reply->append(thisAddress);
+    reply->append(txid.begin(), 32);
+
+    reply->sign(xtx->mPubKey, xtx->mPrivKey);
+
+    sendPacket(hubAddress, reply);
+
+    return true;
+}
+
+//******************************************************************************
+//******************************************************************************
+bool Session::Impl::processEthVerifyTransactionConfirmB(XBridgePacketPtr packet) const
+{
+    DEBUG_TRACE();
+
+    // size must be > 72 bytes
+    if (packet->size() < 72)
+    {
+        LOG() << "incorrect packet size for xbcEthVerifyTransactionConfirmB "
+              << "need more than 72 received " << packet->size() << " "
+              << __FUNCTION__;
+        return false;
+    }
+
+    std::vector<unsigned char> thisAddress(packet->data(), packet->data()+20);
+    std::vector<unsigned char> hubAddress(packet->data()+20, packet->data()+40);
+
+    uint256 txid(packet->data()+40);
+
+    xbridge::App & xapp = xbridge::App::instance();
+
+    TransactionDescrPtr xtx = xapp.transaction(txid);
+    if (!xtx)
+    {
+        LOG() << "unknown transaction " << HexStr(txid) << " " << __FUNCTION__;
+        return true;
+    }
+
+    WalletConnectorPtr conn = xapp.connectorByCurrency(xtx->toCurrency);
+    if (!conn)
+    {
+        WARN() << "no connector for <" << xtx->toCurrency << "> " << __FUNCTION__;
+        sendCancelTransaction(xtx, crBadBDepositTx);
+        return true;
+    }
+
+    if(xtx->toCurrency == "ETH")
+    {
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
+
+        if(!connEth->isRedeemed(xtx->filterId, xtx->to, xtx->toAmount))
+        {
+            // move packet to pending
+            xapp.processLater(txid, packet);
+            return true;
+        }
+    }
+    else
+    {
+        return true;
+    }
+
+    xtx->state = TransactionDescr::trCommited;
 
     xuiConnector.NotifyXBridgeTransactionChanged(txid);
 
@@ -3038,6 +3139,50 @@ bool Session::Impl::processTransactionCancel(XBridgePacketPtr packet) const
 
     // Process rollback
 
+    if(xtx->fromCurrency == "ETH")
+    {
+        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
+
+        std::vector<unsigned char> refundParams = connEth->createRefundData(xtx->xHash);
+
+        TXLOG() << "A refund params " << HexStr(refundParams) << " to " << connEth->fromXAddr(xtx->from);
+
+        uint256 lastBlockTime;
+        if(!connEth->getLastBlockTime(lastBlockTime))
+        {
+            LOG() << "can't get last block timestamp " << __FUNCTION__;
+            xtx->state = TransactionDescr::trRollbackFailed;
+            return true;
+        }
+
+        boost::posix_time::ptime timestamp = boost::posix_time::microsec_clock::universal_time();
+        uint64_t timestampValue = util::timeToInt(timestamp);
+
+        if(lastBlockTime < timestampValue + xtx->lockTimeTx1)
+        {
+            LOG() << "waiting for loctime expiration before refund tx " << txid.GetHex() << " " << __FUNCTION__;
+            xapp.processLater(txid, packet);
+            return true;
+        }
+
+        //we can't calc estimate gas for methods that write anything into eth blockchain so just pass 0
+        //call redeem contract method
+        uint256 trHash;
+        if(!connEth->callContractMethod(xtx->from, refundParams, 0, 0, trHash))
+        {
+            LOG() << "refund tx not send " << __FUNCTION__;
+            xtx->state = TransactionDescr::trRollbackFailed;
+            return true;
+        }
+
+        XBridgePacketPtr verifyPacket(new XBridgePacket(xbcEthVerifyTransactionCancel));
+        verifyPacket->append(txid.begin(), 32);
+        verifyPacket->append(static_cast<uint32_t>(reason));
+
+        xapp.processLater(txid, verifyPacket);
+        return true;
+    }
+
     std::string sid;
     int32_t errCode = 0;
     std::string errorMessage;
@@ -3074,6 +3219,55 @@ bool Session::Impl::processTransactionCancel(XBridgePacketPtr packet) const
     xuiConnector.NotifyXBridgeTransactionChanged(txid);
 
     return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
+bool Session::Impl::processEthVerifyTransactionCancel(XBridgePacketPtr packet) const
+{
+    DEBUG_TRACE();
+
+    // size must be == 36 bytes
+    if (packet->size() != 36)
+    {
+        ERR() << "invalid packet size for xbcEthVerifyTransactionCancel "
+              << "need 36 received " << packet->size() << " "
+              << __FUNCTION__;
+        return false;
+    }
+
+    uint256 txid(packet->data());
+    TxCancelReason reason = static_cast<TxCancelReason>(*reinterpret_cast<uint32_t*>(packet->data() + 32));
+
+    xbridge::App & xapp = xbridge::App::instance();
+    TransactionDescrPtr xtx = xapp.transaction(txid);
+    if (!xtx)
+    {
+        LOG() << "unknown transaction " << HexStr(txid) << " " << __FUNCTION__;
+        return true;
+    }
+
+    // rollback, commit revert transaction
+    WalletConnectorPtr conn = xapp.connectorByCurrency(xtx->fromCurrency);
+    if (!conn)
+    {
+        WARN() << "no connector for <" << xtx->fromCurrency << "> " << __FUNCTION__;
+        return false;
+    }
+
+    EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
+
+    if(!connEth->isRefunded(xtx->filterId, xtx->from, xtx->fromAmount))
+    {
+        // move packet to pending
+        xapp.processLater(txid, packet);
+        return true;
+    }
+
+    xtx->state = TransactionDescr::trRollback;
+
+    // update transaction state for gui
+    xuiConnector.NotifyXBridgeTransactionChanged(txid);
 }
 
 //*****************************************************************************
