@@ -168,33 +168,33 @@ public:
     }
 };
 
-class EthTransaction
-{
-public:
-    std::string nonce;
-    std::string gasPrice;
-    std::string gasLimit;
-    std::string to;
-    std::string value;
-    std::string data;
-    std::string v;
-    std::string r;
-    std::string s;
-};
+//class EthTransaction
+//{
+//public:
+//    std::string nonce;
+//    std::string gasPrice;
+//    std::string gasLimit;
+//    std::string to;
+//    std::string value;
+//    std::string data;
+//    std::string v;
+//    std::string r;
+//    std::string s;
+//};
 
-class RlpEncoder
-{
-public:
-    std::string encode(const std::string & str);
-    std::string encode(const EthTransaction & transaction, bool toSign);
-    std::string encodeLength(int length, int offset);
-    std::string intToHex(int n);
-    std::string bytesToHex(const std::string & input);
-    std::string removeHexFormatting(const std::string & str);
-    std::string hexToRlpEncode(const std::string & str);
-    std::string hexToBytes(const std::string & str);
-    int char2int(char input);
-    void hex2bin(const char* src, char* target);
-};
+//class RlpEncoder
+//{
+//public:
+//    std::string encode(const std::string & str);
+//    std::string encode(const EthTransaction & transaction, bool toSign);
+//    std::string encodeLength(int length, int offset);
+//    std::string intToHex(int n);
+//    std::string bytesToHex(const std::string & input);
+//    std::string removeHexFormatting(const std::string & str);
+//    std::string hexToRlpEncode(const std::string & str);
+//    std::string hexToBytes(const std::string & str);
+//    int char2int(char input);
+//    void hex2bin(const char* src, char* target);
+//};
 
 #endif // XBRIDGEETHENCRIPTOR_H
