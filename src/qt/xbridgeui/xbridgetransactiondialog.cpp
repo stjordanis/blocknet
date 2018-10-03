@@ -267,20 +267,6 @@ void XBridgeTransactionDialog::onSendTransaction()
     std::string from = m_addressFrom->text().toStdString();
     std::string to   = m_addressTo->text().toStdString();
 
-//    if (from.size() < 32 || from.size() > 36)
-//    {
-//        m_addressFrom->setFocus();
-//        QMessageBox::warning(this, trUtf8("check parameters"), trUtf8("Invalid from address"));
-//        return;
-//    }
-
-//    if (to.size() < 32 || to.size() > 36)
-//    {
-//        m_addressTo->setFocus();
-//        QMessageBox::warning(this, trUtf8("check parameters"), trUtf8("Invalid to address"));
-//        return;
-//    }
-
     std::string fromCurrency = m_currencyFrom->currentText().toStdString();
     std::string toCurrency   = m_currencyTo->currentText().toStdString();
 

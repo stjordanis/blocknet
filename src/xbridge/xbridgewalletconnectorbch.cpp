@@ -785,7 +785,7 @@ bool BchWalletConnector::init()
         }
     }
 
-    minTxFee   = std::max(static_cast<uint64_t>(info.relayFee * COIN), minTxFee);
+    minTxFee   = std::max(COIN.multiply(info.relayFee).Get64(), minTxFee);
     feePerByte = std::max(static_cast<uint64_t>(minTxFee / 1024),      feePerByte);
     dustAmount = minTxFee;
 
@@ -830,7 +830,7 @@ xbridge::CTransactionPtr createTransaction(const bool txWithTimeField = false);
 xbridge::CTransactionPtr createTransaction(const WalletConnector & conn,
                                            const std::vector<XTxIn> & inputs,
                                            const std::vector<std::pair<std::string, double> >  & outputs,
-                                           const uint64_t COIN,
+                                           const uint256 COIN,
                                            const uint32_t txversion,
                                            const uint32_t lockTime,
                                            const bool txWithTimeField = false);
@@ -859,7 +859,7 @@ bool BchWalletConnector::createRefundTransaction(const std::vector<XTxIn> & inpu
 
         SigHashType sigHashType = SigHashType(SIGHASH_ALL).withForkId();
         std::vector<unsigned char> signature;
-        uint256 hash = xbridge::SignatureHash(inner, txUnsigned, 0, sigHashType, inputs[0].amount*COIN);
+        uint256 hash = xbridge::SignatureHash(inner, txUnsigned, 0, sigHashType, COIN.multiply(inputs[0].amount).Get64());
         if (!m_cp.sign(mprivKey, hash, signature))
         {
             // cancel transaction
@@ -919,7 +919,7 @@ bool BchWalletConnector::createPaymentTransaction(const std::vector<XTxIn> & inp
 
     SigHashType sigHashType = SigHashType(SIGHASH_ALL).withForkId();
     std::vector<unsigned char> signature;
-    uint256 hash = SignatureHash(inner, txUnsigned, 0, sigHashType, inputs[0].amount*COIN);
+    uint256 hash = SignatureHash(inner, txUnsigned, 0, sigHashType, COIN.multiply(inputs[0].amount).Get64());
     if (!m_cp.sign(mprivKey, hash, signature))
     {
         // cancel transaction

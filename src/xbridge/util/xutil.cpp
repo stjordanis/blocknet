@@ -178,7 +178,7 @@ const std::string iso8601(const bpt::ptime &time)
     return bpt::to_iso_extended_string(time) + "Z";
 }
 
-std::string xBridgeStringValueFromAmount(uint64_t amount)
+std::string xBridgeStringValueFromAmount(uint256 amount)
 {
     std::stringstream ss;
     ss << fixed << setprecision(xBridgeSignificantDigits(xbridge::TransactionDescr::COIN)) << xBridgeValueFromAmount(amount);
@@ -192,8 +192,8 @@ std::string xBridgeStringValueFromPrice(double price)
     return ss.str();
 }
 
-double xBridgeValueFromAmount(uint64_t amount) {
-    return boost::numeric_cast<double>(amount) /
+double xBridgeValueFromAmount(uint256 amount) {
+    return amount.getdouble() /
             boost::numeric_cast<double>(xbridge::TransactionDescr::COIN);
 }
 
@@ -259,7 +259,7 @@ double price(const xbridge::TransactionDescrPtr ptr)
     if(ptr == nullptr) {
         return .0;
     }
-    if(fabs(ptr->fromAmount)  < std::numeric_limits<double>::epsilon()) {
+    if(fabs(ptr->fromAmount.getdouble())  < std::numeric_limits<double>::epsilon()) {
         return  .0;
     }
     return xBridgeValueFromAmount(ptr->toAmount) / xBridgeValueFromAmount(ptr->fromAmount);
@@ -269,7 +269,7 @@ double priceBid(const xbridge::TransactionDescrPtr ptr)
     if(ptr == nullptr) {
         return .0;
     }
-    if(fabs(ptr->toAmount)  < std::numeric_limits<double>::epsilon()) {
+    if(fabs(ptr->toAmount.getdouble())  < std::numeric_limits<double>::epsilon()) {
         return  .0;
     }
     return xBridgeValueFromAmount(ptr->fromAmount) / xBridgeValueFromAmount(ptr->toAmount);

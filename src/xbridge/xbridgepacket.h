@@ -91,15 +91,15 @@ enum XBridgeCommand
 
     // exchange transaction
     //
-    // xbcTransaction  (152 bytes min)
+    // xbcTransaction  (196 bytes min)
     // clients not process this messages, only exchange
     //    uint256  client transaction id
     //    20 bytes source address
     //    8 bytes  source currency
-    //    uint64   source amount
+    //    uint256  source amount
     //    20 bytes destination address
     //    8 bytes  destination currency
-    //    uint64   destination amount
+    //    uint256  destination amount
     //    uint64   timestamp
     //
     //    array of unspent outputs used in transaction
@@ -109,28 +109,28 @@ enum XBridgeCommand
     //        uint32_t out idx
     xbcTransaction = 3,
     //
-    // xbcPendingTransaction (124 bytes)
+    // xbcPendingTransaction (172 bytes)
     // exchange broadcast send this message, send list of opened transactions
     //    uint256 transaction id
     //    8 bytes source currency
-    //    uint64  source amount
+    //    uint256 source amount
     //    8 bytes destination currency
-    //    uint64  destination amount
+    //    uint256 destination amount
     //    uint160 hub address
     //    uint64  timestamp
     //    uint256 block hash
     xbcPendingTransaction = 4,
     //
-    // xbcTransactionAccepting (164 bytes min)
+    // xbcTransactionAccepting (176 bytes min)
     // client accepting opened tx
     //    uint160 hub address
     //    uint256 client transaction id
     //    20 bytes source address
     //    8 bytes source currency
-    //    uint64 source amount
+    //    uint256  source amount
     //    20 bytes destination address
     //    8 bytes destination currency
-    //    uint64 destination amount
+    //    uint256  destination amount
     //    array of unspent outputs used in transaction
     //      uint32_t count of array items
     //      array items
@@ -151,16 +151,16 @@ enum XBridgeCommand
     xbcTransactionHoldApply = 7,
 
     //
-    // xbcTransactionInit (144 bytes min)
+    // xbcTransactionInit (192 bytes)
     //    uint160 client address
     //    uint160 hub address
     //    uint256 hub transaction id
     //    20 bytes source address
     //    8 bytes source currency
-    //    uint64 source amount
+    //    uint256 source amount
     //    20 bytes source address
     //    8 bytes destination currency
-    //    uint64 destination amount
+    //    uint256 destination amount
     xbcTransactionInit = 8,
     //
     // xbcTransactionInitialized (104 bytes)
@@ -171,10 +171,11 @@ enum XBridgeCommand
     xbcTransactionInitialized = 9,
 
     //
-    // xbcTransactionCreateA (105 bytes min)
+    // xbcTransactionCreateA (127 bytes min)
     //    uint160  client address
     //    uint160  hub address
     //    uint256  hub transaction id
+    //    20 bytes destination address
     //    bytes    B public key (33 bytes)
     xbcTransactionCreateA = 10,
     //
@@ -188,10 +189,11 @@ enum XBridgeCommand
     //    bytes   A inner script      // TODO remove!!!
     xbcTransactionCreatedA = 11,
     //
-    // xbcTransactionCreateB (125 bytes min)
+    // xbcTransactionCreateB (145 bytes min)
     //    uint160  client address
     //    uint160  hub address
     //    uint256  hub transaction id
+    //    20 bytes destination address
     //    bytes    A public key (33 bytes)
     //    string   A deposit tx id
     //    bytes    hashed secret (20 bytes)
@@ -253,6 +255,24 @@ enum XBridgeCommand
     xbcTransactionFinished = 24,
 
     //
+    //xbcEthVerifyTransactionConfirmA (72 bytes min)
+    //    uint160 hub address
+    //    uint160 client address
+    //    uint256 hub transaction id
+    xbcEthVerifyTransactionConfirmA = 25,
+    //
+    // xbcEthVerifyTransactionConfirmB (72 bytes min)
+    //    uint160 hub address
+    //    uint160 client address
+    //    uint256 hub transaction id
+    xbcEthVerifyTransactionConfirmB = 26,
+    //
+    // xbcEthVerifyTransactionCancel (36 bytes)
+    //    uint256  hub transaction id
+    //    uint32_t reason
+    xbcEthVerifyTransactionCancel = 27,
+
+    //
     // xbcServicesPing
     //    array of supported services
     //        string Service name
@@ -292,6 +312,7 @@ public:
         addressSize               = 20,
 
         hashSize                  = 32,
+        amountSize                = 32,
 
         privkeySize               = 32,
 

@@ -34,40 +34,6 @@ WalletConnector::WalletConnector()
 
 //******************************************************************************
 //******************************************************************************
-
-/**
- * \brief Return the wallet balance; optionally for the specified address.
- * \param addr Optional address to filter balance
- * \return returns the wallet balance for the address.
- *
- * The wallet balance for the specified address will be returned. Only utxo's associated with the address
- * are included.
- */
-double WalletConnector::getWalletBalance(const std::string & addr) const
-{
-    std::vector<wallet::UtxoEntry> entries;
-    if (!getUnspent(entries))
-    {
-        LOG() << "getUnspent failed " << __FUNCTION__;
-        return -1.;//return negative value for check in called methods
-    }
-
-    double amount = 0;
-    for (const wallet::UtxoEntry & entry : entries)
-    {
-        // exclude utxo's not matching address
-        if (!addr.empty() && entry.address != addr)
-        {
-            continue;
-        }
-        amount += entry.amount;
-    }
-
-    return amount;
-}
-
-//******************************************************************************
-//******************************************************************************
 bool WalletConnector::lockCoins(const std::vector<wallet::UtxoEntry> & inputs,
                                 const bool lock)
 {

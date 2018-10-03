@@ -25,6 +25,7 @@
 #include "xbridgecryptoproviderbtc.h"
 #include "xbridgewalletconnectorbch.h"
 #include "xbridgewalletconnectordgb.h"
+#include "xbridgewalletconnectoreth.h"
 
 #include <assert.h>
 #include <numeric>
@@ -301,7 +302,7 @@ bool App::Impl::start()
                 wp.addrPrefix                  = s.get<std::string>(*i + ".AddressPrefix");
                 wp.scriptPrefix                = s.get<std::string>(*i + ".ScriptPrefix");
                 wp.secretPrefix                = s.get<std::string>(*i + ".SecretPrefix");
-                wp.COIN                        = s.get<uint64_t>   (*i + ".COIN", 0);
+                wp.COIN                        = uint256(s.get<std::string>(*i + ".COIN"));
                 wp.txVersion                   = s.get<uint32_t>   (*i + ".TxVersion", 1);
                 wp.minTxFee                    = s.get<uint64_t>   (*i + ".MinTxFee", 0);
                 wp.method                      = s.get<std::string>(*i + ".CreateTxMethod");
@@ -322,10 +323,10 @@ bool App::Impl::start()
                       << ":" << wp.m_port; // << " COIN=" << wp.COIN;
 
                 xbridge::WalletConnectorPtr conn;
-                if (wp.method == "ETHER")
+                if (wp.method == "ETH")
                 {
-                    LOG() << "wp.method ETHER not implemented" << __FUNCTION__;
-                    // session.reset(new XBridgeSessionEthereum(wp));
+                    conn.reset(new EthWalletConnector);
+                    *conn = wp;
                 }
                 else if (wp.method == "BTC" || wp.method == "SYS")
                 {
@@ -959,10 +960,10 @@ void App::moveTransactionToHistory(const uint256 & id)
 //******************************************************************************
 xbridge::Error App::sendXBridgeTransaction(const std::string & from,
                                            const std::string & fromCurrency,
-                                           const uint64_t & fromAmount,
+                                           const uint256 & fromAmount,
                                            const std::string & to,
                                            const std::string & toCurrency,
-                                           const uint64_t & toAmount,
+                                           const uint256 & toAmount,
                                            uint256 & id,
                                            uint256 & blockHash)
 {
@@ -1009,68 +1010,72 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
         return xbridge::Error::NO_SESSION;
     }
 
-    if (connFrom->isDustAmount(static_cast<double>(fromAmount) / TransactionDescr::COIN))
+    if (connFrom->isDustAmount(fromAmount.divide(connFrom->COIN)))
     {
         return xbridge::Error::DUST;
     }
 
-    if (connTo->isDustAmount(static_cast<double>(toAmount) / TransactionDescr::COIN))
+    if (connTo->isDustAmount(toAmount.divide(connTo->COIN)))
     {
         return xbridge::Error::DUST;
     }
 
-    uint64_t utxoAmount = 0;
-    uint64_t fee1       = 0;
-    uint64_t fee2       = 0;
-
-    std::vector<wallet::UtxoEntry> outputs;
-    connFrom->getUnspent(outputs);
-
-    // Select utxos
     std::vector<wallet::UtxoEntry> outputsForUse;
-    if (!selectUtxos(from, outputs, connFrom, fromAmount, outputsForUse, utxoAmount, fee1, fee2))
+
+    if(connFrom->currency != "ETH")
     {
-        WARN() << "insufficient funds for <" << fromCurrency << "> " << __FUNCTION__;
-        return xbridge::Error::INSIFFICIENT_FUNDS;
-    }
+        uint256 utxoAmount = 0;
+        uint256 fee1       = 0;
+        uint256 fee2       = 0;
 
-    LOG() << "fee1: " << (static_cast<double>(fee1) / TransactionDescr::COIN);
-    LOG() << "fee2: " << (static_cast<double>(fee2) / TransactionDescr::COIN);
-    LOG() << "amount of used utxo items: " << (static_cast<double>(utxoAmount) / TransactionDescr::COIN)
-          << " required amount + fees: " << (static_cast<double>(fromAmount + fee1 + fee2) / TransactionDescr::COIN);
+        std::vector<wallet::UtxoEntry> outputs;
+        connFrom->getUnspent(outputs);
 
-    // sign used coins
-    for (wallet::UtxoEntry & entry : outputsForUse)
-    {
-        std::string signature;
-        if (!connFrom->signMessage(entry.address, entry.toString(), signature))
+        // Select utxos
+        if (!selectUtxos(from, outputs, connFrom, fromAmount, outputsForUse, utxoAmount, fee1, fee2))
         {
-            WARN() << "funds not signed <" << fromCurrency << "> " << __FUNCTION__;
-            return xbridge::Error::FUNDS_NOT_SIGNED;
+            WARN() << "insufficient funds for <" << fromCurrency << "> " << __FUNCTION__;
+            return xbridge::Error::INSIFFICIENT_FUNDS;
         }
 
-        bool isInvalid = false;
-        entry.signature = DecodeBase64(signature.c_str(), &isInvalid);
-        if (isInvalid)
-        {
-            WARN() << "invalid signature <" << fromCurrency << "> " << __FUNCTION__;
-            return xbridge::Error::FUNDS_NOT_SIGNED;
-        }
+        LOG() << "fee1: " << fee1.divide(connFrom->COIN);
+        LOG() << "fee2: " << fee2.divide(connFrom->COIN);
+        LOG() << "amount of used utxo items: " << utxoAmount.divide(connFrom->COIN)
+              << " required amount + fees: " << (fromAmount + fee1 + fee2).divide(connFrom->COIN);
 
-        entry.rawAddress = connFrom->toXAddr(entry.address);
+        // sign used coins
+        for (wallet::UtxoEntry & entry : outputsForUse)
+        {
+            std::string signature;
+            if (!connFrom->signMessage(entry.address, entry.toString(), signature))
+            {
+                WARN() << "funds not signed <" << fromCurrency << "> " << __FUNCTION__;
+                return xbridge::Error::FUNDS_NOT_SIGNED;
+            }
 
-        if (entry.signature.size() != 65)
-        {
-            ERR() << "incorrect signature length, need 65 bytes " << __FUNCTION__;
-            return xbridge::Error::INVALID_SIGNATURE;
+            bool isInvalid = false;
+            entry.signature = DecodeBase64(signature.c_str(), &isInvalid);
+            if (isInvalid)
+            {
+                WARN() << "invalid signature <" << fromCurrency << "> " << __FUNCTION__;
+                return xbridge::Error::FUNDS_NOT_SIGNED;
+            }
+
+            entry.rawAddress = connFrom->toXAddr(entry.address);
+
+            if (entry.signature.size() != 65)
+            {
+                ERR() << "incorrect signature length, need 65 bytes " << __FUNCTION__;
+                return xbridge::Error::INVALID_SIGNATURE;
+            }
+            xassert(entry.signature.size() == 65 && "incorrect signature length, need 20 bytes");
+            if (entry.rawAddress.size() != 20)
+            {
+                ERR() << "incorrect raw address length, need 20 bytes " << __FUNCTION__;
+                return  xbridge::Error::INVALID_ADDRESS;
+            }
+            xassert(entry.rawAddress.size() == 20 && "incorrect raw address length, need 20 bytes");
         }
-        xassert(entry.signature.size() == 65 && "incorrect signature length, need 20 bytes");
-        if (entry.rawAddress.size() != 20)
-        {
-            ERR() << "incorrect raw address length, need 20 bytes " << __FUNCTION__;
-            return  xbridge::Error::INVALID_ADDRESS;
-        }
-        xassert(entry.rawAddress.size() == 20 && "incorrect raw address length, need 20 bytes");
     }
 
     boost::posix_time::ptime timestamp = boost::posix_time::microsec_clock::universal_time();
@@ -1078,14 +1083,14 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
 
     blockHash = chainActive.Tip()->pprev->GetBlockHash();
 
-    std::vector<unsigned char> firstUtxoSig = outputsForUse.at(0).signature;
+    std::vector<unsigned char> firstUtxoSig = outputsForUse.empty() ? std::vector<unsigned char>() : outputsForUse.at(0).signature;
 
     id = Hash(from.begin(), from.end(),
               fromCurrency.begin(), fromCurrency.end(),
-              BEGIN(fromAmount), END(fromAmount),
+              fromAmount.begin(), fromAmount.end(),
               to.begin(), to.end(),
               toCurrency.begin(), toCurrency.end(),
-              BEGIN(toAmount), END(toAmount),
+              toAmount.begin(), toAmount.end(),
               BEGIN(timestampValue), END(timestampValue),
               blockHash.begin(), blockHash.end(),
               firstUtxoSig.begin(), firstUtxoSig.end());
@@ -1186,10 +1191,10 @@ bool App::Impl::sendPendingTransaction(const TransactionDescrPtr & ptr)
     packet->append(ptr->id.begin(), 32);
     packet->append(ptr->from);
     packet->append(fc);
-    packet->append(ptr->fromAmount);
+    packet->append(ptr->fromAmount.begin(), 32);
     packet->append(ptr->to);
     packet->append(tc);
-    packet->append(ptr->toAmount);
+    packet->append(ptr->toAmount.begin(), 32);
     packet->append(util::timeToInt(ptr->created));
     packet->append(ptr->blockHash.begin(), 32);
 
@@ -1245,65 +1250,78 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
         return xbridge::NO_SESSION;
     }
 
-    // check dust
-    if (connFrom->isDustAmount(static_cast<double>(ptr->fromAmount) / TransactionDescr::COIN))
-    {
-        return xbridge::Error::DUST;
-    }
-    if (connTo->isDustAmount(static_cast<double>(ptr->toAmount) / TransactionDescr::COIN))
-    {
-        return xbridge::Error::DUST;
-    }
-
     if (pwalletMain->GetBalance() < connTo->serviceNodeFee)
     {
         return xbridge::Error::INSIFFICIENT_FUNDS_DX;
     }
 
-    uint64_t utxoAmount = 0;
-    uint64_t fee1       = 0;
-    uint64_t fee2       = 0;
-
-    std::vector<wallet::UtxoEntry> outputs;
-    connFrom->getUnspent(outputs);
-
-    // Select utxos
     std::vector<wallet::UtxoEntry> outputsForUse;
-    if (!selectUtxos(from, outputs, connFrom, ptr->fromAmount, outputsForUse, utxoAmount, fee1, fee2))
+
+    if(connFrom->currency != "ETH")
     {
-        WARN() << "insufficient funds for <" << ptr->fromCurrency << "> " << __FUNCTION__;
-        return xbridge::Error::INSIFFICIENT_FUNDS;
+        // check dust
+        if (connFrom->isDustAmount(ptr->fromAmount.divide(connFrom->COIN)))
+        {
+            return xbridge::Error::DUST;
+        }
+
+        uint256 utxoAmount = 0;
+        uint256 fee1       = 0;
+        uint256 fee2       = 0;
+
+        std::vector<wallet::UtxoEntry> outputs;
+        connFrom->getUnspent(outputs);
+
+        // Select utxos
+        if (!selectUtxos(from, outputs, connFrom, ptr->fromAmount, outputsForUse, utxoAmount, fee1, fee2))
+        {
+            WARN() << "insufficient funds for <" << ptr->fromCurrency << "> " << __FUNCTION__;
+            return xbridge::Error::INSIFFICIENT_FUNDS;
+        }
+
+        LOG() << "fee1: " << fee1.divide(connFrom->COIN);
+        LOG() << "fee2: " << fee2.divide(connFrom->COIN);
+        LOG() << "amount of used utxo items: " << utxoAmount.divide(connFrom->COIN)
+              << " required amount + fees: " << (ptr->fromAmount + fee1 + fee2).divide(connFrom->COIN);
+
+        // sign used coins
+        for (wallet::UtxoEntry & entry : outputsForUse)
+        {
+            std::string signature;
+            if (!connFrom->signMessage(entry.address, entry.toString(), signature))
+            {
+                WARN() << "funds not signed <" << ptr->fromCurrency << "> " << __FUNCTION__;
+                return xbridge::Error::FUNDS_NOT_SIGNED;
+            }
+
+            bool isInvalid = false;
+            entry.signature = DecodeBase64(signature.c_str(), &isInvalid);
+            if (isInvalid)
+            {
+                WARN() << "invalid signature <" << ptr->fromCurrency << "> " << __FUNCTION__;
+                return xbridge::Error::FUNDS_NOT_SIGNED;
+            }
+
+            entry.rawAddress = connFrom->toXAddr(entry.address);
+            if(entry.signature.size() != 65)
+            {
+                ERR() << "incorrect signature length, need 65 bytes " << __FUNCTION__;
+                return xbridge::Error::INVALID_SIGNATURE;
+            }
+
+            if(entry.rawAddress.size() != 20)
+            {
+                ERR() << "incorrect raw address length, need 20 bytes " << __FUNCTION__;
+                return  xbridge::Error::INVALID_ADDRESS;
+            }
+        }
     }
-
-    // sign used coins
-    for (wallet::UtxoEntry & entry : outputsForUse)
+    else if(connTo->currency != "ETH")
     {
-        std::string signature;
-        if (!connFrom->signMessage(entry.address, entry.toString(), signature))
+        // check dust
+        if (connTo->isDustAmount(ptr->toAmount.divide(connTo->COIN)))
         {
-            WARN() << "funds not signed <" << ptr->fromCurrency << "> " << __FUNCTION__;
-            return xbridge::Error::FUNDS_NOT_SIGNED;
-        }
-
-        bool isInvalid = false;
-        entry.signature = DecodeBase64(signature.c_str(), &isInvalid);
-        if (isInvalid)
-        {
-            WARN() << "invalid signature <" << ptr->fromCurrency << "> " << __FUNCTION__;
-            return xbridge::Error::FUNDS_NOT_SIGNED;
-        }
-
-        entry.rawAddress = connFrom->toXAddr(entry.address);
-        if(entry.signature.size() != 65)
-        {
-            ERR() << "incorrect signature length, need 65 bytes " << __FUNCTION__;
-            return xbridge::Error::INVALID_SIGNATURE;
-        }
-
-        if(entry.rawAddress.size() != 20)
-        {
-            ERR() << "incorrect raw address length, need 20 bytes " << __FUNCTION__;
-            return  xbridge::Error::INVALID_ADDRESS;
+            return xbridge::Error::DUST;
         }
     }
 
@@ -1364,10 +1382,10 @@ bool App::Impl::sendAcceptingTransaction(const TransactionDescrPtr & ptr)
     packet->append(ptr->id.begin(), 32);
     packet->append(ptr->from);
     packet->append(fc);
-    packet->append(ptr->fromAmount);
+    packet->append(ptr->fromAmount.begin(), 32);
     packet->append(ptr->to);
     packet->append(tc);
-    packet->append(ptr->toAmount);
+    packet->append(ptr->toAmount.begin(), 32);
 
     // utxo items
     packet->append(static_cast<uint32_t>(ptr->usedCoins.size()));
@@ -1510,7 +1528,7 @@ Error App::checkAcceptParams(const uint256       & id,
 //******************************************************************************
 Error App::checkCreateParams(const string   & fromCurrency,
                              const string   & toCurrency,
-                             const uint64_t & fromAmount,
+                             const uint256  & fromAmount,
                              const string   & /*fromAddress*/)
 {
     // TODO need refactoring
@@ -1525,7 +1543,7 @@ Error App::checkCreateParams(const string   & fromCurrency,
 //******************************************************************************
 //******************************************************************************
 Error App::checkAmount(const string   & currency,
-                       const uint64_t & amount,
+                       const uint256  & amount,
                        const string   & address)
 {
     // check amount
@@ -1537,7 +1555,7 @@ Error App::checkAmount(const string   & currency,
     }
 
     // Check that wallet balance is larger than the smallest supported balance
-    if (conn->getWalletBalance(address) < (static_cast<double>(amount) / TransactionDescr::COIN)) {
+    if (conn->getWalletBalance(address) < amount.divide(conn->COIN)) {
         WARN() << "insufficient funds for <" << currency << "> " << __FUNCTION__;
         return xbridge::INSIFFICIENT_FUNDS;
     }
@@ -1764,14 +1782,14 @@ T random_element(T begin, T end)
 //******************************************************************************
 //******************************************************************************
 bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEntry> &outputs,
-                      const WalletConnectorPtr &connFrom, const uint64_t &requiredAmount,
-                      std::vector<wallet::UtxoEntry> &outputsForUse, uint64_t &utxoAmount,
-                      uint64_t &fee1, uint64_t &fee2) const
+                      const WalletConnectorPtr &connFrom, const uint256 &requiredAmount,
+                      std::vector<wallet::UtxoEntry> &outputsForUse, uint256& utxoAmount,
+                      uint256 &fee1, uint256 &fee2) const
 {
 
     auto getUtxos = [&connFrom, &requiredAmount, &outputsForUse, &utxoAmount, &fee1, &fee2](const std::vector<wallet::UtxoEntry> & o) -> bool
     {
-        fee2 = connFrom->minTxFee2(1, 1) * TransactionDescr::COIN;
+        fee2 = connFrom->COIN.multiply(connFrom->minTxFee2(1, 1));
 
         if(o.empty())
         {
@@ -1791,12 +1809,12 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
 
         //try to find best matching one output or one larger output
         {
-            fee1 = connFrom->minTxFee1(1, 3) * TransactionDescr::COIN;
-            uint64_t fullAmount = requiredAmount + fee1 + fee2;
+            fee1 =  connFrom->COIN.multiply(connFrom->minTxFee1(1, 3));
+            uint256 fullAmount = requiredAmount + fee1 + fee2;
 
             for(const wallet::UtxoEntry & entry : outputsForSelection)
             {
-                uint64_t utxosAmount = (entry.amount * TransactionDescr::COIN);
+                uint256 utxosAmount = connFrom->COIN.multiply(entry.amount);
 
                 if(utxosAmount == fullAmount)
                 {
@@ -1806,7 +1824,7 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
                 }
 
                 if (utxosAmount > fullAmount &&
-                    !connFrom->isDustAmount(static_cast<double>(utxosAmount - fullAmount) / TransactionDescr::COIN))
+                    !connFrom->isDustAmount((utxosAmount - fullAmount).divide(connFrom->COIN)))
                 {
                     greaterThanTargetOutput.emplace_back(entry);
                     break;
@@ -1819,23 +1837,23 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
         std::vector<wallet::UtxoEntry> outputsSmallerThanTarget;
         std::copy_if(outputsForSelection.begin(), outputsForSelection.end(),
                      std::inserter(outputsSmallerThanTarget, outputsSmallerThanTarget.end()),
-                     [&requiredAmount](const wallet::UtxoEntry & entry)
+                     [&requiredAmount, &connFrom](const wallet::UtxoEntry & entry)
         {
-            return requiredAmount > entry.amount * TransactionDescr::COIN;
+            return requiredAmount > connFrom->COIN.multiply(entry.amount);
         });
 
         bool sumOfSmallerOutputsLargerThanTarget = false;
         bool sumOfSmallerOutputsEqualTarget = false;
         {
-            fee1 = connFrom->minTxFee1(outputsSmallerThanTarget.size(), 3) * TransactionDescr::COIN;
+            fee1 = connFrom->COIN.multiply(connFrom->minTxFee1(outputsSmallerThanTarget.size(), 3));
 
-            uint64_t fullAmount = requiredAmount + fee1 + fee2;
+            uint256 fullAmount = requiredAmount + fee1 + fee2;
 
-            uint64_t utxosAmount = std::accumulate(outputsSmallerThanTarget.begin(), outputsSmallerThanTarget.end(), 0,
-                                                  [](uint64_t accumulator, const wallet::UtxoEntry & entry)
+            uint256 utxosAmount;
+            for(const wallet::UtxoEntry & entry : outputsSmallerThanTarget)
             {
-                return accumulator += (entry.amount * TransactionDescr::COIN);
-            });
+                utxosAmount += connFrom->COIN.multiply(entry.amount);
+            }
 
             if (utxosAmount == fullAmount)
             {
@@ -1843,7 +1861,7 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
             }
 
             if (utxosAmount > fullAmount &&
-                !connFrom->isDustAmount(static_cast<double>(utxosAmount - fullAmount) / TransactionDescr::COIN))
+                !connFrom->isDustAmount((utxosAmount - fullAmount).divide(connFrom->COIN)))
             {
                 sumOfSmallerOutputsLargerThanTarget = true;
             }
@@ -1872,14 +1890,14 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
         //try to combine small outputs to target sum
         else
         {
-            uint64_t smallestFee = std::numeric_limits<uint64_t>::max();
+            uint256 smallestFee("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
             const uint32_t iterations = 1000;
             for(uint32_t i = 0; i < iterations; ++i)
             {
                 std::vector<wallet::UtxoEntry> uniqueOutputsSmallerThanTarget(outputsSmallerThanTarget);
                 std::vector<wallet::UtxoEntry> outputsForUse;
 
-                uint64_t utxosAmount = 0;
+                uint256 utxosAmount = 0;
 
                 while (!uniqueOutputsSmallerThanTarget.empty())
                 {
@@ -1891,11 +1909,11 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
 
                     outputsForUse.emplace_back(entry);
 
-                    fee1 = connFrom->minTxFee1(outputsForUse.size(), 3) * TransactionDescr::COIN;
+                    fee1 = connFrom->COIN.multiply(connFrom->minTxFee1(outputsForUse.size(), 3));
 
-                    uint64_t fullAmount = requiredAmount + fee1 + fee2;
+                    uint256 fullAmount = requiredAmount + fee1 + fee2;
 
-                    utxosAmount += (entry.amount * TransactionDescr::COIN);
+                    utxosAmount += connFrom->COIN.multiply(entry.amount);
 
                     if (utxosAmount == fullAmount && fee1 < smallestFee)
                     {
@@ -1905,7 +1923,7 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
                     }
 
                     if (utxosAmount > fullAmount && fee1 < smallestFee &&
-                        !connFrom->isDustAmount(static_cast<double>(utxosAmount - fullAmount) / TransactionDescr::COIN))
+                        !connFrom->isDustAmount((utxosAmount - fullAmount).divide(connFrom->COIN)))
                     {
                         smallestFee = fee1;
                         bestSmallerOutputsCombination = outputsForUse;
@@ -1926,15 +1944,15 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
             outputsForUse = greaterThanTargetOutput;
         else
         {
-            uint64_t times = 2; //differences in times
-            uint64_t greaterThanTargetOutputAmount = 0;
-            uint64_t bestSmallerOutputsCombinationAmount = 0;
+            uint256 times = 2; //differences in times
+            uint256 greaterThanTargetOutputAmount = 0;
+            uint256 bestSmallerOutputsCombinationAmount = 0;
 
             for(const wallet::UtxoEntry & entry : greaterThanTargetOutput)
-                greaterThanTargetOutputAmount += (entry.amount * TransactionDescr::COIN);
+                greaterThanTargetOutputAmount += connFrom->COIN.multiply(entry.amount);
 
             for(const wallet::UtxoEntry & entry : bestSmallerOutputsCombination)
-                bestSmallerOutputsCombinationAmount += (entry.amount * TransactionDescr::COIN);
+                bestSmallerOutputsCombinationAmount += connFrom->COIN.multiply(entry.amount);
 
             //if one larger output bigger then sum of small outputs more then twice - better to use small outputs
             if(greaterThanTargetOutputAmount > bestSmallerOutputsCombinationAmount * times)
@@ -1949,7 +1967,7 @@ bool App::selectUtxos(const std::string &addr, const std::vector<wallet::UtxoEnt
             }
         }
 
-        fee1 = connFrom->minTxFee1(outputsForUse.size(), 3) * TransactionDescr::COIN;
+        fee1 = connFrom->COIN.multiply(connFrom->minTxFee1(outputsForUse.size(), 3));
 
         return true;
     };

@@ -1324,7 +1324,7 @@ bool BtcWalletConnector<CryptoProvider>::init()
         }
     }
 
-    minTxFee   = std::max(static_cast<uint64_t>(info.relayFee * COIN), minTxFee);
+    minTxFee   = std::max(COIN.multiply(info.relayFee).Get64(), minTxFee);
     feePerByte = std::max(static_cast<uint64_t>(minTxFee / 1024),      feePerByte);
     dustAmount = minTxFee;
 
@@ -1405,6 +1405,41 @@ bool BtcWalletConnector<CryptoProvider>::requestAddressBook(std::vector<wallet::
     }
 
     return true;
+}
+
+//******************************************************************************
+//******************************************************************************
+
+/**
+ * \brief Return the wallet balance; optionally for the specified address.
+ * \param addr Optional address to filter balance
+ * \return returns the wallet balance for the address.
+ *
+ * The wallet balance for the specified address will be returned. Only utxo's associated with the address
+ * are included.
+ */
+template<class CryptoProvider>
+double BtcWalletConnector<CryptoProvider>::getWalletBalance(const std::string & addr) const
+{
+    std::vector<wallet::UtxoEntry> entries;
+    if (!getUnspent(entries))
+    {
+        LOG() << "getUnspent failed " << __FUNCTION__;
+        return -1.;//return negative value for check in called methods
+    }
+
+    double amount = 0;
+    for (const wallet::UtxoEntry & entry : entries)
+    {
+        // exclude utxo's not matching address
+        if (!addr.empty() && entry.address != addr)
+        {
+            continue;
+        }
+        amount += entry.amount;
+    }
+
+    return amount;
 }
 
 //*****************************************************************************
@@ -1613,7 +1648,7 @@ bool BtcWalletConnector<CryptoProvider>::hasValidAddressPrefix(const std::string
 template <class CryptoProvider>
 bool BtcWalletConnector<CryptoProvider>::isDustAmount(const double & amount) const
 {
-    return (static_cast<uint64_t>(amount * COIN) < dustAmount);
+    return (COIN.multiply(amount).Get64() < dustAmount);
 }
 
 //******************************************************************************
@@ -1661,12 +1696,12 @@ std::string BtcWalletConnector<CryptoProvider>::scriptIdToString(const std::vect
 template <class CryptoProvider>
 double BtcWalletConnector<CryptoProvider>::minTxFee1(const uint32_t inputCount, const uint32_t outputCount) const
 {
-    uint64_t fee = (148*inputCount + 34*outputCount + 10) * feePerByte;
+    uint256 fee = (148*inputCount + 34*outputCount + 10) * feePerByte;
     if (fee < minTxFee)
     {
         fee = minTxFee;
     }
-    return (double)fee / COIN;
+    return fee.divide(COIN);
 }
 
 //******************************************************************************
@@ -1676,12 +1711,12 @@ double BtcWalletConnector<CryptoProvider>::minTxFee1(const uint32_t inputCount, 
 template <class CryptoProvider>
 double BtcWalletConnector<CryptoProvider>::minTxFee2(const uint32_t inputCount, const uint32_t outputCount) const
 {
-    uint64_t fee = (180*inputCount + 34*outputCount + 10) * feePerByte;
+    uint256 fee = (180*inputCount + 34*outputCount + 10) * feePerByte;
     if (fee < minTxFee)
     {
         fee = minTxFee;
     }
-    return (double)fee / COIN;
+    return fee.divide(COIN);
 }
 
 //******************************************************************************
@@ -1874,7 +1909,7 @@ xbridge::CTransactionPtr createTransaction(const bool txWithTimeField)
 xbridge::CTransactionPtr createTransaction(const WalletConnector & conn,
                                            const std::vector<XTxIn> & inputs,
                                            const std::vector<std::pair<std::string, double> >  & outputs,
-                                           const uint64_t COIN,
+                                           const uint256 COIN,
                                            const uint32_t txversion,
                                            const uint32_t lockTime,
                                            const bool txWithTimeField)
@@ -1895,7 +1930,7 @@ xbridge::CTransactionPtr createTransaction(const WalletConnector & conn,
         CScript scr;
         scr << OP_DUP << OP_HASH160 << ToByteVector(id) << OP_EQUALVERIFY << OP_CHECKSIG;
 
-        tx->vout.push_back(CTxOut(out.second * COIN, scr));
+        tx->vout.push_back(CTxOut(COIN.multiply(out.second).Get64(), scr));
     }
 
     return tx;

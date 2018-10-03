@@ -33,6 +33,8 @@ public:
 public:
     bool requestAddressBook(std::vector<wallet::AddressBookEntry> & entries);
 
+    double getWalletBalance(const std::string &addr = "") const;
+
     bool getInfo(rpc::WalletInfo & info) const;
 
     bool getUnspent(std::vector<wallet::UtxoEntry> & inputs, const bool withLocked = false) const;

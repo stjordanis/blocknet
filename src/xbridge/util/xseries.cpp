@@ -25,7 +25,7 @@ namespace {
                 && a.fromCurrency == b.toCurrency.to_string());
     }
     template<typename T> bool is_too_small(T amount) {
-        return ::fabs(amount) < std::numeric_limits<double>::epsilon();
+        return ::fabs(amount.getdouble()) < std::numeric_limits<double>::epsilon();
     }
     void transaction_filter(std::vector<CurrencyPair>& matches,
                             const xbridge::TransactionDescr& tr,
@@ -38,9 +38,9 @@ namespace {
         matches.emplace_back(query.with_txids == xQuery::WithTxids::Included
                              ? tr.id.GetHex() : xid_t{},
                              ccy::Asset{ccy::Currency{tr.fromCurrency,
-                                         xbridge::TransactionDescr::COIN}, tr.fromAmount},
+                                         xbridge::TransactionDescr::COIN}, tr.fromAmount.Get64()},
                              ccy::Asset{ccy::Currency{tr.toCurrency,
-                                         xbridge::TransactionDescr::COIN},   tr.toAmount},
+                                         xbridge::TransactionDescr::COIN},   tr.toAmount.Get64()},
                              tr.txtime);
     }
     void updateXSeries(std::vector<xAggregate>& series,

@@ -77,28 +77,31 @@ QVariant XBridgeTransactionsModel::data(const QModelIndex & idx, int role) const
 
     const xbridge::TransactionDescrPtr & d = m_transactions[idx.row()];
 
+    xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(d->fromCurrency);
+    xbridge::WalletConnectorPtr connTo = xbridge::App::instance().connectorByCurrency(d->toCurrency);
+
     if (role == Qt::DisplayRole)
     {
         switch (idx.column())
         {
         case Total:
         {
-            double amount = (double)d->fromAmount / xbridge::TransactionDescr::COIN;
+            double amount = d->fromAmount.divide(connFrom->COIN);
             QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->fromCurrency));
 
             return QVariant(text);
         }
         case Size:
         {
-            double amount = (double)d->toAmount / xbridge::TransactionDescr::COIN;
+            double amount = d->toAmount.divide(connTo->COIN);
             QString text = QString("%1 %2").arg(QString::number(amount, 'f', 12).remove(QRegExp("\\.?0+$"))).arg(QString::fromStdString(d->toCurrency));
 
             return QVariant(text);
         }
         case BID:
         {
-            double amountTotal = (double)d->fromAmount / xbridge::TransactionDescr::COIN;
-            double amountSize = (double)d->toAmount / xbridge::TransactionDescr::COIN;
+            double amountTotal = d->fromAmount.divide(connFrom->COIN);
+            double amountSize = d->toAmount.divide(connTo->COIN);
             double bid = amountTotal / amountSize;
             QString text = QString::number(bid, 'f', 12).remove(QRegExp("\\.?0+$"));
 
@@ -235,6 +238,10 @@ xbridge::Error XBridgeTransactionsModel::newTransactionFromPending(const uint256
             xbridge::WalletConnectorPtr connTo   = xapp.connectorByCurrency(d->toCurrency);
             if (!connFrom || !connTo)
             {
+                //reverse swap
+                std::swap(d->fromCurrency, d->toCurrency);
+                std::swap(d->fromAmount, d->toAmount);
+
                 return xbridge::NO_SESSION;
             }
 
@@ -247,6 +254,10 @@ xbridge::Error XBridgeTransactionsModel::newTransactionFromPending(const uint256
             const auto error = xbridge::App::instance().acceptXBridgeTransaction(d->id, from, to);
             if (error != xbridge::SUCCESS)
             {
+                //reverse swap
+                std::swap(d->fromCurrency, d->toCurrency);
+                std::swap(d->fromAmount, d->toAmount);
+
                 return error;
             }
 

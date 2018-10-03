@@ -57,10 +57,13 @@ struct TransactionDescr
 
     std::vector<unsigned char> from;
     std::string                fromCurrency;
-    uint64_t                   fromAmount;
+    uint256                    fromAmount;
     std::vector<unsigned char> to;
     std::string                toCurrency;
-    uint64_t                   toAmount;
+    uint256                    toAmount;
+
+    // opponent address
+    std::vector<unsigned char> oAddress;
 
     uint32_t                   lockTimeTx1;
     uint32_t                   lockTimeTx2;
@@ -81,6 +84,9 @@ struct TransactionDescr
     std::string                refTxId;
     std::string                refTx;
 
+    //eth filter id
+    uint256                    filterId;
+
     // multisig address and redeem script
     std::string                depositP2SH;
     std::vector<unsigned char> innerScript;
@@ -95,6 +101,7 @@ struct TransactionDescr
     // X key (secret data)
     std::vector<unsigned char>    xPubKey;
     std::vector<unsigned char>    xPrivKey;
+    std::vector<unsigned char>    xHash;
 
     // service node pub key
     std::vector<unsigned char>    sPubKey;

@@ -272,6 +272,7 @@ SOURCES += \
     src/xbridge/util/settings.cpp \
     src/xbridge/util/txlog.cpp \
     src/xbridge/util/xutil.cpp \
+    src/xbridge/util/xseries.cpp \
     src/xbridge/bitcoinrpcconnector.cpp \
     src/xbridge/xbridgeapp.cpp \
     src/xbridge/xbridgeexchange.cpp \
@@ -297,7 +298,9 @@ SOURCES += \
     src/xbridge/xbridgewalletconnectorbtc.cpp \
     src/xbridge/xbridgewalletconnectordgb.cpp \
     src/xbridge/xbridgewalletconnectorbch.cpp \
+    src/xbridge/xbridgewalletconnectoreth.cpp \
     src/xbridge/xbridgecryptoproviderbtc.cpp \
+    src/xbridge/xbridgeethencoder.cpp \
     src/xbridge/xbridgepacket.cpp
 
 #protobuf generated
@@ -554,6 +557,7 @@ HEADERS += \
     src/xbridge/util/settings.h \
     src/xbridge/util/txlog.h \
     src/xbridge/util/xutil.h \
+    src/xbridge/util/xseries.h \
     src/xbridge/bitcoinrpcconnector.h \
     src/xbridge/version.h \
     src/xbridge/xbridgeapp.h \
@@ -588,8 +592,10 @@ HEADERS += \
     src/xbridge/xbridgewalletconnectorbtc.h \
     src/xbridge/xbridgewalletconnectordgb.h \
     src/xbridge/xbridgewalletconnectorbch.h \
-    src/xbridge/xbridgedef.h \
-    src/xbridge/xbridgecryptoproviderbtc.h
+    src/xbridge/xbridgewalletconnectoreth.h \
+    src/xbridge/xbridgecryptoproviderbtc.h \
+    src/xbridge/xbridgeethencoder.h \
+    src/xbridge/xbridgedef.h
 
 #ENABLE_ZMQ
 #    src/zmq/zmqabstractnotifier.h \

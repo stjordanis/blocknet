@@ -75,7 +75,7 @@ public:
 
     virtual bool requestAddressBook(std::vector<wallet::AddressBookEntry> & entries) = 0;
 
-    double getWalletBalance(const std::string &addr = "") const;
+    virtual double getWalletBalance(const std::string &addr = "") const = 0;
 
     virtual bool getInfo(rpc::WalletInfo & info) const = 0;
 
