@@ -16,7 +16,7 @@ public:
     EthWalletConnector() { m_cp = new BtcCryptoProvider; };
     ~EthWalletConnector() { delete m_cp; }
 
-    bool init() { return true; }
+    bool init();
 public:
     // reimplement for currency
     std::string fromXAddr(const std::vector<unsigned char> & xaddr) const;
@@ -114,19 +114,25 @@ public:
                             const uint256 & gas,
                             uint256 & transactionHash) const;
 
-    bool installFilter(const bytes & method, uint256 & filterId) const;
-    bool deleteFilter(const uint256 & filterId) const;
-
-    bool isInitiated(const uint256 & filterId, bytes& initiatorAddress, const bytes & responderAddress, const uint256 value) const;
-    bool isResponded(const uint256 & filterId, const bytes & initiatorAddress, bytes & responderAddress, const uint256 value) const;
-    bool isRefunded(const uint256 & filterId, const bytes & recipientAddress, const uint256 value) const;
-    bool isRedeemed(const uint256 & filterId, const bytes & recipientAddress, const uint256 value) const;
+    bool isInitiated(const bytes& hashedSecret, bytes& initiatorAddress, const bytes & responderAddress, const uint256 value) const;
+    bool isResponded(const bytes& hashedSecret, const bytes & initiatorAddress, bytes & responderAddress, const uint256 value) const;
+    bool isRefunded(const bytes& hashedSecret, const bytes & recipientAddress, const uint256 value) const;
+    bool isRedeemed(const bytes& hashedSecret, const bytes & recipientAddress, const uint256 value) const;
 
 protected:
     BtcCryptoProvider* m_cp;
 
 private:
+    enum NetwortType
+    {
+        MAINNET,
+        TESTNET
+    };
+
+    NetwortType networtType;
+    uint256 fromBlock;
     const std::string contractAddress = "0x078fb70CA9A3077cDF1cA32b4a9Cb74898963DA8";
+    const std::string contractAddressTestnet = "0x078fb70CA9A3077cDF1cA32b4a9Cb74898963DA8";
 };
 
 }

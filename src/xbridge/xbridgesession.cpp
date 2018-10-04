@@ -1773,16 +1773,6 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
              "    x id     " << HexStr(xtx->xHash);
 #endif
 
-    if(xtx->toCurrency == "ETH")
-    {
-        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connTo);
-        if(!connEth->installFilter(xtx->xHash, xtx->filterId))
-        {
-            ERR() << "can't install filter " << __FUNCTION__;
-            return false;
-        }
-    }
-
     if(xtx->fromCurrency == "ETH")
     {
         EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connFrom);
@@ -2191,25 +2181,6 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
 
     xtx->xHash = hx;
 
-    if(xtx->fromCurrency == "ETH" && xtx->filterId.IsNull())
-    {
-        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connFrom);
-        if(!connEth->installFilter(hx, xtx->filterId))
-        {
-            LOG() << "can't install filter for ETH hash: " << asString(hx) << " " << __FUNCTION__;
-            return true;
-        }
-    }
-    else if(xtx->toCurrency == "ETH" && xtx->filterId.IsNull())
-    {
-        EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connTo);
-        if(!connEth->installFilter(hx, xtx->filterId))
-        {
-            LOG() << "can't install filter for ETH hash: " << asString(hx) << " " << __FUNCTION__;
-            return true;
-        }
-    }
-
     double outAmount = xtx->fromAmount.divide(connFrom->COIN);
     double checkAmount = xtx->toAmount.divide(connTo->COIN);
 
@@ -2236,7 +2207,7 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
         {
             EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(connTo);
 
-            if(!connEth->isInitiated(xtx->filterId, xtx->oAddress, xtx->to, xtx->toAmount))
+            if(!connEth->isInitiated(xtx->xHash, xtx->oAddress, xtx->to, xtx->toAmount))
             {
                 // move packet to pending
                 xapp.processLater(txid, packet);
@@ -2674,7 +2645,7 @@ bool Session::Impl::processTransactionConfirmA(XBridgePacketPtr packet) const
         {
             EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
 
-            if(!connEth->isResponded(xtx->filterId, xtx->to, xtx->oAddress, xtx->toAmount))
+            if(!connEth->isResponded(xtx->xHash, xtx->to, xtx->oAddress, xtx->toAmount))
             {
                 // move packet to pending
                 xapp.processLater(txid, packet);
@@ -2827,7 +2798,7 @@ bool Session::Impl::processEthVerifyTransactionConfirmA(XBridgePacketPtr packet)
     {
         EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
 
-        if(!connEth->isRedeemed(xtx->filterId, xtx->to, xtx->toAmount))
+        if(!connEth->isRedeemed(xtx->xHash, xtx->to, xtx->toAmount))
         {
             // move packet to pending
             xapp.processLater(txid, packet);
@@ -3169,7 +3140,7 @@ bool Session::Impl::processEthVerifyTransactionConfirmB(XBridgePacketPtr packet)
     {
         EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
 
-        if(!connEth->isRedeemed(xtx->filterId, xtx->to, xtx->toAmount))
+        if(!connEth->isRedeemed(xtx->xHash, xtx->to, xtx->toAmount))
         {
             // move packet to pending
             xapp.processLater(txid, packet);
@@ -3486,7 +3457,7 @@ bool Session::Impl::processEthVerifyTransactionCancel(XBridgePacketPtr packet) c
 
     EthWalletConnectorPtr connEth = static_pointer_cast<EthWalletConnector>(conn);
 
-    if(!connEth->isRefunded(xtx->filterId, xtx->from, xtx->fromAmount))
+    if(!connEth->isRefunded(xtx->xHash, xtx->from, xtx->fromAmount))
     {
         // move packet to pending
         xapp.processLater(txid, packet);

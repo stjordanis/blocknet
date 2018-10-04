@@ -383,6 +383,48 @@ bool getBlockNumber(const std::string & rpcip,
 
 //*****************************************************************************
 //*****************************************************************************
+bool getNetVersion(const std::string & rpcip,
+                    const std::string & rpcport,
+                    int & networkVersion)
+{
+    try
+    {
+        LOG() << "rpc call <net_version>";
+
+        Array params;
+        Object reply = CallRPC(rpcip, rpcport,
+                               "net_version", params);
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            return false;
+        }
+        else if (result.type() != str_type)
+        {
+            // Result
+            LOG() << "result not an string " << write_string(result, true);
+            return false;
+        }
+
+        networkVersion = stoi(result.get_str());
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "getNetVersion exception " << e.what();
+        return false;
+    }
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
 bool getLastBlockTime(const std::string & rpcip,
                       const std::string & rpcport,
                       uint256 & blockTimestamp)
@@ -529,20 +571,22 @@ bool getEstimateGas(const std::string & rpcip,
 
 //*****************************************************************************
 //*****************************************************************************
-bool newFilter(const std::string & rpcip,
-               const std::string & rpcport,
-               const uint160 & address,
-               const std::string & topic,
-               uint256 & filterId)
+bool getLogs(const std::string & rpcip,
+             const std::string & rpcport,
+             const uint160 & address,
+             const uint256 & fromBlock,
+             const std::string & topic,
+             std::vector<std::string> & events,
+             std::vector<std::string> & data)
 {
     try
     {
-        LOG() << "rpc call <eth_newFilter>";
+        LOG() << "rpc call <eth_getLogs>";
 
         Array params;
 
         Object filter;
-        filter.push_back(Pair("fromBlock", "0x3C9EDB"));
+        filter.push_back(Pair("fromBlock", as0xStringNumber(fromBlock)));
         filter.push_back(Pair("toBlock", "latest"));
         filter.push_back(Pair("address", as0xString(address)));
         filter.push_back(Pair("topics", Array{Value(), as0xString(topic)}));
@@ -551,52 +595,6 @@ bool newFilter(const std::string & rpcip,
 
         Object reply = CallRPC(rpcip, rpcport,
                                "eth_newFilter", params);
-
-        // Parse reply
-        const Value & result = find_value(reply, "result");
-        const Value & error  = find_value(reply, "error");
-
-        if (error.type() != null_type)
-        {
-            // Error
-            LOG() << "error: " << write_string(error, false);
-            return false;
-        }
-        else if (result.type() != str_type)
-        {
-            // Result
-            LOG() << "result not a string ";
-            return false;
-        }
-
-        filterId = uint256(result.get_str());
-    }
-    catch (std::exception & e)
-    {
-        LOG() << "newFilter exception " << e.what();
-        return false;
-    }
-
-    return true;
-}
-
-//*****************************************************************************
-//*****************************************************************************
-bool getFilterChanges(const std::string & rpcip,
-                      const std::string & rpcport,
-                      const uint256 & filterId,
-                      std::vector<std::string> & events,
-                      std::vector<std::string> & data)
-{
-    try
-    {
-        LOG() << "rpc call <eth_getFilterChanges>";
-
-        Array params;
-        params.push_back(as0xStringNumber(filterId));
-
-        Object reply = CallRPC(rpcip, rpcport,
-                               "eth_getFilterLogs", params);
 
         // Parse reply
         const Value & result = find_value(reply, "result");
@@ -654,7 +652,7 @@ bool getFilterChanges(const std::string & rpcip,
     }
     catch (std::exception & e)
     {
-        LOG() << "getFilterChanges exception " << e.what();
+        LOG() << "newFilter exception " << e.what();
         return false;
     }
 
@@ -664,6 +662,22 @@ bool getFilterChanges(const std::string & rpcip,
 } // namespace
 
 } // namespace rpc
+
+//*****************************************************************************
+//*****************************************************************************
+bool EthWalletConnector::init()
+{
+    if (!rpc::getBlockNumber(m_ip, m_port, fromBlock))
+        return false;
+
+    int netVersion = 0;
+    if (!rpc::getNetVersion(m_ip, m_port, netVersion))
+        return false;
+
+    networtType = netVersion == 1 ? MAINNET : TESTNET;
+
+    return true;
+}
 
 //*****************************************************************************
 //*****************************************************************************
@@ -836,7 +850,8 @@ bool EthWalletConnector::getEstimateGas(const bytes & myAddress,
                                         uint256 & estimateGas) const
 {
     if(!rpc::getEstimateGas(m_ip, m_port,
-                            uint160(HexStr(myAddress)), uint160(contractAddress),
+                            uint160(HexStr(myAddress)),
+                            uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
                             value, data,
                             estimateGas))
     {
@@ -929,7 +944,8 @@ bool EthWalletConnector::callContractMethod(const bytes & myAddress,
                                             uint256 & transactionHash) const
 {
     if(!rpc::sendTransaction(m_ip, m_port,
-                             uint160(HexStr(myAddress)), uint160(contractAddress),
+                             uint160(HexStr(myAddress)),
+                             uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
                              gas, value, data,
                              transactionHash))
     {
@@ -940,25 +956,7 @@ bool EthWalletConnector::callContractMethod(const bytes & myAddress,
     return true;
 }
 
-bool EthWalletConnector::installFilter(const bytes& hashedSecret, uint256& filterId) const
-{
-    std::string topic = HexStr(EthEncoder::encode(hashedSecret, false));
-
-    if(!rpc::newFilter(m_ip, m_port, uint160(contractAddress), topic, filterId))
-    {
-        LOG() << "can't install new filter" << __FUNCTION__;
-        return false;
-    }
-
-    return true;
-}
-
-bool EthWalletConnector::deleteFilter(const uint256& filterId) const
-{
-    return true;
-}
-
-bool EthWalletConnector::isInitiated(const uint256 & filterId,
+bool EthWalletConnector::isInitiated(const bytes & hashedSecret,
                                      bytes & initiatorAddress,
                                      const bytes & responderAddress,
                                      const uint256 value) const
@@ -967,9 +965,13 @@ bool EthWalletConnector::isInitiated(const uint256 & filterId,
 
     std::vector<std::string> events;
     std::vector<std::string> data;
-    if(!rpc::getFilterChanges(m_ip, m_port, filterId, events, data))
+    if(!rpc::getLogs(m_ip, m_port,
+                     uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
+                     fromBlock,
+                     HexStr(EthEncoder::encode(hashedSecret, false)),
+                     events, data))
     {
-        LOG() << "can't get filter changes" << __FUNCTION__;
+        LOG() << "can't get logs" << __FUNCTION__;
         return false;
     }
 
@@ -1004,7 +1006,7 @@ bool EthWalletConnector::isInitiated(const uint256 & filterId,
     return false;
 }
 
-bool EthWalletConnector::isResponded(const uint256 & filterId,
+bool EthWalletConnector::isResponded(const bytes & hashedSecret,
                                      const bytes & initiatorAddress,
                                      bytes & responderAddress,
                                      const uint256 value) const
@@ -1013,12 +1015,15 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
 
     std::vector<std::string> events;
     std::vector<std::string> data;
-    if(!rpc::getFilterChanges(m_ip, m_port, filterId, events, data))
+    if(!rpc::getLogs(m_ip, m_port,
+                     uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
+                     fromBlock,
+                     HexStr(EthEncoder::encode(hashedSecret, false)),
+                     events, data))
     {
-        LOG() << "can't get filter changes" << __FUNCTION__;
+        LOG() << "can't get logs" << __FUNCTION__;
         return false;
     }
-
 
     for(unsigned int i = 0; i < events.size(); ++i)
     {
@@ -1051,20 +1056,23 @@ bool EthWalletConnector::isResponded(const uint256 & filterId,
     return false;
 }
 
-bool EthWalletConnector::isRefunded(const uint256 & filterId,
-                                  const bytes & recipientAddress,
-                                  const uint256 value) const
+bool EthWalletConnector::isRefunded(const bytes & hashedSecret,
+                                    const bytes & recipientAddress,
+                                    const uint256 value) const
 {
     std::string refundedEventSignature = as0xString(HexStr(EthEncoder::encodeSig("Refunded(bytes20,address,uint256)")));
 
     std::vector<std::string> events;
     std::vector<std::string> data;
-    if(!rpc::getFilterChanges(m_ip, m_port, filterId, events, data))
+    if(!rpc::getLogs(m_ip, m_port,
+                     uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
+                     fromBlock,
+                     HexStr(EthEncoder::encode(hashedSecret, false)),
+                     events, data))
     {
-        LOG() << "can't get filter changes" << __FUNCTION__;
+        LOG() << "can't get logs" << __FUNCTION__;
         return false;
     }
-
 
     for(unsigned int i = 0; i < events.size(); ++i)
     {
@@ -1094,20 +1102,23 @@ bool EthWalletConnector::isRefunded(const uint256 & filterId,
     return false;
 }
 
-bool EthWalletConnector::isRedeemed(const uint256 & filterId,
-                                  const bytes & recipientAddress,
-                                  const uint256 value) const
+bool EthWalletConnector::isRedeemed(const bytes& hashedSecret,
+                                    const bytes & recipientAddress,
+                                    const uint256 value) const
 {
     std::string redeemedEventSignature = as0xString(HexStr(EthEncoder::encodeSig("Redeemed(bytes20,bytes,address,uint256)")));
 
     std::vector<std::string> events;
     std::vector<std::string> data;
-    if(!rpc::getFilterChanges(m_ip, m_port, filterId, events, data))
+    if(!rpc::getLogs(m_ip, m_port,
+                     uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
+                     fromBlock,
+                     HexStr(EthEncoder::encode(hashedSecret, false)),
+                     events, data))
     {
-        LOG() << "can't get filter changes" << __FUNCTION__;
+        LOG() << "can't get logs" << __FUNCTION__;
         return false;
     }
-
 
     for(unsigned int i = 0; i < events.size(); ++i)
     {
