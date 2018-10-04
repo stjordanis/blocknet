@@ -1,5 +1,16 @@
 pragma solidity ^0.4.15;
 
+contract Mortal {
+    /* Define variable owner of the type address */
+    address owner;
+
+    /* This function is executed at initialization and sets the owner of the contract */
+    function Mortal() { owner = msg.sender; }
+
+    /* Function to recover the funds on the contract */
+    function kill() { if (msg.sender == owner) selfdestruct(owner); }
+}
+
 /** Atomic Cross Chain Transfer
  *
  * Case 1: A wants to exchange some ETH against some BTC with B:
@@ -12,7 +23,7 @@ pragma solidity ^0.4.15;
  *  - TODO
  *
  */
-contract ACCT {
+contract BlocknetDXv1 is Mortal {
     enum SwapType { None, Initiated, Responded }
 
     struct Swap {
