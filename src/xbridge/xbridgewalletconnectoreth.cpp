@@ -594,7 +594,7 @@ bool getLogs(const std::string & rpcip,
         params.push_back(filter);
 
         Object reply = CallRPC(rpcip, rpcport,
-                               "eth_newFilter", params);
+                               "eth_getLogs", params);
 
         // Parse reply
         const Value & result = find_value(reply, "result");
