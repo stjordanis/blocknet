@@ -129,10 +129,10 @@ private:
         TESTNET
     };
 
-    NetwortType networtType;
-    uint256 fromBlock;
-    const std::string contractAddress = "0x078fb70CA9A3077cDF1cA32b4a9Cb74898963DA8";
-    const std::string contractAddressTestnet = "0x078fb70CA9A3077cDF1cA32b4a9Cb74898963DA8";
+    NetwortType m_networkType;
+    uint256 m_fromBlock;
+    const std::string m_contractAddress = "0x078fb70CA9A3077cDF1cA32b4a9Cb74898963DA8";
+    const std::string m_contractAddressTestnet = "0x078fb70CA9A3077cDF1cA32b4a9Cb74898963DA8";
 };
 
 }

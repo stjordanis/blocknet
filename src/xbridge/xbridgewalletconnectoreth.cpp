@@ -667,14 +667,14 @@ bool getLogs(const std::string & rpcip,
 //*****************************************************************************
 bool EthWalletConnector::init()
 {
-    if (!rpc::getBlockNumber(m_ip, m_port, fromBlock))
+    if (!rpc::getBlockNumber(m_ip, m_port, m_fromBlock))
         return false;
 
     int netVersion = 0;
     if (!rpc::getNetVersion(m_ip, m_port, netVersion))
         return false;
 
-    networtType = netVersion == 1 ? MAINNET : TESTNET;
+    m_networkType = netVersion == 1 ? MAINNET : TESTNET;
 
     return true;
 }
@@ -851,7 +851,7 @@ bool EthWalletConnector::getEstimateGas(const bytes & myAddress,
 {
     if(!rpc::getEstimateGas(m_ip, m_port,
                             uint160(HexStr(myAddress)),
-                            uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
+                            uint160(m_networkType == MAINNET ? m_contractAddress : m_contractAddressTestnet),
                             value, data,
                             estimateGas))
     {
@@ -945,7 +945,7 @@ bool EthWalletConnector::callContractMethod(const bytes & myAddress,
 {
     if(!rpc::sendTransaction(m_ip, m_port,
                              uint160(HexStr(myAddress)),
-                             uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
+                             uint160(m_networkType == MAINNET ? m_contractAddress : m_contractAddressTestnet),
                              gas, value, data,
                              transactionHash))
     {
@@ -966,8 +966,8 @@ bool EthWalletConnector::isInitiated(const bytes & hashedSecret,
     std::vector<std::string> events;
     std::vector<std::string> data;
     if(!rpc::getLogs(m_ip, m_port,
-                     uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
-                     fromBlock,
+                     uint160(m_networkType == MAINNET ? m_contractAddress : m_contractAddressTestnet),
+                     m_fromBlock,
                      HexStr(EthEncoder::encode(hashedSecret, false)),
                      events, data))
     {
@@ -1016,8 +1016,8 @@ bool EthWalletConnector::isResponded(const bytes & hashedSecret,
     std::vector<std::string> events;
     std::vector<std::string> data;
     if(!rpc::getLogs(m_ip, m_port,
-                     uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
-                     fromBlock,
+                     uint160(m_networkType == MAINNET ? m_contractAddress : m_contractAddressTestnet),
+                     m_fromBlock,
                      HexStr(EthEncoder::encode(hashedSecret, false)),
                      events, data))
     {
@@ -1065,8 +1065,8 @@ bool EthWalletConnector::isRefunded(const bytes & hashedSecret,
     std::vector<std::string> events;
     std::vector<std::string> data;
     if(!rpc::getLogs(m_ip, m_port,
-                     uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
-                     fromBlock,
+                     uint160(m_networkType == MAINNET ? m_contractAddress : m_contractAddressTestnet),
+                     m_fromBlock,
                      HexStr(EthEncoder::encode(hashedSecret, false)),
                      events, data))
     {
@@ -1111,8 +1111,8 @@ bool EthWalletConnector::isRedeemed(const bytes& hashedSecret,
     std::vector<std::string> events;
     std::vector<std::string> data;
     if(!rpc::getLogs(m_ip, m_port,
-                     uint160(networtType == MAINNET ? contractAddress : contractAddressTestnet),
-                     fromBlock,
+                     uint160(m_networkType == MAINNET ? m_contractAddress : m_contractAddressTestnet),
+                     m_fromBlock,
                      HexStr(EthEncoder::encode(hashedSecret, false)),
                      events, data))
     {

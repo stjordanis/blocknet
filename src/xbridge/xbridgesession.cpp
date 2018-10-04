@@ -3377,7 +3377,6 @@ bool Session::Impl::processTransactionCancel(XBridgePacketPtr packet) const
 
         XBridgePacketPtr verifyPacket(new XBridgePacket(xbcEthVerifyTransactionCancel));
         verifyPacket->append(txid.begin(), 32);
-        verifyPacket->append(static_cast<uint32_t>(reason));
 
         xapp.processLater(txid, verifyPacket);
         return true;
@@ -3437,7 +3436,6 @@ bool Session::Impl::processEthVerifyTransactionCancel(XBridgePacketPtr packet) c
     }
 
     uint256 txid(packet->data());
-    TxCancelReason reason = static_cast<TxCancelReason>(*reinterpret_cast<uint32_t*>(packet->data() + 32));
 
     xbridge::App & xapp = xbridge::App::instance();
     TransactionDescrPtr xtx = xapp.transaction(txid);
@@ -3468,6 +3466,8 @@ bool Session::Impl::processEthVerifyTransactionCancel(XBridgePacketPtr packet) c
 
     // update transaction state for gui
     xuiConnector.NotifyXBridgeTransactionChanged(txid);
+
+    return true;
 }
 
 //*****************************************************************************

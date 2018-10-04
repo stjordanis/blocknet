@@ -267,9 +267,8 @@ enum XBridgeCommand
     //    uint256 hub transaction id
     xbcEthVerifyTransactionConfirmB = 26,
     //
-    // xbcEthVerifyTransactionCancel (36 bytes)
+    // xbcEthVerifyTransactionCancel (32 bytes)
     //    uint256  hub transaction id
-    //    uint32_t reason
     xbcEthVerifyTransactionCancel = 27,
 
     //
