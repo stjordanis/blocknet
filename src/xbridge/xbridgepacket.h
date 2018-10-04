@@ -171,7 +171,7 @@ enum XBridgeCommand
     xbcTransactionInitialized = 9,
 
     //
-    // xbcTransactionCreateA (127 bytes min)
+    // xbcTransactionCreateA (125 bytes min)
     //    uint160  client address
     //    uint160  hub address
     //    uint256  hub transaction id

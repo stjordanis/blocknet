@@ -1678,10 +1678,10 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
 {
     DEBUG_TRACE();
 
-    if (packet->size() < 157)
+    if (packet->size() < 125)
     {
         ERR() << "incorrect packet size for xbcTransactionCreateA "
-              << "need min 157 bytes, received " << packet->size() << " "
+              << "need min 125 bytes, received " << packet->size() << " "
               << __FUNCTION__;
         return false;
     }
@@ -2081,6 +2081,7 @@ bool Session::Impl::processTransactionCreatedA(XBridgePacketPtr packet) const
     reply2->append(tr->b_address());
     reply2->append(m_myid);
     reply2->append(txid.begin(), 32);
+    reply2->append(tr->a_destination());
     reply2->append(tr->a_pk1());
     reply2->append(binTxId);
     reply2->append(hx);
@@ -2100,7 +2101,7 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
 {
     DEBUG_TRACE();
 
-    if (packet->size() < 125)
+    if (packet->size() < 145)
     {
         ERR() << "incorrect packet size for xbcTransactionCreateB "
               << "need min 125 bytes, received " << packet->size() << " "

@@ -206,10 +206,13 @@ xbridge::Error XBridgeTransactionsModel::newTransaction(const std::string & from
 {
     xbridge::App & xapp = xbridge::App::instance();
 
+    xbridge::WalletConnectorPtr connFrom = xbridge::App::instance().connectorByCurrency(fromCurrency);
+    xbridge::WalletConnectorPtr connTo = xbridge::App::instance().connectorByCurrency(toCurrency);
+
     uint256 id, blockHash;
     const auto code = xapp.sendXBridgeTransaction
-            (from, fromCurrency, (uint64_t)(fromAmount * xbridge::TransactionDescr::COIN),
-             to,   toCurrency,   (uint64_t)(toAmount * xbridge::TransactionDescr::COIN),
+            (from, fromCurrency, connFrom->COIN.multiply(fromAmount),
+             to,   toCurrency,   connTo->COIN.multiply(toAmount),
              id, blockHash);
 
     return code;
