@@ -2247,6 +2247,15 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
         LOG() << "deposit A tx confirmed " << txid.GetHex();
     }
 
+    // lock time
+    xtx->lockTimeTx1 = connFrom->lockTime(xtx->role);
+    if (xtx->lockTimeTx1 == 0)
+    {
+        LOG() << "lockTime error, transaction canceled " << __FUNCTION__;
+        sendCancelTransaction(xtx, crRpcError);
+        return true;
+    }
+
     // store opponent public key (packet verification)
     xtx->oPubKey = mPubKey;
 
@@ -2792,8 +2801,8 @@ bool Session::Impl::processEthVerifyTransactionConfirmA(XBridgePacketPtr packet)
         return false;
     }
 
-    std::vector<unsigned char> thisAddress(packet->data(), packet->data()+20);
-    std::vector<unsigned char> hubAddress(packet->data()+20, packet->data()+40);
+    std::vector<unsigned char> hubAddress(packet->data(), packet->data()+20);
+    std::vector<unsigned char> thisAddress(packet->data()+20, packet->data()+40);
 
     uint256 txid(packet->data()+40);
 
@@ -3134,8 +3143,8 @@ bool Session::Impl::processEthVerifyTransactionConfirmB(XBridgePacketPtr packet)
         return false;
     }
 
-    std::vector<unsigned char> thisAddress(packet->data(), packet->data()+20);
-    std::vector<unsigned char> hubAddress(packet->data()+20, packet->data()+40);
+    std::vector<unsigned char> hubAddress(packet->data(), packet->data()+20);
+    std::vector<unsigned char> thisAddress(packet->data()+20, packet->data()+40);
 
     uint256 txid(packet->data()+40);
 

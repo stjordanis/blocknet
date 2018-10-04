@@ -1098,7 +1098,7 @@ bool EthWalletConnector::isRedeemed(const uint256 & filterId,
                                   const bytes & recipientAddress,
                                   const uint256 value) const
 {
-    std::string redeemedEventSignature = as0xString(HexStr(EthEncoder::encodeSig("Redeemed(bytes20,address,uint256)")));
+    std::string redeemedEventSignature = as0xString(HexStr(EthEncoder::encodeSig("Redeemed(bytes20,bytes,address,uint256)")));
 
     std::vector<std::string> events;
     std::vector<std::string> data;
@@ -1128,8 +1128,8 @@ bool EthWalletConnector::isRedeemed(const uint256 & filterId,
                 return false;
             }
 
-            if(params.at(0) == HexStr(EthEncoder::encode(recipientAddress)) &&
-               params.at(1) == value.ToString())
+            if(params.at(1) == HexStr(EthEncoder::encode(recipientAddress)) &&
+               params.at(2) == value.ToString())
                 return true;
         }
     }
