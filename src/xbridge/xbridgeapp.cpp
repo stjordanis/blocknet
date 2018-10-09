@@ -26,9 +26,12 @@
 #include "xbridgewalletconnectorbch.h"
 #include "xbridgewalletconnectordgb.h"
 #include "xbridgewalletconnectoreth.h"
+#include "sync.h"
 
+#include <algorithm>
 #include <assert.h>
 #include <numeric>
+#include <random>
 #include <string.h>
 
 #include <boost/chrono/chrono.hpp>
@@ -147,10 +150,19 @@ protected:
      */
     bool sendCancelTransaction(const uint256 & txid, const TxCancelReason & reason);
 
-    bool addNodeServices(const ::CPubKey & node, const std::vector<std::string> & services);
+    bool addNodeServices(const ::CPubKey & node, const std::vector<std::string> & services, const uint32_t version);
     bool hasNodeService(const ::CPubKey & node, const std::string & service);
 
-    bool findNodeWithService(const std::set<string> & services, CPubKey & node) const;
+    /**
+     * @brief findShuffledNodesWithService - finds nodes with given services
+     *        that have the given protocol version
+     * @param - requested services
+     * @param - protocol version
+     * @return - shuffled list of nodes with requested services
+     */
+    std::vector<CPubKey> findShuffledNodesWithService(
+        const std::set<string>& requested_services,
+        const uint32_t version) const;
 
 protected:
     // workers
@@ -165,39 +177,39 @@ protected:
     boost::asio::deadline_timer                        m_timer;
 
     // sessions
-    mutable boost::mutex                               m_sessionsLock;
+    mutable CCriticalSection                               m_sessionsLock;
     SessionQueue                                       m_sessions;
     SessionsAddrMap                                    m_sessionAddressMap;
 
     // connectors
-    mutable boost::mutex                               m_connectorsLock;
+    mutable CCriticalSection                               m_connectorsLock;
     Connectors                                         m_connectors;
     ConnectorsAddrMap                                  m_connectorAddressMap;
     ConnectorsCurrencyMap                              m_connectorCurrencyMap;
 
     // pending messages (packet processing loop)
-    boost::mutex                                       m_messagesLock;
+    CCriticalSection                                       m_messagesLock;
     typedef std::set<uint256> ProcessedMessages;
     ProcessedMessages                                  m_processedMessages;
 
     // address book
-    boost::mutex                                       m_addressBookLock;
+    CCriticalSection                                       m_addressBookLock;
     AddressBook                                        m_addressBook;
     std::set<std::string>                              m_addresses;
 
     // transactions
-    boost::mutex                                       m_txLocker;
+    CCriticalSection                                       m_txLocker;
     std::map<uint256, TransactionDescrPtr>             m_transactions;
     std::map<uint256, TransactionDescrPtr>             m_historicTransactions;
     xSeriesCache                                       m_xSeriesCache;
 
     // network packets queue
-    boost::mutex                                       m_ppLocker;
+    CCriticalSection                                       m_ppLocker;
     std::map<uint256, XBridgePacketPtr>                m_pendingPackets;
 
     // services and xwallets
-    mutable boost::mutex                               m_xwalletsLocker;
-    std::map<::CPubKey, std::set<std::string> >        m_xwallets;
+    mutable CCriticalSection                               m_xwalletsLocker;
+    std::map<::CPubKey, XWallets>                      m_xwallets;
 };
 
 //*****************************************************************************
@@ -391,7 +403,7 @@ bool App::init(int argc, char *argv[])
 
     // sessions
     {
-        boost::mutex::scoped_lock l(m_p->m_sessionsLock);
+        LOCK(m_p->m_sessionsLock);
 
         for (uint32_t i = 0; i < boost::thread::hardware_concurrency(); ++i)
         {
@@ -490,7 +502,7 @@ SessionPtr App::Impl::getSession()
 {
     SessionPtr ptr;
 
-    boost::mutex::scoped_lock l(m_sessionsLock);
+    LOCK(m_sessionsLock);
 
     ptr = m_sessions.front();
     m_sessions.pop();
@@ -510,7 +522,7 @@ SessionPtr App::Impl::getSession()
 //*****************************************************************************
 SessionPtr App::Impl::getSession(const std::vector<unsigned char> & address)
 {
-    boost::mutex::scoped_lock l(m_sessionsLock);
+    LOCK(m_sessionsLock);
     if (m_sessionAddressMap.count(address))
     {
         return m_sessionAddressMap[address];
@@ -566,7 +578,7 @@ void App::onMessageReceived(const std::vector<unsigned char> & id,
     {
         {
             // if no session address - find connector address
-            boost::mutex::scoped_lock l(m_p->m_connectorsLock);
+            LOCK(m_p->m_connectorsLock);
             if (m_p->m_connectorAddressMap.count(id))
             {
                 WalletConnectorPtr conn = m_p->m_connectorAddressMap.at(id);
@@ -655,7 +667,7 @@ void App::onBroadcastReceived(const std::vector<unsigned char> & message,
 //*****************************************************************************
 bool App::processLater(const uint256 & txid, const XBridgePacketPtr & packet)
 {
-    boost::mutex::scoped_lock l(m_p->m_ppLocker);
+    LOCK(m_p->m_ppLocker);
     m_p->m_pendingPackets[txid] = packet;
     return true;
 }
@@ -666,7 +678,7 @@ bool App::removePackets(const uint256 & txid)
 {
     // remove from pending packets (if added)
 
-    boost::mutex::scoped_lock l(m_p->m_ppLocker);
+    LOCK(m_p->m_ppLocker);
     size_t removed = m_p->m_pendingPackets.erase(txid);
     if(removed > 1) {
         ERR() << "duplicate packets in packets queue" << __FUNCTION__;
@@ -681,7 +693,7 @@ bool App::removePackets(const uint256 & txid)
 //*****************************************************************************
 WalletConnectorPtr App::connectorByCurrency(const std::string & currency) const
 {
-    boost::mutex::scoped_lock l(m_p->m_connectorsLock);
+    LOCK(m_p->m_connectorsLock);
     if (m_p->m_connectorCurrencyMap.count(currency))
     {
         return m_p->m_connectorCurrencyMap.at(currency);
@@ -694,7 +706,7 @@ WalletConnectorPtr App::connectorByCurrency(const std::string & currency) const
 //*****************************************************************************
 std::vector<std::string> App::availableCurrencies() const
 {
-    boost::mutex::scoped_lock l(m_p->m_connectorsLock);
+    LOCK(m_p->m_connectorsLock);
 
     std::vector<std::string> currencies;
 
@@ -732,7 +744,7 @@ std::vector<std::string> App::networkCurrencies() const
 //*****************************************************************************
 bool App::hasCurrency(const std::string & currency) const
 {
-    boost::mutex::scoped_lock l(m_p->m_connectorsLock);
+    LOCK(m_p->m_connectorsLock);
     return m_p->m_connectorCurrencyMap.count(currency);
 }
 
@@ -740,7 +752,7 @@ bool App::hasCurrency(const std::string & currency) const
 //*****************************************************************************
 void App::addConnector(const WalletConnectorPtr & conn)
 {
-    boost::mutex::scoped_lock l(m_p->m_connectorsLock);
+    LOCK(m_p->m_connectorsLock);
     m_p->m_connectors.push_back(conn);
     m_p->m_connectorCurrencyMap[conn->currency] = conn;
 }
@@ -751,7 +763,7 @@ void App::updateConnector(const WalletConnectorPtr & conn,
                           const std::vector<unsigned char> addr,
                           const std::string & currency)
 {
-    boost::mutex::scoped_lock l(m_p->m_connectorsLock);
+    LOCK(m_p->m_connectorsLock);
 
     m_p->m_connectorAddressMap[addr]      = conn;
     m_p->m_connectorCurrencyMap[currency] = conn;
@@ -761,7 +773,7 @@ void App::updateConnector(const WalletConnectorPtr & conn,
 //*****************************************************************************
 std::vector<WalletConnectorPtr> App::connectors() const
 {
-    boost::mutex::scoped_lock l(m_p->m_connectorsLock);
+    LOCK(m_p->m_connectorsLock);
     return m_p->m_connectors;
 }
 
@@ -769,7 +781,7 @@ std::vector<WalletConnectorPtr> App::connectors() const
 //*****************************************************************************
 bool App::isKnownMessage(const std::vector<unsigned char> & message)
 {
-    boost::mutex::scoped_lock l(m_p->m_messagesLock);
+    LOCK(m_p->m_messagesLock);
     return m_p->m_processedMessages.count(Hash(message.begin(), message.end())) > 0;
 }
 
@@ -777,7 +789,7 @@ bool App::isKnownMessage(const std::vector<unsigned char> & message)
 //*****************************************************************************
 bool App::isKnownMessage(const uint256 & hash)
 {
-    boost::mutex::scoped_lock l(m_p->m_messagesLock);
+    LOCK(m_p->m_messagesLock);
     return m_p->m_processedMessages.count(hash) > 0;
 }
 
@@ -786,7 +798,7 @@ bool App::isKnownMessage(const uint256 & hash)
 void App::addToKnown(const std::vector<unsigned char> & message)
 {
     // add to known
-    boost::mutex::scoped_lock l(m_p->m_messagesLock);
+    LOCK(m_p->m_messagesLock);
     // clear memory if it's larger than mempool threshold
     clearMempool();
     m_p->m_processedMessages.insert(Hash(message.begin(), message.end()));
@@ -797,7 +809,7 @@ void App::addToKnown(const std::vector<unsigned char> & message)
 void App::addToKnown(const uint256 & hash)
 {
     // add to known
-    boost::mutex::scoped_lock l(m_p->m_messagesLock);
+    LOCK(m_p->m_messagesLock);
     // clear memory if it's larger than mempool threshold
     clearMempool();
     m_p->m_processedMessages.insert(hash);
@@ -809,7 +821,7 @@ TransactionDescrPtr App::transaction(const uint256 & id) const
 {
     TransactionDescrPtr result;
 
-    boost::mutex::scoped_lock l(m_p->m_txLocker);
+    LOCK(m_p->m_txLocker);
 
     if (m_p->m_transactions.count(id))
     {
@@ -832,7 +844,7 @@ TransactionDescrPtr App::transaction(const uint256 & id) const
 //******************************************************************************
 std::map<uint256, xbridge::TransactionDescrPtr> App::transactions() const
 {
-    boost::mutex::scoped_lock l(m_p->m_txLocker);
+    LOCK(m_p->m_txLocker);
     return m_p->m_transactions;
 }
 
@@ -840,7 +852,7 @@ std::map<uint256, xbridge::TransactionDescrPtr> App::transactions() const
 //******************************************************************************
 std::map<uint256, xbridge::TransactionDescrPtr> App::history() const
 {
-    boost::mutex::scoped_lock l(m_p->m_txLocker);
+    LOCK(m_p->m_txLocker);
     return m_p->m_historicTransactions;
 }
 
@@ -851,7 +863,7 @@ std::vector<CurrencyPair> App::history_matches(const App::TransactionFilter& fil
 {
     std::vector<CurrencyPair> matches{};
     {
-        boost::mutex::scoped_lock l(m_p->m_txLocker);
+        LOCK(m_p->m_txLocker);
         for(const auto& it : m_p->m_historicTransactions) {
             filter(matches, *it.second, query);
         }
@@ -870,7 +882,7 @@ App::flushCancelledOrders(bpt::time_duration minAge) const
     const bpt::ptime keepTime{bpt::microsec_clock::universal_time() - minAge};
     const std::vector<TransactionMap*> maps{&m_p->m_transactions, &m_p->m_historicTransactions};
 
-    boost::mutex::scoped_lock l{m_p->m_txLocker};
+    LOCK(m_p->m_txLocker);
 
     for(auto mp : maps) {
         for(auto it = mp->begin(); it != mp->end(); ) {
@@ -892,7 +904,7 @@ App::flushCancelledOrders(bpt::time_duration minAge) const
 //******************************************************************************
 void App::appendTransaction(const TransactionDescrPtr & ptr)
 {
-    boost::mutex::scoped_lock l(m_p->m_txLocker);
+    LOCK(m_p->m_txLocker);
 
     if (m_p->m_historicTransactions.count(ptr->id))
     {
@@ -918,7 +930,7 @@ void App::moveTransactionToHistory(const uint256 & id)
     TransactionDescrPtr xtx;
 
     {
-        boost::mutex::scoped_lock l(m_p->m_txLocker);
+        LOCK(m_p->m_txLocker);
 
         size_t counter = 0;
 
@@ -971,9 +983,8 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
     std::vector<unsigned char> snodeAddress(20);
     std::vector<unsigned char> sPubKey(33);
     {
-        std::set<std::string> currencies;
-        currencies.insert(fromCurrency);
-        currencies.insert(toCurrency);
+
+        std::set<std::string> currencies{fromCurrency, toCurrency};
         CPubKey snode;
         if (!findNodeWithService(currencies, snode))
         {
@@ -1130,6 +1141,10 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
              "    priv   " << HexStr(ptr->xPrivKey);
 #endif
 
+    // Add destination address
+    updateConnector(connFrom, ptr->from, ptr->fromCurrency);
+    updateConnector(connTo, ptr->to, ptr->toCurrency);
+
     // notify ui about new order
     xuiConnector.NotifyXBridgeTransactionReceived(ptr);
 
@@ -1140,7 +1155,7 @@ xbridge::Error App::sendXBridgeTransaction(const std::string & from,
     connFrom->lockCoins(ptr->usedCoins, true);
 
     {
-        boost::mutex::scoped_lock l(m_p->m_txLocker);
+        LOCK(m_p->m_txLocker);
         m_p->m_transactions[id] = ptr;
     }
 
@@ -1231,7 +1246,7 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
 //    }
 
     {
-        boost::mutex::scoped_lock l(m_p->m_txLocker);
+        LOCK(m_p->m_txLocker);
         if (!m_p->m_transactions.count(id))
         {
 
@@ -1340,6 +1355,10 @@ Error App::acceptXBridgeTransaction(const uint256     & id,
              "    pub id " << HexStr(connTo->getKeyId(ptr->mPubKey)) << std::endl <<
              "    priv   " << HexStr(ptr->mPrivKey);
 #endif
+
+    // Add destination address
+    updateConnector(connFrom, ptr->from, ptr->fromCurrency);
+    updateConnector(connTo, ptr->to, ptr->toCurrency);
 
     // try send immediatelly
     m_p->sendAcceptingTransaction(ptr);
@@ -1478,7 +1497,7 @@ bool App::Impl::sendCancelTransaction(const uint256 & txid,
 
     TransactionDescrPtr ptr;
     {
-        boost::mutex::scoped_lock l(m_txLocker);
+        LOCK(m_txLocker);
         if (m_transactions.count(txid))
         {
             ptr = m_transactions[txid];
@@ -1570,17 +1589,21 @@ Error App::checkAmount(const string   & currency,
 //******************************************************************************
 bool App::sendServicePing()
 {
-    if (activeServicenode.status != ACTIVE_SERVICENODE_STARTED)
+    CServicenode *pmn = nullptr;
     {
-        ERR() << "This servicenode must be started in order to report report services to the network " << __FUNCTION__;
-        return false;
-    }
+        LOCK(cs_main);
+        if (activeServicenode.status != ACTIVE_SERVICENODE_STARTED)
+        {
+            ERR() << "This servicenode must be started in order to report report services to the network " << __FUNCTION__;
+            return false;
+        }
 
-    CServicenode *pmn = mnodeman.Find(activeServicenode.vin);
-    if (pmn == nullptr)
-    {
-        ERR() << "couldn't find the active servicenode " << __FUNCTION__;
-        return false;
+        pmn = mnodeman.Find(activeServicenode.vin);
+        if (pmn == nullptr)
+        {
+            ERR() << "couldn't find the active servicenode " << __FUNCTION__;
+            return false;
+        }
     }
 
     Exchange & e = Exchange::instance();
@@ -1625,9 +1648,9 @@ bool App::sendServicePing()
     }
 
     // Update node services on self
-    m_p->addNodeServices(pmn->pubKeyServicenode, services);
+    m_p->addNodeServices(pmn->pubKeyServicenode, services, static_cast<uint32_t>(XBRIDGE_PROTOCOL_VERSION));
 
-    LOG() << "Sending service ping: " << servicesStr << __FUNCTION__;
+    LOG() << "Sending service ping: " << servicesStr << " " << __FUNCTION__;
 
     sendPacket(ping);
     return true;
@@ -1664,9 +1687,9 @@ bool App::hasNodeService(const ::CPubKey &nodePubKey, const std::string &service
  * @return
  */
 //******************************************************************************
-std::map<::CPubKey, std::set<std::string> > App::allServices()
+std::map<::CPubKey, App::XWallets> App::allServices()
 {
-    boost::mutex::scoped_lock l(m_p->m_xwalletsLocker);
+    LOCK(m_p->m_xwalletsLocker);
     return m_p->m_xwallets;
 }
 
@@ -1678,16 +1701,17 @@ std::map<::CPubKey, std::set<std::string> > App::allServices()
 //******************************************************************************
 std::set<std::string> App::nodeServices(const ::CPubKey &nodePubKey)
 {
-    boost::mutex::scoped_lock l(m_p->m_xwalletsLocker);
-    return m_p->m_xwallets[nodePubKey];
+    LOCK(m_p->m_xwalletsLocker);
+    return m_p->m_xwallets[nodePubKey].services();
 }
 
 //******************************************************************************
 //******************************************************************************
 bool App::addNodeServices(const ::CPubKey & nodePubKey,
-                          const std::vector<std::string> & services)
+                          const std::vector<std::string> & services,
+                          const uint32_t version)
 {
-    return m_p->addNodeServices(nodePubKey, services);
+    return m_p->addNodeServices(nodePubKey, services, version);
 }
 
 //******************************************************************************
@@ -1695,37 +1719,40 @@ bool App::addNodeServices(const ::CPubKey & nodePubKey,
 bool App::findNodeWithService(const std::set<std::string> & services,
                               CPubKey & node) const
 {
-    return m_p->findNodeWithService(services, node);
+    const uint32_t version = static_cast<uint32_t>(XBRIDGE_PROTOCOL_VERSION);
+    auto list = m_p->findShuffledNodesWithService(services,version);
+    if (list.empty())
+        return false;
+    node = list.front();
+    return true;
 }
 
 //******************************************************************************
 //******************************************************************************
-bool App::Impl::findNodeWithService(const std::set<std::string> & services,
-                                    CPubKey & node) const
+std::vector<CPubKey> App::Impl::findShuffledNodesWithService(
+    const std::set<std::string>& requested_services,
+    const uint32_t version) const
 {
-    boost::mutex::scoped_lock l(m_xwalletsLocker);
+    LOCK(m_xwalletsLocker);
 
-    for (const std::pair<CPubKey, std::set<std::string> > & n : m_xwallets)
+    std::vector<CPubKey> list;
+    for (const auto& x : m_xwallets)
     {
-        uint32_t searchCounter = services.size();
-        for (const std::string & serv : services)
+        if (x.second.version() != version)
+            continue;
+        const auto& wallet_services = x.second.services();
+        auto searchCounter = requested_services.size();
+        for (const std::string & serv : requested_services)
         {
-            if (n.second.count(serv))
-            {
-                if (--searchCounter == 0)
-                {
-                    node = n.first;
-                    return true;
-                }
-            }
-            else
-            {
+            if (not wallet_services.count(serv))
                 break;
-            }
+            if (--searchCounter == 0)
+                list.push_back(x.first);
         }
     }
-
-    return false;
+    static std::default_random_engine rng{0};
+    std::shuffle(list.begin(), list.end(), rng);
+    return list;
 }
 
 //******************************************************************************
@@ -1733,14 +1760,16 @@ bool App::Impl::findNodeWithService(const std::set<std::string> & services,
  * @brief Stores the specified services for the node.
  * @param nodePubKey Pubkey of the node
  * @param services List of supported services
+ * @param version Xbridge protocol version
  * @return True if success, otherwise false
  */
 //******************************************************************************
 bool App::Impl::addNodeServices(const ::CPubKey & nodePubKey,
-                                const std::vector<std::string> & services)
+                                const std::vector<std::string> & services,
+                                const uint32_t version)
 {
-    boost::mutex::scoped_lock l(m_xwalletsLocker);
-    m_xwallets[nodePubKey] = std::set<std::string>{services.begin(), services.end()};
+    LOCK(m_xwalletsLocker);
+    m_xwallets[nodePubKey] = XWallets{version, nodePubKey, std::set<std::string>{services.begin(), services.end()}};
     return true;
 }
 
@@ -1755,10 +1784,10 @@ bool App::Impl::addNodeServices(const ::CPubKey & nodePubKey,
 bool App::Impl::hasNodeService(const ::CPubKey & nodePubKey,
                                const std::string & service)
 {
-    boost::mutex::scoped_lock l(m_xwalletsLocker);
+    LOCK(m_xwalletsLocker);
     if (m_xwallets.count(nodePubKey))
     {
-        return m_xwallets[nodePubKey].count(service) > 0;
+        return m_xwallets[nodePubKey].services().count(service) > 0;
     }
 
     return false;
@@ -2027,7 +2056,7 @@ void App::Impl::onTimer()
                 counter = 0;
                 std::map<uint256, XBridgePacketPtr> map;
                 {
-                    boost::mutex::scoped_lock l(m_ppLocker);
+                    LOCK(m_ppLocker);
                     map = m_pendingPackets;
                     m_pendingPackets.clear();
                 }

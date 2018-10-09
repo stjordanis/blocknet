@@ -98,7 +98,8 @@ Value dxGetNetworkTokens(const Array & params, bool fHelp)
     std::set<std::string> services;
     auto nodeServices = xbridge::App::instance().allServices();
     for (auto & serviceItem : nodeServices) {
-        services.insert(serviceItem.second.begin(), serviceItem.second.end());
+        auto s = serviceItem.second.services();
+        services.insert(s.begin(), s.end());
     }
 
     return Array{services.begin(), services.end()};
@@ -389,9 +390,9 @@ Value dxMakeOrder(const Array &params, bool fHelp)
     }
     if (params.size() < 7) {
 
-        return util::makeError(xbridge::INVALID_PARAMETERS, __FUNCTION__,
-                               "(taker) (taker size) (taker address) (type) (dryrun)[optional]\n"
-                               "Create a new order. dryrun will validate the order without submitting the order to the network.");
+        throw runtime_error("dxMakeOrder (maker) (maker size) (maker address) "
+                            "(taker) (taker size) (taker address) (type) (dryrun)[optional]\n"
+                            "Create a new order. dryrun will validate the order without submitting the order to the network.");
 
     }
 

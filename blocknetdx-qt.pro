@@ -488,6 +488,7 @@ HEADERS += \
     src/servicenode-payments.h \
     src/servicenode-sync.h \
     src/spork.h \
+    src/ssliostreamdevice.h \
     src/streams.h \
     src/swifttx.h \
     src/timedata.h \

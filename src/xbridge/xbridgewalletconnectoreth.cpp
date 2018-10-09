@@ -18,6 +18,7 @@
 #include "rpcprotocol.h"
 #include "rpcclient.h"
 #include "tinyformat.h"
+#include "sync.h"
 
 #include <boost/asio.hpp>
 #include <boost/iostreams/concepts.hpp>
@@ -87,16 +88,14 @@ int readHTTPEth(std::basic_istream<char>& stream, map<string, string>& mapHeader
 Object CallRPC(const std::string & rpcip, const std::string & rpcport,
                const std::string & strMethod, const Array & params)
 {
-    // Connect to localhost
-    bool fUseSSL = false;
-    asio::io_service io_service;
-    ssl::context context(io_service, ssl::context::sslv23);
-    context.set_options(ssl::context::no_sslv2);
-    asio::ssl::stream<asio::ip::tcp::socket> sslStream(io_service, context);
-    SSLIOStreamDevice<asio::ip::tcp> d(sslStream, fUseSSL);
-    iostreams::stream< SSLIOStreamDevice<asio::ip::tcp> > stream(d);
-    if (!d.connect(rpcip, rpcport))
-        throw runtime_error("couldn't connect to server");
+    boost::asio::ip::tcp::iostream stream;
+    stream.expires_from_now(boost::posix_time::seconds(GetArg("-rpcxbridgetimeout", 15)));
+    stream.connect(rpcip, rpcport);
+    if (stream.error() != boost::system::errc::success) {
+        LogPrint("net", "Failed to make rpc connection to %s:%s error %d: %s", rpcip, rpcport, stream.error(), stream.error().message());
+        throw runtime_error(strprintf("no response from server %s:%s - %s", rpcip.c_str(), rpcport.c_str(),
+                                      stream.error().message().c_str()));
+    }
 
     // Send request
     string strRequest = JSONRPCRequest(strMethod, params, 1);
