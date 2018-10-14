@@ -1869,8 +1869,11 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
             std::vector<std::pair<std::string, double> > outputs;
 
             // inputs
+            wallet::UtxoEntry largestUtxo;
             for (const wallet::UtxoEntry & entry : usedInTx)
             {
+                if (entry.amount > largestUtxo.amount)
+                    largestUtxo = entry;
                 inputs.emplace_back(entry.txId, entry.vout, entry.amount);
             }
 
@@ -1882,17 +1885,8 @@ bool Session::Impl::processTransactionCreateA(XBridgePacketPtr packet) const
             // rest
             if (inAmount > outAmount+fee1+fee2)
             {
-                std::string addr;
-                if (!connFrom->getNewAddress(addr))
-                {
-                    // cancel transaction
-                    LOG() << "rpc error, transaction canceled " << __FUNCTION__;
-                    sendCancelTransaction(xtx, crRpcError);
-                    return true;
-                }
-
                 double rest = inAmount-outAmount-fee1-fee2;
-                outputs.push_back(std::make_pair(addr, rest));
+                outputs.push_back(std::make_pair(largestUtxo.address, rest)); // change back to largest input used in order
             }
 
             if (!connFrom->createDepositTransaction(inputs, outputs, xtx->binTxId, xtx->binTx))
@@ -2340,8 +2334,11 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
             std::vector<std::pair<std::string, double> > outputs;
 
             // inputs
+            wallet::UtxoEntry largestUtxo;
             for (const wallet::UtxoEntry & entry : usedInTx)
             {
+                if (entry.amount > largestUtxo.amount)
+                    largestUtxo = entry;
                 inputs.emplace_back(entry.txId, entry.vout, entry.amount);
             }
 
@@ -2353,17 +2350,8 @@ bool Session::Impl::processTransactionCreateB(XBridgePacketPtr packet) const
             // rest
             if (inAmount > outAmount+fee1+fee2)
             {
-                std::string addr;
-                if (!connFrom->getNewAddress(addr))
-                {
-                    // cancel transaction
-                    LOG() << "rpc error, transaction canceled " << __FUNCTION__;
-                    sendCancelTransaction(xtx, crRpcError);
-                    return true;
-                }
-
                 double rest = inAmount-outAmount-fee1-fee2;
-                outputs.push_back(std::make_pair(addr, rest));
+                outputs.push_back(std::make_pair(largestUtxo.address, rest)); // change back to largest input used in order
             }
 
             if (!connFrom->createDepositTransaction(inputs, outputs, xtx->binTxId, xtx->binTx))
