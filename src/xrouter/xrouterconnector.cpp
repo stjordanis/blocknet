@@ -223,10 +223,6 @@ bool createAndSignTransaction(Array txparams, std::string & raw_tx)
 {
     LOCK(cs_rpcBlockchainStore);
 
-    const static std::string createCommand("createrawtransaction");
-    const static std::string fundCommand("fundrawtransaction");
-    const static std::string signCommand("signrawtransaction");
-
     int         errCode = 0;
     std::string errMessage;
     std::string rawtx;
@@ -237,7 +233,7 @@ bool createAndSignTransaction(Array txparams, std::string & raw_tx)
 
         {
             // call create
-            result = tableRPC.execute(createCommand, txparams);
+            result = createrawtransaction(txparams, false);
             LOG() << "Create transaction: " << json_spirit::write_string(Value(result), true);
             if (result.type() != str_type)
             {
@@ -255,7 +251,7 @@ bool createAndSignTransaction(Array txparams, std::string & raw_tx)
             params.push_back(options);
 
             // call fund
-            result = tableRPC.execute(fundCommand, params);
+            result = fundrawtransaction(params, false);
             LOG() << "Fund transaction: " << json_spirit::write_string(Value(result), true);
             if (result.type() != obj_type)
             {
@@ -273,10 +269,10 @@ bool createAndSignTransaction(Array txparams, std::string & raw_tx)
         }
 
         {
-            std::vector<std::string> params;
+            Array params;
             params.push_back(rawtx);
 
-            result = tableRPC.execute(signCommand, RPCConvertValues(signCommand, params));
+            result = signrawtransaction(params, false);
             LOG() << "Sign transaction: " << json_spirit::write_string(Value(result), true);
             if (result.type() != obj_type)
             {
@@ -660,7 +656,7 @@ std::string generateDomainRegistrationTx(std::string domain) {
     params.push_back(outputs);    
     bool res = createAndSignTransaction(params, raw_tx);
     if (!res)
-        return false;
+        return "";
     
     sendTransactionBlockchain(raw_tx, txid);
     return txid;
