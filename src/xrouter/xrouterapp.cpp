@@ -113,20 +113,24 @@ bool App::isEnabled()
 
 bool App::init(int argc, char *argv[])
 {
-    // init xbridge settings
-    Settings & s = settings();
-    
     std::string path(GetDataDir(false).string());
-    std::string xbridgepath = path + "/xbridge.conf";
-    s.read(xbridgepath.c_str());
-    s.parseCmdLine(argc, argv);
-    LOG() << "Loading xbridge config from file " << xbridgepath;
-
     this->xrouterpath = path + "/xrouter.conf";
     LOG() << "Loading xrouter config from file " << xrouterpath;
     this->xrouter_settings.read(xrouterpath.c_str());
     this->xrouter_settings.loadPlugins();
+    
+    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
+    if (!xrouter_on)
+        return true;
 
+    // init xbridge settings
+    Settings & s = settings();
+    
+    std::string xbridgepath = path + "/xbridge.conf";
+    s.read(xbridgepath.c_str());
+    s.parseCmdLine(argc, argv);
+    LOG() << "Loading xbridge config from file " << xbridgepath;
+    
     return true;
 }
 
@@ -162,6 +166,10 @@ static std::vector<pair<int, CServicenode> > getServiceNodes()
 //*****************************************************************************
 bool App::start()
 {
+    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
+    if (!xrouter_on)
+        return true;
+    
     updateConfigs();
     bool res = server->start();
     //openConnections();
