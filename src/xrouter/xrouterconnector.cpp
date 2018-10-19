@@ -253,14 +253,14 @@ bool createAndSignTransaction(Array txparams, std::string & raw_tx)
             LOG() << "Fund transaction: " << json_spirit::write_string(Value(result), true);
             if (result.type() != obj_type)
             {
-                throw std::runtime_error("Fund transaction command finished with error");
+                throw std::runtime_error("Could not fund the transaction. Please check that you have enough funds.");
             }
 
             Object obj = result.get_obj();
             const Value  & tx = find_value(obj, "hex");
             if (tx.type() != str_type)
             {
-                throw std::runtime_error("Fund transaction error or not completed");
+                throw std::runtime_error("Could not fund the transaction. Please check that you have enough funds.");
             }
 
             rawtx = tx.get_str();
