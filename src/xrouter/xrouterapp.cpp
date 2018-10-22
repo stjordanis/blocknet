@@ -108,20 +108,18 @@ App& App::instance()
 bool App::isEnabled()
 {
     // enabled by default
-    return true;
+    return GetBoolArg("-xrouter", false);
 }
 
 bool App::init(int argc, char *argv[])
 {
+    if (!isEnabled())
+        return true;
     std::string path(GetDataDir(false).string());
     this->xrouterpath = path + "/xrouter.conf";
     LOG() << "Loading xrouter config from file " << xrouterpath;
     this->xrouter_settings.read(xrouterpath.c_str());
     this->xrouter_settings.loadPlugins();
-    
-    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
-    if (!xrouter_on)
-        return true;
 
     // init xbridge settings
     Settings & s = settings();
@@ -138,8 +136,7 @@ std::vector<std::string> App::getServicesList()
 {
     // We append "XRouter" if XRouter is activated at all, and "XRouter::service_name" for each activated plugin
     std::vector<std::string> result;
-    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
-    if (!xrouter_on)
+    if (!isEnabled())
         return result;
     result.push_back("XRouter");
     LOG() << "Adding XRouter to servicenode ping";
@@ -166,8 +163,7 @@ static std::vector<pair<int, CServicenode> > getServiceNodes()
 //*****************************************************************************
 bool App::start()
 {
-    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
-    if (!xrouter_on)
+    if (!isEnabled())
         return true;
     
     updateConfigs();
@@ -214,9 +210,8 @@ void App::openConnections(std::string wallet, std::string plugin)
 
 std::string App::updateConfigs()
 {
-    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
-    if (!xrouter_on)
-        return "XRouter is turned off. Please check that xrouter.conf is set up correctly.";
+    if (!isEnabled())
+        return "XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.";
     
     std::vector<pair<int, CServicenode> > vServicenodeRanks = getServiceNodes();
     std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
@@ -565,9 +560,8 @@ void App::onMessageReceived(CNode* node, const std::vector<unsigned char>& messa
 {
     LOG() << "Received xrouter packet";
 
-    // If Main.xrouter == 0, xrouter is turned off on this snode
-    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
-    if (!xrouter_on)
+    // If xrouter == 0, xrouter is turned off on this snode
+    if (!isEnabled())
         return;
     
     XRouterPacketPtr packet(new XRouterPacket);
@@ -656,9 +650,8 @@ static bool satisfyBlockRequirement(uint256& txHash, uint32_t& vout, CKey& key)
 //*****************************************************************************
 std::string App::xrouterCall(enum XRouterCommand command, const std::string & currency, std::string param1, std::string param2, std::string confirmations)
 {
-    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
-    if (!xrouter_on)
-        return "XRouter is turned off. Please check that xrouter.conf is set up correctly.";
+    if (!isEnabled())
+        return "XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.";
     
     updateConfigs();
 
@@ -826,9 +819,8 @@ std::string App::getReply(const std::string & id)
 
 std::string App::sendTransaction(const std::string & currency, const std::string & transaction)
 {
-    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
-    if (!xrouter_on)
-        return "XRouter is turned off. Please check that xrouter.conf is set up correctly.";
+    if (!isEnabled())
+        return "XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.";
     
     updateConfigs();
     
@@ -889,9 +881,8 @@ std::string App::sendTransaction(const std::string & currency, const std::string
 
 std::string App::sendCustomCall(const std::string & name, std::vector<std::string> & params)
 {
-    int xrouter_on = xrouter_settings.get<int>("Main.xrouter", 0);
-    if (!xrouter_on)
-        return "XRouter is turned off. Please check that xrouter.conf is set up correctly.";
+    if (!isEnabled())
+        return "XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.";
     
     if (this->xrouter_settings.hasPlugin(name)) {
         // Run the plugin locally
@@ -1166,7 +1157,7 @@ void App::reloadConfigs() {
 
 std::string App::getStatus() {
     Object result;
-    result.emplace_back(Pair("enabled", xrouter_settings.get<int>("Main.xrouter", 0) != 0));
+    result.emplace_back(Pair("enabled", isEnabled()));
     result.emplace_back(Pair("config", this->xrouter_settings.rawText()));
     Object myplugins;
     for (std::string s : this->xrouter_settings.getPlugins())
