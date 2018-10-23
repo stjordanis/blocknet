@@ -198,9 +198,17 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
     if (fee > 0) {
         std::vector<std::string> parts;
         boost::split(parts, feetx, boost::is_any_of(";"));
-        if (parts.size() < 2)
+        if (parts.size() < 3)
             throw std::runtime_error("Incorrect payment data format");
-        if (parts[0] == "single") {
+        bool usehash;
+        if (parts[0] == "nohash")
+            usehash = false;
+        else if (parts[0] == "hash")
+            usehash = true;
+        else
+            throw std::runtime_error("Incorrect hash/no hash field");
+        
+        if (parts[1] == "single") {
             // Direct payment, no CLTV channel
             std::string txid;
             
@@ -217,7 +225,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             }
             
             LOG() << "Got direct payment; value = " << paid << " tx = " << feetx; 
-        } else if (parts[0] == "channel") {
+        } else if (parts[1] == "channel") {
             if (!paymentChannels.count(node)) {
                 // There is no payment channel with this node
                 if (parts.size() != 5) {
@@ -226,11 +234,11 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                 
                 paymentChannels[node] = PaymentChannel();
                 paymentChannels[node].value = CAmount(0);
-                paymentChannels[node].raw_tx = parts[1];
-                paymentChannels[node].txid = parts[2];
-                std::vector<unsigned char> script = ParseHex(parts[3]);
+                paymentChannels[node].raw_tx = parts[2];
+                paymentChannels[node].txid = parts[3];
+                std::vector<unsigned char> script = ParseHex(parts[4]);
                 paymentChannels[node].redeemScript = CScript(script.begin(), script.end());
-                feetx = parts[4];
+                feetx = parts[5];
                 
                 // TODO: verify the channel's correctness
 
