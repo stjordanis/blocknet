@@ -1007,6 +1007,7 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
     if (fee > 0) {
         if (deposit == 0) {
             res = createAndSignTransaction(dest, fee, payment_tx);
+            payment_tx = "single;" + payment_tx;
             if(!res) {
                 return "Failed to create payment transaction";
             }
@@ -1035,6 +1036,7 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             
             // Send channel tx, channel tx id, payment tx in one string
             payment_tx += paytx;
+            payment_tx = "channel;" + payment_tx;
         }
         
         LOG() << "Payment transaction: " << payment_tx;

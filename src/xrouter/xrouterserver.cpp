@@ -196,40 +196,41 @@ inline void XRouterServer::sendReply(CNode* node, std::string uuid, std::string 
 void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
 {
     if (fee > 0) {
-        if (!paymentChannels.count(node)) {
-            // There is no payment channel with this node
+        std::vector<std::string> parts;
+        boost::split(parts, feetx, boost::is_any_of(";"));
+        if (parts.size() < 2)
+            throw std::runtime_error("Incorrect payment data format");
+        if (parts[0] == "single") {
+            // Direct payment, no CLTV channel
+            std::string txid;
             
-            if (feetx.find(";") == std::string::npos) {
-                // Direct payment, no CLTV channel
-                std::string txid;
-                
-                CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
-                if (paid < fee) {
-                    LOG() << "Fee paid is not enough: paid" << paid << "; fee = " << fee;
-                    throw std::runtime_error("Fee paid is not enough");
-                }
+            CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
+            if (paid < fee) {
+                LOG() << "Fee paid is not enough: paid" << paid << "; fee = " << fee;
+                throw std::runtime_error("Fee paid is not enough");
+            }
 
-                bool res = sendTransactionBlockchain(feetx, txid);
-                if (!res) {
-                    LOG() << "Could not send transaction to blockchain";
-                    throw std::runtime_error("Could not send transaction " + feetx + " to blockchain");
-                }
-                
-                LOG() << "Got direct payment; value = " << paid << " tx = " << feetx; 
-            } else {
-                std::vector<std::string> parts;
-                boost::split(parts, feetx, boost::is_any_of(";"));
-                if (parts.size() != 4) {
+            bool res = sendTransactionBlockchain(feetx, txid);
+            if (!res) {
+                LOG() << "Could not send transaction to blockchain";
+                throw std::runtime_error("Could not send transaction " + feetx + " to blockchain");
+            }
+            
+            LOG() << "Got direct payment; value = " << paid << " tx = " << feetx; 
+        } else if (parts[0] == "channel") {
+            if (!paymentChannels.count(node)) {
+                // There is no payment channel with this node
+                if (parts.size() != 5) {
                     throw std::runtime_error("Incorrect channel creation parameters");
                 }
                 
                 paymentChannels[node] = PaymentChannel();
                 paymentChannels[node].value = CAmount(0);
-                paymentChannels[node].raw_tx = parts[0];
-                paymentChannels[node].txid = parts[1];
-                std::vector<unsigned char> script = ParseHex(parts[2]);
+                paymentChannels[node].raw_tx = parts[1];
+                paymentChannels[node].txid = parts[2];
+                std::vector<unsigned char> script = ParseHex(parts[3]);
                 paymentChannels[node].redeemScript = CScript(script.begin(), script.end());
-                feetx = parts[3];
+                feetx = parts[4];
                 
                 // TODO: verify the channel's correctness
 
@@ -240,6 +241,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                 LOG() << "Created payment channel date = " << date << " expiry = " << deadline << " ms"; 
                 
                 boost::thread([deadline, this, node]() {
+                    // TODO: add a way to shut this thread programmatically
                     boost::this_thread::sleep_for(boost::chrono::milliseconds(deadline));
                     std::string txid;
                     LOG() << "Closing payment channel: " << this->paymentChannels[node].txid << " Value = " << this->paymentChannels[node].value;
@@ -248,17 +250,20 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                     this->paymentChannels.erase(node);
                 }).detach();
             }
-        }
         
-        if (paymentChannels.count(node)) {
-            CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
-            LOG() << "Got payment via channel; value = " << paid - paymentChannels[node].value << " total value = " << paid << " tx = " << feetx; 
-            if (paid - paymentChannels[node].value < fee) {
-                throw std::runtime_error("Fee paid is not enough");
+            if (paymentChannels.count(node)) {
+                CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
+                LOG() << "Got payment via channel; value = " << paid - paymentChannels[node].value << " total value = " << paid << " tx = " << feetx; 
+                if (paid - paymentChannels[node].value < fee) {
+                    throw std::runtime_error("Fee paid is not enough");
+                }
+                
+                finalizeChannelTransaction(paymentChannels[node], this->getMyPaymentAddressKey(), feetx, paymentChannels[node].latest_tx);
+                paymentChannels[node].value = paid;
             }
             
-            finalizeChannelTransaction(paymentChannels[node], this->getMyPaymentAddressKey(), feetx, paymentChannels[node].latest_tx);
-            paymentChannels[node].value = paid;
+        } else {
+            throw std::runtime_error("Unknown payment format: " + parts[0]);
         }
     }
 
