@@ -77,7 +77,8 @@ static std::string generateUUID()
 //*****************************************************************************
 namespace xrouter
 {   
-boost::container::map<CNode*, double > App::snodeScore = boost::container::map<CNode*, double >();    
+boost::container::map<CNode*, double > App::snodeScore = boost::container::map<CNode*, double >(); 
+typedef boost::container::map<CNode*, std::string> queries_map;
 
 //*****************************************************************************
 //*****************************************************************************
@@ -742,7 +743,6 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         return json_spirit::write_string(Value(error), true);
     }
     else {
-        typedef boost::container::map<CNode*, std::string> queries_map;
         BOOST_FOREACH( queries_map::value_type &i, queries[id] ) {
             std::string cand = i.second;
             int cnt = 0;
@@ -773,6 +773,35 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             finalnode = i.first;
             break;
         }
+    }
+    
+    CAmount fee = to_amount(snodeConfigs[finalnode->addr.ToString()].getCommandFee(command, currency));
+    CAmount fee_part2 = fee - fee/2;
+    std::string payment_tx = "nofee";
+    if (fee > 0) {
+        payment_tx = "nohash;" + generatePayment(finalnode, fee_part2);
+    }
+    XRouterPacketPtr fpacket(new XRouterPacket(xrFetchReply));
+    fpacket->append(txHash.begin(), 32);
+    fpacket->append(vout);
+    fpacket->append(id);
+    fpacket->append(currency);
+    fpacket->append(payment_tx);
+    fpacket->sign(key);
+
+    finalnode->PushMessage("xrouter", fpacket->body());
+
+    LOG() << "Fetching reply from node " << finalnode->addrName;
+
+    boost::shared_ptr<boost::mutex> m2(new boost::mutex());
+    boost::shared_ptr<boost::condition_variable> cond2(new boost::condition_variable());
+    boost::mutex::scoped_lock lock2(*m2);
+    queriesLocks[id] = std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> >(m2, cond2);
+    if (cond2->timed_wait(lock2, boost::posix_time::milliseconds(timeout))) {
+        std::string reply = queries[id][finalnode];
+        return reply;
+    } else {
+        return "Failed to fetch reply from service node";
     }
 }
 

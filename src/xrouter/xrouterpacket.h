@@ -52,7 +52,7 @@ enum TxCancelReason
         }                                                                     \
     }
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(XRouterCommand, (xbcInvalid)(xrReply)(xrConfigReply)(xrGetBlockCount)(xrGetBlockHash)(xrGetBlock)(xrGetTransaction)(xrGetAllBlocks)(xrGetAllTransactions)(xrGetBalance)(xrGetBalanceUpdate)(xrGetTransactionsBloomFilter)(xrSendTransaction)(xrCustomCall)(xrGetPaymentAddress)(xrGetXrouterConfig))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(XRouterCommand, (xbcInvalid)(xrReply)(xrConfigReply)(xrFetchReply)(xrGetBlockCount)(xrGetBlockHash)(xrGetBlock)(xrGetTransaction)(xrGetAllBlocks)(xrGetAllTransactions)(xrGetBalance)(xrGetBalanceUpdate)(xrGetTransactionsBloomFilter)(xrSendTransaction)(xrCustomCall)(xrGetPaymentAddress)(xrGetXrouterConfig))
 
 //******************************************************************************
 //******************************************************************************
