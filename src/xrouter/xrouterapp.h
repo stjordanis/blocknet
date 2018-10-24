@@ -44,7 +44,7 @@ private:
     std::unique_ptr<XRouterServer> server;
 
     boost::container::map<std::string, std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> > > queriesLocks;
-    boost::container::map<std::string, std::vector<std::string> > queries;
+    boost::container::map<std::string, boost::container::map<CNode*, std::string> > queries;
     boost::container::map<std::string, CNode* > configQueries;
     boost::container::map<CNode*, std::chrono::time_point<std::chrono::system_clock> > lastConfigQueries;
     boost::container::map<CNode*, std::chrono::time_point<std::chrono::system_clock> > lastConfigUpdates;
@@ -275,7 +275,7 @@ public:
      * @param packet Xrouter packet received over the network
      * @return
      */
-    bool processReply(XRouterPacketPtr packet);
+    bool processReply(XRouterPacketPtr packet, CNode* node);
     
     /**
      * @brief process reply about xrouter config contents

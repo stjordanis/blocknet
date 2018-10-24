@@ -481,7 +481,7 @@ std::string App::processGetXrouterConfig(XRouterSettings cfg, std::string addr)
 
 //*****************************************************************************
 //*****************************************************************************
-bool App::processReply(XRouterPacketPtr packet)
+bool App::processReply(XRouterPacketPtr packet, CNode* node)
 {
     uint32_t offset = 0;
 
@@ -499,8 +499,8 @@ bool App::processReply(XRouterPacketPtr packet)
     LOG() << reply;
     boost::mutex::scoped_lock l(*queriesLocks[uuid].first);
     if (!queries.count(uuid))
-        queries[uuid] = vector<std::string>();
-    queries[uuid].push_back(reply);
+        queries[uuid] = boost::container::map<CNode*, std::string>();
+    queries[uuid][node] = reply;
     queriesLocks[uuid].second->notify_all();
     return true;
 }
@@ -607,7 +607,7 @@ void App::onMessageReceived(CNode* node, const std::vector<unsigned char>& messa
         node->PushMessage("xrouter", rpacket->body());
         return;
     } else if (packet->command() == xrReply) {
-        processReply(packet);
+        processReply(packet, node);
         return;
     } else if (packet->command() == xrConfigReply) {
         processConfigReply(packet);
@@ -735,29 +735,44 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     while ((confirmation_count < confirmations_count) && cond->timed_wait(lock, boost::posix_time::milliseconds(timeout)))
         confirmation_count++;
 
+    std::string result = NULL;
     if(confirmation_count <= confirmations_count / 2) {
         error.emplace_back(Pair("error", "Failed to get response in time. Try xrReply command later."));
         error.emplace_back(Pair("uuid", id));
         return json_spirit::write_string(Value(error), true);
     }
     else {
-        for (unsigned int i = 0; i < queries[id].size(); i++)
-        {
-            std::string cand = queries[id][i];
+        typedef boost::container::map<CNode*, std::string> queries_map;
+        BOOST_FOREACH( queries_map::value_type &i, queries[id] ) {
+            std::string cand = i.second;
             int cnt = 0;
-            for (unsigned int j = 0; j < queries[id].size(); j++)
-            {
-                if (queries[id][j] == cand)
-                {
+            BOOST_FOREACH( queries_map::value_type &j, queries[id] ) {
+                if (j.second == cand) {
                     cnt++;
                     if (cnt > confirmations_count / 2)
-                        return cand;
+                        result = cand;
                 }
             }
+            
         }
-
-        error.emplace_back(Pair("error", "No consensus between responses"));
-        return json_spirit::write_string(Value(error), true);
+        
+        
+        if (result.empty()) {
+            error.emplace_back(Pair("error", "No consensus between responses"));
+            return json_spirit::write_string(Value(error), true);
+        } else {
+            if (!usehash)
+                return result;
+        }
+    }
+    
+    // We reach here only if usehash == true
+    CNode* finalnode;
+    BOOST_FOREACH( queries_map::value_type &i, queries[id] ) {
+        if (result == i.second) {
+            finalnode = i.first;
+            break;
+        }
     }
 }
 
@@ -815,9 +830,11 @@ std::string App::getReply(const std::string & id)
         result.emplace_back(Pair("uuid", id));
         return json_spirit::write_string(Value(result), true);
     } else {
-        for (unsigned int i = 0; i < queries[id].size(); i++) {
-            std::string cand = queries[id][i];
-            result.emplace_back(Pair("reply" + std::to_string(i+1), cand));
+        typedef boost::container::map<CNode*, std::string> queries_map;
+        BOOST_FOREACH( queries_map::value_type &it, queries[id] ) {
+            std::string cand = it.second;
+            // TODO: display node id
+            result.emplace_back(Pair("reply", cand));
         }
 
         return json_spirit::write_string(Value(result), true);
@@ -931,7 +948,6 @@ std::string App::sendCustomCall(const std::string & name, std::vector<std::strin
     std::string strtxid;
     CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getPluginSettings(name).getFee());
     std::string payment_tx = "nofee";
-    bool res;
     if (fee > 0) {
         payment_tx = "nohash;" + generatePayment(pnode, fee);
         LOG() << "Payment transaction: " << payment_tx;
