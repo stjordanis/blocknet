@@ -208,12 +208,15 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
         else
             throw std::runtime_error("Incorrect hash/no hash field");
         
+        CAmount fee_part1 = fee;
+        if (usehash)
+            fee_part1 = fee / 2;
+        
         if (parts[1] == "single") {
             // Direct payment, no CLTV channel
             std::string txid;
-            
             CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
-            if (paid < fee) {
+            if (paid < fee_part1) {
                 LOG() << "Fee paid is not enough: paid" << paid << "; fee = " << fee;
                 throw std::runtime_error("Fee paid is not enough");
             }
@@ -262,7 +265,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             if (paymentChannels.count(node)) {
                 CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
                 LOG() << "Got payment via channel; value = " << paid - paymentChannels[node].value << " total value = " << paid << " tx = " << feetx; 
-                if (paid - paymentChannels[node].value < fee) {
+                if (paid - paymentChannels[node].value < fee_part1) {
                     throw std::runtime_error("Fee paid is not enough");
                 }
                 
