@@ -365,7 +365,11 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         LOG() << "Fee = " << fee;
         LOG() << "Feetx = " << feetx;
         try {
-            this->processPayment(node, feetx, fee);
+            CAmount fee_part1 = fee;
+            if (packet->command() == xrFetchReply)
+                fee_part1 = fee - fee / 2;
+            
+            this->processPayment(node, feetx, fee_part1);
         
             std::string keystr = currency + "::" + XRouterCommand_ToString(packet->command());
             double timeout = app.xrouter_settings.getCommandTimeout(packet->command(), currency);
