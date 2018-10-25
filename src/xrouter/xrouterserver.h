@@ -30,6 +30,8 @@ class XRouterServer
     
     boost::container::map<CNode*, PaymentChannel> paymentChannels;
     
+    boost::container::map<std::string, std::string> hashedQueries;
+    
 protected:
     /**
      * @brief Impl - default constructor, init
@@ -170,7 +172,7 @@ protected:
      */
     std::string processCustomCall(std::string name, std::vector<std::string> params);
     
-    std::string processFetchReply(XRouterPacketPtr packet, uint32_t offset, std::string currency);
+    std::string processFetchReply(std::string uuid);
     
     void processPayment(CNode* node, std::string feetx, CAmount fee);
     std::string getMyPaymentAddress();

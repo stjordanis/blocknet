@@ -311,7 +311,8 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         LOG() << "This command is blocked in xrouter.conf";
         return;
     }
-    
+
+    bool usehash = false;
     std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
     if (packet->command() == xrCustomCall) {
         XRouterPluginSettings psettings = app.xrouter_settings.getPluginSettings(currency);
@@ -359,6 +360,11 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
     } else {
         std::string feetx((const char *)packet->data()+offset);
         offset += feetx.size() + 1;
+        
+        std::vector<std::string> parts;
+        boost::split(parts, feetx, boost::is_any_of(";"));
+        if (parts[0] == "hash")
+            usehash = true;        
         
         CAmount fee = to_amount(app.xrouter_settings.getCommandFee(packet->command(), currency));
         
@@ -421,7 +427,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
                 reply = processGetTransactionsBloomFilter(packet, offset, currency);
                 break;
             case xrFetchReply:
-                reply = processFetchReply(packet, offset, currency);
+                reply = processFetchReply(uuid);
                 break;
             case xrSendTransaction:
                 reply = processSendTransaction(packet, offset, currency);
@@ -441,7 +447,14 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
     XRouterPacketPtr rpacket(new XRouterPacket(xrReply));
 
     rpacket->append(uuid);
-    rpacket->append(reply);
+    if (!usehash || (packet->command() == xrSendTransaction) || (packet->command() == xrFetchReply)) {
+        rpacket->append(reply);
+    } else {
+        // TODO: clean replies after some period of time
+        hashedQueries[uuid] = reply;
+        std::string hash = Hash160(reply.begin(), reply.end()).ToString();
+        rpacket->append(hash);
+    }
     sendPacketToClient(rpacket, node);
     return;
 }
@@ -631,7 +644,11 @@ std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr pa
     return json_spirit::write_string(Value(result), true);
 }
 
-std::string XRouterServer::processFetchReply(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
+std::string XRouterServer::processFetchReply(std::string uuid) {
+    if (hashedQueries.count(uuid))
+        return hashedQueries[uuid];
+    else
+        return "Unknown query ID";
 }
     
 
