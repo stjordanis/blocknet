@@ -170,6 +170,8 @@ protected:
      */
     std::string processCustomCall(std::string name, std::vector<std::string> params);
     
+    std::string processFetchReply(XRouterPacketPtr packet, uint32_t offset, std::string currency);
+    
     void processPayment(CNode* node, std::string feetx, CAmount fee);
     std::string getMyPaymentAddress();
     CKey getMyPaymentAddressKey();

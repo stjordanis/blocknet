@@ -420,6 +420,9 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
             case xrGetTransactionsBloomFilter:
                 reply = processGetTransactionsBloomFilter(packet, offset, currency);
                 break;
+            case xrFetchReply:
+                reply = processFetchReply(packet, offset, currency);
+                break;
             case xrSendTransaction:
                 reply = processSendTransaction(packet, offset, currency);
                 break;
@@ -627,6 +630,10 @@ std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr pa
 
     return json_spirit::write_string(Value(result), true);
 }
+
+std::string XRouterServer::processFetchReply(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
+}
+    
 
 std::string XRouterServer::processSendTransaction(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
     std::string transaction((const char *)packet->data()+offset);
