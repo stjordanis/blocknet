@@ -313,6 +313,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
     }
 
     bool usehash = false;
+    CAmount fee = 0;
     std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
     if (packet->command() == xrCustomCall) {
         XRouterPluginSettings psettings = app.xrouter_settings.getPluginSettings(currency);
@@ -366,14 +367,14 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         if (parts[0] == "hash")
             usehash = true;        
         
-        CAmount fee = to_amount(app.xrouter_settings.getCommandFee(packet->command(), currency));
+        fee = to_amount(app.xrouter_settings.getCommandFee(packet->command(), currency));
         
         LOG() << "Fee = " << fee;
         LOG() << "Feetx = " << feetx;
         try {
             CAmount fee_part1 = fee;
             if (packet->command() == xrFetchReply)
-                fee_part1 = fee - fee / 2;
+                fee_part1 = hashedQueries[uuid].second;
             
             this->processPayment(node, feetx, fee_part1);
             std::string keystr = currency + "::" + XRouterCommand_ToString(packet->command());
@@ -450,7 +451,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         rpacket->append(reply);
     } else {
         // TODO: clean replies after some period of time
-        hashedQueries[uuid] = reply;
+        hashedQueries[uuid] = std::pair<std::string, CAmount>(reply, fee - fee/2);
         std::string hash = Hash160(reply.begin(), reply.end()).ToString();
         rpacket->append(hash);
     }
@@ -645,7 +646,7 @@ std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr pa
 
 std::string XRouterServer::processFetchReply(std::string uuid) {
     if (hashedQueries.count(uuid))
-        return hashedQueries[uuid];
+        return hashedQueries[uuid].first;
     else
         return "Unknown query ID";
 }

@@ -30,7 +30,7 @@ class XRouterServer
     
     boost::container::map<CNode*, PaymentChannel> paymentChannels;
     
-    boost::container::map<std::string, std::string> hashedQueries;
+    boost::container::map<std::string, std::pair<std::string, CAmount> > hashedQueries;
     
 protected:
     /**
