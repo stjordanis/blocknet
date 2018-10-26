@@ -736,7 +736,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     while ((confirmation_count < confirmations_count) && cond->timed_wait(lock, boost::posix_time::milliseconds(timeout)))
         confirmation_count++;
 
-    std::string result = NULL;
+    std::string result = "";
     if(confirmation_count <= confirmations_count / 2) {
         error.emplace_back(Pair("error", "Failed to get response in time. Try xrReply command later."));
         error.emplace_back(Pair("uuid", id));

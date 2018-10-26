@@ -215,19 +215,19 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
         if (parts[1] == "single") {
             // Direct payment, no CLTV channel
             std::string txid;
-            CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
+            CAmount paid = to_amount(getTxValue(parts[2], getMyPaymentAddress()));
             if (paid < fee_part1) {
                 LOG() << "Fee paid is not enough: paid" << paid << "; fee = " << fee;
                 throw std::runtime_error("Fee paid is not enough");
             }
 
-            bool res = sendTransactionBlockchain(feetx, txid);
+            bool res = sendTransactionBlockchain(parts[2], txid);
             if (!res) {
                 LOG() << "Could not send transaction to blockchain";
-                throw std::runtime_error("Could not send transaction " + feetx + " to blockchain");
+                throw std::runtime_error("Could not send transaction " + parts[2] + " to blockchain");
             }
             
-            LOG() << "Got direct payment; value = " << paid << " tx = " << feetx; 
+            LOG() << "Got direct payment; value = " << paid << " tx = " << parts[2]; 
         } else if (parts[1] == "channel") {
             if (!paymentChannels.count(node)) {
                 // There is no payment channel with this node
@@ -376,7 +376,6 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
                 fee_part1 = fee - fee / 2;
             
             this->processPayment(node, feetx, fee_part1);
-        
             std::string keystr = currency + "::" + XRouterCommand_ToString(packet->command());
             double timeout = app.xrouter_settings.getCommandTimeout(packet->command(), currency);
             if (lastPacketsReceived.count(node)) {
