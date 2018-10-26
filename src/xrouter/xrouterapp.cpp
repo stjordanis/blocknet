@@ -697,9 +697,9 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     for (CNode* pnode : selectedNodes) {
         CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getCommandFee(command, currency));
         CAmount fee_part1 = fee;
-        std::string payment_tx = "nofee";
+        std::string payment_tx = usehash && (confirmations_count > 1) ? "hash;nofee" : "nohash;nofee";
         if (fee > 0) {
-            if (!usehash)
+            if (!usehash || (confirmations_count == 1))
                 payment_tx = "nohash;" + generatePayment(pnode, fee);
             else {
                 fee_part1 = fee / 2;
