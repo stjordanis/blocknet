@@ -287,6 +287,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
 {
     LOG() << "Processing packet on server side";
     App& app = App::instance();
+    clearHashedQueries();
     
     if (!packet->verify()) {
         LOG() << "unsigned packet or signature error " << __FUNCTION__;
@@ -453,6 +454,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         // TODO: clean replies after some period of time
         hashedQueries[uuid] = std::pair<std::string, CAmount>(reply, fee - fee/2);
         std::string hash = Hash160(reply.begin(), reply.end()).ToString();
+        hashedQueriesDeadlines[uuid] = std::chrono::system_clock::now();
         rpacket->append(hash);
     }
     sendPacketToClient(rpacket, node);
@@ -800,6 +802,24 @@ Value XRouterServer::printPaymentChannels() {
     }
     
     return json_spirit::write_string(Value(server), true);
+}
+
+void XRouterServer::clearHashedQueries() {
+    typedef boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> > queries_map;
+    std::vector<std::string> to_remove;
+    BOOST_FOREACH( queries_map::value_type &it, hashedQueriesDeadlines ) {
+        std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
+        std::chrono::system_clock::duration diff = time - it.second;
+        // TODO: move 1000 seconds to settings?
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(1000 * 1000))) {
+            to_remove.push_back(it.first);
+        }
+    }
+    
+    for (size_t i = 0; i < to_remove.size(); i++) {
+        hashedQueries.erase(to_remove[i]);
+        hashedQueriesDeadlines.erase(to_remove[i]);
+    }
 }
 
 } // namespace xrouter

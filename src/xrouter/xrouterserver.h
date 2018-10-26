@@ -31,6 +31,7 @@ class XRouterServer
     boost::container::map<CNode*, PaymentChannel> paymentChannels;
     
     boost::container::map<std::string, std::pair<std::string, CAmount> > hashedQueries;
+    boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> > hashedQueriesDeadlines;
     
 protected:
     /**
@@ -178,6 +179,8 @@ protected:
     std::string getMyPaymentAddress();
     CKey getMyPaymentAddressKey();
     Value printPaymentChannels();
+    
+    void clearHashedQueries();
 };
 
 } // namespace

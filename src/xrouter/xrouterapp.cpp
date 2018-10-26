@@ -859,7 +859,6 @@ std::string App::getReply(const std::string & id)
         result.emplace_back(Pair("uuid", id));
         return json_spirit::write_string(Value(result), true);
     } else {
-        typedef boost::container::map<CNode*, std::string> queries_map;
         BOOST_FOREACH( queries_map::value_type &it, queries[id] ) {
             std::string cand = it.second;
             // TODO: display node id
