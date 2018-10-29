@@ -912,7 +912,7 @@ std::string App::sendTransaction(const std::string & currency, const std::string
 
         pnode->PushMessage("xrouter", packet->body());
         if (cond->timed_wait(lock, boost::posix_time::milliseconds(3000))) {
-            std::string reply = queries[id][0];
+            std::string reply = queries[id][pnode];
             Value reply_val;
             read_string(reply, reply_val);
             Object reply_obj = reply_val.get_obj();
@@ -1004,7 +1004,7 @@ std::string App::sendCustomCall(const std::string & name, std::vector<std::strin
     pnode->PushMessage("xrouter", msg);
     int timeout = this->xrouter_settings.get<int>("Main.wait", XROUTER_DEFAULT_WAIT);
     if (cond->timed_wait(lock, boost::posix_time::milliseconds(timeout))) {
-        std::string reply = queries[id][0];
+        std::string reply = queries[id][pnode];
         return reply;
     }
     
@@ -1161,7 +1161,7 @@ std::string App::getXrouterConfigSync(CNode* node) {
     if (!cond->timed_wait(lock, boost::posix_time::milliseconds(timeout)))
         return "Could not get XRouter config";
 
-    std::string reply = queries[id][0];
+    std::string reply = queries[id][node];
     XRouterSettings settings;
     settings.read(reply);
     this->snodeConfigs[node->addr.ToString()] = settings;
