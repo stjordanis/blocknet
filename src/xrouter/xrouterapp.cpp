@@ -738,7 +738,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
 
     std::string result = "";
     if(confirmation_count <= confirmations_count / 2) {
-        error.emplace_back(Pair("error", "Failed to get response in time. Try xrReply command later."));
+        error.emplace_back(Pair("error", "Failed to get response in time. Try xrGetReply command later."));
         error.emplace_back(Pair("uuid", id));
         return json_spirit::write_string(Value(error), true);
     }
