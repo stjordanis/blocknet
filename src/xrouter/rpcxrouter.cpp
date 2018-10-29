@@ -11,6 +11,18 @@
 #include "uint256.h"
 using namespace json_spirit;
 
+class UnknownChainAddress : public CBitcoinAddress {
+public:
+    UnknownChainAddress(std::string s) : CBitcoinAddress(s) { }
+    bool IsValid() const { return vchData.size() == 20; }
+    bool GetKeyID(CKeyID& keyID) const {
+        uint160 id;
+        memcpy(&id, &vchData[0], 20);
+        keyID = CKeyID(id);
+        return true;
+    }
+};
+
 static Object form_reply(std::string reply)
 {
     Object ret;
@@ -395,7 +407,7 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
     vector<unsigned char> data;
     for (unsigned int i = 0; i < params.size(); i++) {
         std::string addr_string = params[i].get_str();
-        CBitcoinAddress address(addr_string);
+        UnknownChainAddress address(addr_string);
         if (!address.IsValid()) {
             // This is a hash
             data = ParseHex(addr_string);
