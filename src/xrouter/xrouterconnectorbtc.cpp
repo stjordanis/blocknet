@@ -160,11 +160,11 @@ Array BtcWalletConnectorXRouter::getAllBlocks(const int number, int blocklimit) 
     int blockcount = res.get_int();
 
     Array result;
-    
-    if (blockcount - number > 50) {
+    if ((blocklimit > 0) && (blockcount - number > blocklimit)) {
         result.push_back(Value("Error: too many blocks requested"));
         return result;
     }
+    
     for (int id = number; id <= blockcount; id++)
     {
         Array paramsGBH { id };
@@ -193,6 +193,11 @@ Array BtcWalletConnectorXRouter::getAllTransactions(const std::string & account,
     int blockcount = getResult(blockCountObj).get_int();
 
     Array result;
+    if ((blocklimit > 0) && (blockcount - number > blocklimit)) {
+        result.push_back(Value("Error: too many blocks requested"));
+        return result;
+    }
+    
     for (int id = blockcount; id >= number; id--)
     {
         Array paramsGBH { id };
@@ -246,6 +251,10 @@ std::string BtcWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
     Object blockCountObj = CallRPC(m_user, m_passwd, m_ip, m_port, commandGBC, Array());
     int blockcount = getResult(blockCountObj).get_int();
 
+    if ((blocklimit > 0) && (blockcount - number > blocklimit)) {
+        return "Error: too many blocks requested";
+    }
+    
     for (int id = blockcount; id >= number; id--)
     {
         Array paramsGBH { id };
@@ -298,6 +307,11 @@ Array BtcWalletConnectorXRouter::getTransactionsBloomFilter(const int number, CD
     Object blockCountObj = CallRPC(m_user, m_passwd, m_ip, m_port, commandGBC, Array());
     int blockcount = getResult(blockCountObj).get_int();
 
+    if ((blocklimit > 0) && (blockcount - number > blocklimit)) {
+        result.push_back(Value("Error: too many blocks requested"));
+        return result;
+    }
+    
     for (int id = number; id <= blockcount; id++)
     {
         Array paramsGBH { id };
