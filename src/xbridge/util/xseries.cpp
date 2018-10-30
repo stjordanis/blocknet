@@ -9,6 +9,7 @@
 #include "xbridge/xbridgetransactiondescr.h"
 #include "xbridge/xbridgeapp.h"
 #include "sync.h"
+#include "xbridge/util/xutil.h"
 
 extern CurrencyPair TxOutToCurrencyPair(const CTxOut & txout, std::string& snode_pubkey);
 
@@ -53,38 +54,51 @@ namespace {
             series.at(idx).update(tf == xQuery::Transform::Invert ? it->inverse() : *it, q.with_txids);
         }
     }
-    std::vector<CurrencyPair> get_tradingdata(time_period query)
+    std::vector<CurrencyPair> find_blockchain_trading_data(time_period query)
     {
-        LOCK(cs_main);
-
         std::vector<CurrencyPair> records;
-
-        CBlockIndex * pindex = chainActive.Tip();
-        auto ts = from_time_t(pindex->GetBlockTime());
-        while (pindex->pprev != nullptr && query.end() < ts) {
-            pindex = pindex->pprev;
-            ts = from_time_t(pindex->GetBlockTime());
-        }
-
-        for (; pindex->pprev != nullptr && query.contains(ts);
-             pindex = pindex->pprev, ts = from_time_t(pindex->GetBlockTime()))
         {
-            CBlock block;
-            if (not ReadBlockFromDisk(block, pindex))
-                continue; // throw?
-            for (const CTransaction & tx : block.vtx)
+            LOCK(cs_main);
+
+            CBlockIndex * pindex = chainActive.Tip();
+            auto ts = from_time_t(pindex->GetBlockTime());
+            while (pindex->pprev != nullptr && query.end() < ts) {
+                pindex = pindex->pprev;
+                ts = from_time_t(pindex->GetBlockTime());
+            }
+            for (; pindex->pprev != nullptr && query.contains(ts);
+                 pindex = pindex->pprev, ts = from_time_t(pindex->GetBlockTime()))
             {
-                for (const CTxOut & out : tx.vout)
+                CBlock block;
+                if (not ReadBlockFromDisk(block, pindex))
+                    continue; // throw?
+                for (const CTransaction & tx : block.vtx)
                 {
-                    std::string snode_pubkey{};
-                    CurrencyPair p = TxOutToCurrencyPair(out, snode_pubkey);
-                    if (p.tag == CurrencyPair::Tag::Valid) {
-                        p.timeStamp = ts;
-                        records.emplace_back(p);
+                    for (const CTxOut & out : tx.vout)
+                    {
+                        std::string snode_pubkey{};
+                        CurrencyPair p = TxOutToCurrencyPair(out, snode_pubkey);
+                        if (p.tag == CurrencyPair::Tag::Valid) {
+                            p.timeStamp = ts;
+                            records.emplace_back(p);
+                        }
                     }
                 }
             }
         }
+        std::sort(records.begin(), records.end(), // ascending by updated time
+                  [](const CurrencyPair& a, const CurrencyPair& b) {
+                      return a.timeStamp < b.timeStamp; });
+
+        return records;
+    }
+    std::vector<CurrencyPair> find_local_trading_data(const xQuery& query)
+    {
+        auto records = xbridge::App::instance().history_matches(transaction_filter, query);
+        std::sort(records.begin(), records.end(), // ascending by updated time
+                  [](const CurrencyPair& a, const CurrencyPair& b) {
+                      return a.timeStamp < b.timeStamp; });
+
         return records;
     }
 
@@ -102,6 +116,22 @@ namespace {
 
 //******************************************************************************
 //******************************************************************************
+void xSeriesCache::set_find_blockchain_trades(GetBlockchainTradingDataFunc func)
+{
+    find_blockchain_trades = func;
+}
+
+void xSeriesCache::set_find_local_trades(GetLocalTradingDataFunc func)
+{
+    find_local_trades = func;
+}
+
+xSeriesCache::xSeriesCache()
+{
+    set_find_blockchain_trades(find_blockchain_trading_data);
+    set_find_local_trades(find_local_trading_data);
+}
+
 std::vector<xAggregate>
 xSeriesCache::getChainXAggregateSeries(const xQuery& query)
 {
@@ -156,10 +186,7 @@ void xSeriesCache::updateSeriesCache(const time_period& period)
     // ensure results are up-to-date, cache can be enabled when invalidation
     // hook is in place
     LOCK(m_xSeriesCacheUpdateLock);
-    std::vector<CurrencyPair> pairs = get_tradingdata(period);
-    std::sort(pairs.begin(), pairs.end(), // ascending by updated time
-              [](const CurrencyPair& a, const CurrencyPair& b) {
-                  return a.timeStamp < b.timeStamp; });
+    std::vector<CurrencyPair> pairs = find_blockchain_trades(period);
 
     mSparseSeries.clear();
     for (const auto& p : pairs) {
@@ -234,12 +261,7 @@ void xSeriesCache::updateXSeries(std::vector<xAggregate>& series,
 //******************************************************************************
 std::vector<xAggregate> xSeriesCache::getXAggregateSeries(const xQuery& query)
 {
-    auto& app = xbridge::App::instance();
-    auto local_matches = app.history_matches(transaction_filter, query);
-
-    std::sort(local_matches.begin(), local_matches.end(), // ascending by updated time
-              [](const CurrencyPair& a, const CurrencyPair& b) {
-                  return a.timeStamp < b.timeStamp; });
+    auto local_matches = find_local_trades(query);
 
     //--Retrieve matching aggregate transactions from blockchain (cached)
     std::vector<xAggregate> series = getChainXAggregateSeries(query);

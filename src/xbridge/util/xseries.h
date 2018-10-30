@@ -207,7 +207,7 @@ public:
         xAggregateIterator begin() const { return b; }
         xAggregateIterator end() const { return e; }
     };
-    xSeriesCache() = default;
+    xSeriesCache();
     std::vector<xAggregate> getChainXAggregateSeries(const xQuery&);
     std::vector<xAggregate> getXAggregateSeries(const xQuery&);
     xAggregateContainer& getXAggregateContainer(const pairSymbol&);
@@ -227,12 +227,19 @@ public:
 
     void updateSeriesCache(const time_period&);
 
+    using GetBlockchainTradingDataFunc = std::function<std::vector<CurrencyPair> (time_period)>;
+    using GetLocalTradingDataFunc = std::function<std::vector<CurrencyPair> (const xQuery&)>;
+
+    void set_find_blockchain_trades(GetBlockchainTradingDataFunc);
+    void set_find_local_trades(GetLocalTradingDataFunc);
+
 private:
     void updateXSeries(std::vector<xAggregate>& series,
                        const ccy::Currency& from,
                        const ccy::Currency& to,
                        const xQuery& q,
                        xQuery::Transform tf);
+
 private:
     CCriticalSection m_xSeriesCacheUpdateLock;
     /**
@@ -241,6 +248,8 @@ private:
      *    - the minimum granularity supported in a query.
      * There may be gaps between intervals, so it is potentially sparse.
      */
+    GetBlockchainTradingDataFunc find_blockchain_trades{};
+    GetLocalTradingDataFunc find_local_trades{};
     time_duration m_cache_granularity{
         std::min(xQuery::min_granularity(),
                  time_duration{boost::posix_time::seconds{Params().TargetSpacing()}})};
