@@ -91,6 +91,7 @@ public:
     bool isAvailableCommand(XRouterCommand c, std::string currency="", bool def=true);
     double getCommandFee(XRouterCommand c, std::string currency="", double def=0.0);
     double getCommandTimeout(XRouterCommand c, std::string currency="", double def=XROUTER_DEFAULT_TIMEOUT);
+    int getCommandBlockLimit(XRouterCommand c, std::string currency="", double def=XROUTER_DEFAULT_BLOCK_LIMIT);
     bool hasPlugin(std::string name);
     std::vector<std::string>& getPlugins() { return pluginList; }
     XRouterPluginSettings& getPluginSettings(std::string name) { return plugins[name]; }

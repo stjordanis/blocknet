@@ -138,11 +138,20 @@ double XRouterSettings::getCommandFee(XRouterCommand c, std::string currency, do
 double XRouterSettings::getCommandTimeout(XRouterCommand c, std::string currency, double def)
 {
     double res = get<double>("Main.timeout", def);
-    res = get<double>(std::string(XRouterCommand_ToString(c)) + ".timeout", def);
+    res = get<double>(std::string(XRouterCommand_ToString(c)) + ".timeout", res);
     if (!currency.empty())
         res = get<double>(currency + "::" + std::string(XRouterCommand_ToString(c)) + ".timeout", res);
     return res;
 }
+
+int XRouterSettings::getCommandBlockLimit(XRouterCommand c, std::string currency, double def)
+{
+    int res = get<int>("Main.blocklimit", def);
+    res = get<int>(std::string(XRouterCommand_ToString(c)) + ".blocklimit", res);
+    if (!currency.empty())
+        res = get<double>(currency + "::" + std::string(XRouterCommand_ToString(c)) + ".blocklimit", res);
+    return res;
+}    
 
 bool XRouterSettings::hasPlugin(std::string name)
 {
