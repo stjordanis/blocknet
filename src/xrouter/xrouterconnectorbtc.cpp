@@ -148,7 +148,7 @@ Object BtcWalletConnectorXRouter::getTransaction(const std::string & trHash) con
     }
 }
 
-Array BtcWalletConnectorXRouter::getAllBlocks(const int number) const
+Array BtcWalletConnectorXRouter::getAllBlocks(const int number, int blocklimit) const
 {
     std::string commandGBC("getblockcount");
     std::string commandGBH("getblockhash");
@@ -160,7 +160,7 @@ Array BtcWalletConnectorXRouter::getAllBlocks(const int number) const
     int blockcount = res.get_int();
 
     Array result;
-
+    
     if (blockcount - number > 50) {
         result.push_back(Value("Error: too many blocks requested"));
         return result;
@@ -181,7 +181,7 @@ Array BtcWalletConnectorXRouter::getAllBlocks(const int number) const
     return result;
 }
 
-Array BtcWalletConnectorXRouter::getAllTransactions(const std::string & account, const int number, const int time) const
+Array BtcWalletConnectorXRouter::getAllTransactions(const std::string & account, const int number, const int time, int blocklimit) const
 {
     std::string commandGBC("getblockcount");
     std::string commandGBH("getblockhash");
@@ -228,12 +228,12 @@ Array BtcWalletConnectorXRouter::getAllTransactions(const std::string & account,
     return result;
 }
 
-std::string BtcWalletConnectorXRouter::getBalance(const std::string & account, const int time) const
+std::string BtcWalletConnectorXRouter::getBalance(const std::string & account, const int time, int blocklimit) const
 {
-    return getBalanceUpdate(account, 0);
+    return getBalanceUpdate(account, 0, blocklimit);
 }
 
-std::string BtcWalletConnectorXRouter::getBalanceUpdate(const std::string & account, const int number, const int time) const
+std::string BtcWalletConnectorXRouter::getBalanceUpdate(const std::string & account, const int number, const int time, int blocklimit) const
 {
     std::string commandGBC("getblockcount");
     std::string commandGBH("getblockhash");
@@ -280,7 +280,7 @@ std::string BtcWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
     return std::to_string(result);
 }
 
-Array BtcWalletConnectorXRouter::getTransactionsBloomFilter(const int number, CDataStream & stream) const
+Array BtcWalletConnectorXRouter::getTransactionsBloomFilter(const int number, CDataStream & stream, int blocklimit) const
 {
     std::string commandGBC("getblockcount");
     std::string commandGBH("getblockhash");
@@ -338,11 +338,6 @@ Object BtcWalletConnectorXRouter::sendTransaction(const std::string & transactio
     Array params { transaction };
 
     return CallRPC(m_user, m_passwd, m_ip, m_port, command, params);
-}
-
-Object BtcWalletConnectorXRouter::getPaymentAddress() const
-{
-    return Object();
 }
 
 } // namespace xrouter

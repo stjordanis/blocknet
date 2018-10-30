@@ -167,7 +167,7 @@ Object EthWalletConnectorXRouter::getTransaction(const std::string & trHash) con
     return getResult(resp).get_obj();
 }
 
-Array EthWalletConnectorXRouter::getAllBlocks(const int number) const
+Array EthWalletConnectorXRouter::getAllBlocks(const int number, int blocklimit) const
 {
     std::string commandBN("eth_blockNumber");
     std::string commandgGBBN("eth_getBlockByNumber");
@@ -190,7 +190,7 @@ Array EthWalletConnectorXRouter::getAllBlocks(const int number) const
     return result;
 }
 
-Array EthWalletConnectorXRouter::getAllTransactions(const std::string & account, const int number, const int time) const
+Array EthWalletConnectorXRouter::getAllTransactions(const std::string & account, const int number, const int time, int blocklimit) const
 {
     std::string commandBN("eth_blockNumber");
     std::string commandgGBBN("eth_getBlockByNumber");
@@ -224,7 +224,7 @@ Array EthWalletConnectorXRouter::getAllTransactions(const std::string & account,
     return result;
 }
 
-std::string EthWalletConnectorXRouter::getBalance(const std::string & account, const int time) const
+std::string EthWalletConnectorXRouter::getBalance(const std::string & account, const int time, int blocklimit) const
 {
     std::string commandBN("eth_blockNumber");
     std::string commandgGBBN("eth_getBlockByNumber");
@@ -296,7 +296,7 @@ std::string EthWalletConnectorXRouter::getBalance(const std::string & account, c
     return ss.str();
 }
 
-std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & account, const int number, const int time) const
+std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & account, const int number, const int time, int blocklimit) const
 {
     std::string commandBN("eth_blockNumber");
     std::string commandgGBBN("eth_getBlockByNumber");
@@ -368,18 +368,13 @@ std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
     return ss.str();
 }
 
-Array EthWalletConnectorXRouter::getTransactionsBloomFilter(const int, CDataStream &) const
+Array EthWalletConnectorXRouter::getTransactionsBloomFilter(const int, CDataStream &, int blocklimit) const
 {
     // not realized for Ethereum
     return Array();
 }
 
 Object EthWalletConnectorXRouter::sendTransaction(const std::string &) const
-{
-    return Object();
-}
-
-Object EthWalletConnectorXRouter::getPaymentAddress() const
 {
     return Object();
 }

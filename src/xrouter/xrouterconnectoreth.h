@@ -23,13 +23,12 @@ public:
     std::string getBlockHash(const std::string & blockId) const;
     Object      getBlock(const std::string & blockHash) const;
     Object      getTransaction(const std::string & trHash) const;
-    Array       getAllBlocks(const int number) const;
-    Array       getAllTransactions(const std::string & account, const int number, const int time=0) const;
-    std::string getBalance(const std::string & account, const int time=0) const;
-    std::string getBalanceUpdate(const std::string & account, const int number, const int time=0) const;
-    Array       getTransactionsBloomFilter(const int, CDataStream &) const;
+    Array       getAllBlocks(const int number, int blocklimit=0) const;
+    Array       getAllTransactions(const std::string & account, const int number, const int time=0, int blocklimit=0) const;
+    std::string getBalance(const std::string & account, const int time=0, int blocklimit=0) const;
+    std::string getBalanceUpdate(const std::string & account, const int number, const int time=0, int blocklimit=0) const;
+    Array       getTransactionsBloomFilter(const int, CDataStream &, int blocklimit=0) const;
     Object      sendTransaction(const std::string &) const;
-    Object      getPaymentAddress() const;
 };
 
 
