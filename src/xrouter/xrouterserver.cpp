@@ -549,11 +549,14 @@ std::string XRouterServer::processGetAllBlocks(XRouterPacketPtr packet, uint32_t
     offset += number_s.size() + 1;
     int number = std::stoi(number_s);
 
+    App& app = App::instance();
+    int blocklimit = app.xrouter_settings.getCommandBlockLimit(packet->command(), currency);
+    
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
     Array result;
     if (conn)
     {
-        result = conn->getAllBlocks(number);
+        result = conn->getAllBlocks(number, blocklimit);
     }
 
     return json_spirit::write_string(Value(result), true);
@@ -573,9 +576,13 @@ std::string XRouterServer::processGetAllTransactions(XRouterPacketPtr packet, ui
         account = account.substr(0, account.find(":"));
     }
     Array result;
+    
+    App& app = App::instance();
+    int blocklimit = app.xrouter_settings.getCommandBlockLimit(packet->command(), currency);
+    
     if (conn)
     {
-        result = conn->getAllTransactions(account, number, time);
+        result = conn->getAllTransactions(account, number, time, blocklimit);
     }
 
     return json_spirit::write_string(Value(result), true);
@@ -594,9 +601,12 @@ std::string XRouterServer::processGetBalance(XRouterPacketPtr packet, uint32_t o
         account = account.substr(0, account.find(":"));
     }
     std::string result;
+    App& app = App::instance();
+    int blocklimit = app.xrouter_settings.getCommandBlockLimit(packet->command(), currency);
+    
     if (conn)
     {
-        result = conn->getBalance(account, time);
+        result = conn->getBalance(account, time, blocklimit);
     }
 
     return result;
@@ -615,11 +625,14 @@ std::string XRouterServer::processGetBalanceUpdate(XRouterPacketPtr packet, uint
         time = std::stoi(account.substr(account.find(":")+1));
         account = account.substr(0, account.find(":"));
     }
-
+    
+    App& app = App::instance();
+    int blocklimit = app.xrouter_settings.getCommandBlockLimit(packet->command(), currency);
+    
     std::string result;
     if (conn)
     {
-        result = conn->getBalanceUpdate(account, number, time);
+        result = conn->getBalanceUpdate(account, number, time, blocklimit);
     }
 
     return result;
@@ -636,11 +649,13 @@ std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr pa
     int number = std::stoi(number_s);
 
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
-
+    App& app = App::instance();
+    int blocklimit = app.xrouter_settings.getCommandBlockLimit(packet->command(), currency);
+    
     Array result;
     if (conn)
     {
-        result = conn->getTransactionsBloomFilter(number, stream);
+        result = conn->getTransactionsBloomFilter(number, stream, blocklimit);
     }
 
     return json_spirit::write_string(Value(result), true);
