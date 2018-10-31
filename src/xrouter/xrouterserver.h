@@ -173,13 +173,45 @@ protected:
      */
     std::string processCustomCall(std::string name, std::vector<std::string> params);
     
+    /**
+     * @brief process xrFetchReply call on service node side
+     * @param uuid query UUID
+     * @return stored reply
+     */
     std::string processFetchReply(std::string uuid);
     
+    /**
+     * @brief process payment transaction 
+     * @param node node that paid the fee
+     * @param feetx hex-encoded payment tx and additional data
+     * @param fee fee to be paid
+     * @return nothing
+     * @throws std::runtime_error in case of incorrect payment
+     */
     void processPayment(CNode* node, std::string feetx, CAmount fee);
+    
+    /**
+     * @brief returns own snode pubkey hash
+     * @return blocknet address
+     */
     std::string getMyPaymentAddress();
+    
+    /**
+     * @brief returns own snode private key (used to sign transactions)
+     * @return blocknet private key
+     */
     CKey getMyPaymentAddressKey();
+    
+    /**
+     * @brief prints currently open payment channels on server side
+     * @return json object
+     */
     Value printPaymentChannels();
     
+    /**
+     * @brief clears stored replies to queries periodically after timeout
+     * @return
+     */
     void clearHashedQueries();
 };
 

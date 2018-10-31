@@ -240,12 +240,23 @@ public:
 
     
     /**
-     * @brief gets an account for comission payment
+     * @brief gets address for comission payment
      * @param node service node
-     * @return
+     * @return service node pubkey hash (address)
      */
     std::string getPaymentAddress(CNode* node);
+    
+    /**
+     * @brief gets address for comission payment
+     * @param node service node
+     * @return service node public key
+     */
     CPubKey getPaymentPubkey(CNode* node);
+    
+    /**
+     * @brief prints all currently open payment channels
+     * @return info string
+     */
     std::string printPaymentChannels();
     
     /**
@@ -301,6 +312,13 @@ public:
      */
     CNode* getNodeForService(std::string name);
     
+    /**
+     * @brief generates a payment transaction to given service node
+     * @param pnode CNode corresponding to a service node
+     * @param fee amount to pay
+     * @return hex-encoded transaction
+     * @throws std::runtime_error in case of errors
+     */
     std::string generatePayment(CNode* pnode, CAmount fee);
     
     /**
