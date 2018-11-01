@@ -501,6 +501,7 @@ PaymentChannel createPaymentChannel(CPubKey address, CAmount deposit, int date)
     channel.keyid = mykeyID;
     channel.vout = voutn;
     channel.redeemScript = inner;
+    channel.deposit = deposit;
     
     return channel;
 }
@@ -553,6 +554,35 @@ bool finalizeChannelTransaction(PaymentChannel channel, CKey snodekey, std::stri
     //tx.vin[0].scriptSig << signature << OP_TRUE << std::vector<unsigned char>(channel.redeemScript);
     raw_tx = EncodeHexTx(tx);
     return true;
+}
+
+std::string createRefundTransaction(PaymentChannel channel)
+{        
+    CPubKey my_pubkey = pwalletMain->GenerateNewKey();
+    CKey mykey;
+    pwalletMain->GetKey(my_pubkey.GetID(), mykey);
+    CKeyID mykeyID = my_pubkey.GetID();
+
+    CMutableTransaction unsigned_tx;
+
+    COutPoint outp(ParseHashV(Value(channel.txid), "txin"), channel.vout);
+    CTxIn in(outp);
+    unsigned_tx.vin.push_back(in);
+    // TODO: get minimal fee from wallet
+    unsigned_tx.vout.push_back(CTxOut(channel.deposit - to_amount(0.001), GetScriptForDestination(CBitcoinAddress(mykeyID).Get())));
+    
+    std::vector<unsigned char> signature;
+    uint256 sighash = SignatureHash(channel.redeemScript, unsigned_tx, 0, SIGHASH_ALL);
+    channel.key.Sign(sighash, signature);
+    signature.push_back((unsigned char)SIGHASH_ALL);
+    CScript sigscript;
+    sigscript << signature << OP_FALSE << std::vector<unsigned char>(channel.redeemScript);
+    
+    CMutableTransaction signed_tx;
+    signed_tx.vout = unsigned_tx.vout;
+    signed_tx.vin.push_back(CTxIn(outp, sigscript));
+    
+    return EncodeHexTx(signed_tx);
 }
 
 double getTxValue(std::string rawtx, std::string address, std::string type)
