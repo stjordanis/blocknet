@@ -376,7 +376,14 @@ Array EthWalletConnectorXRouter::getTransactionsBloomFilter(const int, CDataStre
 
 Object EthWalletConnectorXRouter::sendTransaction(const std::string &) const
 {
+    // TODO: implement
     return Object();
+}
+
+std::string EthWalletConnectorXRouter::convertTimeToBlockCount(const std::string & timestamp) const
+{
+    // TODO: implement
+    return "";
 }
 
 } // namespace xrouter

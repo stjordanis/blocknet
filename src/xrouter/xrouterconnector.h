@@ -68,6 +68,7 @@ public:
     virtual std::string getBalanceUpdate(const std::string & account, const int number, const int time=0, int blocklimit=0) const = 0;
     virtual Array       getTransactionsBloomFilter(const int number, CDataStream & stream, int blocklimit=0) const = 0;
     virtual Object      sendTransaction(const std::string & transaction) const = 0;
+    virtual std::string convertTimeToBlockCount(const std::string & timestamp) const = 0;
 };
 
 

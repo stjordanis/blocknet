@@ -354,4 +354,9 @@ Object BtcWalletConnectorXRouter::sendTransaction(const std::string & transactio
     return CallRPC(m_user, m_passwd, m_ip, m_port, command, params);
 }
 
+std::string BtcWalletConnectorXRouter::convertTimeToBlockCount(const std::string & timestamp) const
+{
+    return "0";
+}
+
 } // namespace xrouter

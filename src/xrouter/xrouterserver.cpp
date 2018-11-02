@@ -661,6 +661,27 @@ std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr pa
     return json_spirit::write_string(Value(result), true);
 }
 
+std::string XRouterServer::processConvertTimeToBlockCount(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
+    std::string timestamp((const char *)packet->data()+offset);
+    offset += timestamp.size() + 1;
+
+    Object result;
+    Object error;
+
+    xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
+    if (conn)
+    {
+        result.push_back(Pair("result", conn->convertTimeToBlockCount(timestamp)));
+    }
+    else
+    {
+        error.emplace_back(Pair("error", "No connector for currency " + currency));
+        result = error;
+    }
+
+    return json_spirit::write_string(Value(result), true);
+}
+
 std::string XRouterServer::processFetchReply(std::string uuid) {
     if (hashedQueries.count(uuid))
         return hashedQueries[uuid].first;

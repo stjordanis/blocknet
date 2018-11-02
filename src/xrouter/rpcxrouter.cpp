@@ -580,8 +580,14 @@ Value xrTimeToBlockNumber(const Array & params, bool fHelp)
         return error;
     }
     
+    std::string confirmations = "";
+    if (params.size() >= 3)
+    {
+        confirmations = params[2].get_str();
+    }
+    
     std::string currency = params[0].get_str();
-    std::string reply = xrouter::App::instance().convertTimeToBlockCount(currency, params[1].get_str());
+    std::string reply = xrouter::App::instance().convertTimeToBlockCount(currency, params[1].get_str(), confirmations);
     return form_reply(reply);
 }
 

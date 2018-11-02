@@ -31,6 +31,7 @@ public:
     std::string getBalanceUpdate(const std::string & account, const int number, const int time=0, int blocklimit=0) const;
     Array       getTransactionsBloomFilter(const int number, CDataStream& stream, int blocklimit=0) const;
     Object      sendTransaction(const std::string & transaction) const;
+    std::string convertTimeToBlockCount(const std::string & timestamp) const;
 
 private:
     double getBalanceChange(Object tx, std::string account) const;

@@ -155,6 +155,15 @@ protected:
      * @return
      */
     std::string processGetTransactionsBloomFilter(XRouterPacketPtr packet, uint32_t offset, std::string currency);
+    
+    /**
+     * @brief process ConvertTimeToBlockCount call on service node side
+     * @param packet Xrouter packet received over the network
+     * @param offset offset in the packet where to start reading additional parameters
+     * @param currency chain id
+     * @return
+     */
+    std::string processConvertTimeToBlockCount(XRouterPacketPtr packet, uint32_t offset, std::string currency);
 
     /**
      * @brief process SendTransaction call on service node side

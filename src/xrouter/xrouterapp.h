@@ -238,7 +238,7 @@ public:
      */
     std::string getStatus();
     
-    std::string convertTimeToBlockCount(const std::string& currency, std::string time);
+    std::string convertTimeToBlockCount(const std::string& currency, std::string time, const std::string& confirmations);
 
     
     /**

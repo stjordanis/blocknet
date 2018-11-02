@@ -884,6 +884,11 @@ std::string App::getTransactionsBloomFilter(const std::string & currency, const 
     return this->xrouterCall(xrGetTransactionsBloomFilter, currency, number, filter, confirmations);
 }
 
+std::string App::convertTimeToBlockCount(const std::string& currency, std::string time, const std::string& confirmations) {
+
+    return this->xrouterCall(xrTimeToBlockNumber, currency, time, "", confirmations);
+}
+
 std::string App::getReply(const std::string & id)
 {
     Object result;
@@ -1232,11 +1237,6 @@ std::string App::getStatus() {
     result.emplace_back(Pair("nodes", nodes));
     
     return json_spirit::write_string(Value(result), true);
-}
-
-std::string App::convertTimeToBlockCount(const std::string& currency, std::string time) {
-
-    return "";
 }
 
 } // namespace xrouter
