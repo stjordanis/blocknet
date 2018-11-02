@@ -135,6 +135,15 @@ double XRouterSettings::getCommandFee(XRouterCommand c, std::string currency, do
     return res;
 }
 
+double XRouterSettings::getMaxFee(XRouterCommand c, std::string currency, double def)
+{
+    double res = get<double>("Main.maxfee", def);
+    res = get<double>(std::string(XRouterCommand_ToString(c)) + ".maxfee", res);
+    if (!currency.empty())
+        res = get<double>(currency + "::" + std::string(XRouterCommand_ToString(c)) + ".maxfee", res);
+    return res;
+}
+
 double XRouterSettings::getCommandTimeout(XRouterCommand c, std::string currency, double def)
 {
     double res = get<double>("Main.timeout", def);

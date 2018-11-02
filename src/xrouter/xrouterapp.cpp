@@ -309,10 +309,18 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
     std::vector<pair<int, CServicenode> > vServicenodeRanks = getServiceNodes();
 
     openConnections();
+    updateConfigs();
     
     std::vector<CNode*> selectedNodes;
     
     LOCK(cs_vNodes);
+    double maxfee_d = xrouter_settings.getMaxFee(command, wallet);
+    CAmount maxfee;
+    if (maxfee_d >= 0)
+        maxfee = to_amount(maxfee_d);
+    else
+        maxfee = -1;
+    
     BOOST_FOREACH(const std::string key, snodeConfigs | boost::adaptors::map_keys)
     {
         XRouterSettings settings = snodeConfigs[key];
@@ -320,6 +328,12 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
             continue;
         if (!settings.isAvailableCommand(command, wallet))
             continue;
+        
+        if (maxfee >= 0) {
+            CAmount fee = to_amount(settings.getCommandFee(command, wallet));
+            if (fee > maxfee)
+                continue;
+        }
         
         CNode* res = NULL;
         for (CNode* pnode : vNodes) {
@@ -379,6 +393,14 @@ CNode* App::getNodeForService(std::string name)
     
     // TODO: this is a temporary solution. We need it to open connections to snodes before XRouter calls in case they re not among peers
     openConnections();
+    updateConfigs();
+
+    double maxfee_d = xrouter_settings.getMaxFee(xrCustomCall, "");
+    CAmount maxfee;
+    if (maxfee_d >= 0)
+        maxfee = to_amount(maxfee_d);
+    else
+        maxfee = -1;
     
     if (name.find("/") != string::npos) {
         std::vector<std::string> parts;
@@ -412,6 +434,12 @@ CNode* App::getNodeForService(std::string name)
                         return NULL;
                     }
                 }
+            }
+            
+            if (maxfee >= 0) {
+                CAmount fee = to_amount(settings.getPluginSettings(name).getFee());
+                if (fee > maxfee)
+                    return NULL;
             }
             
             return res;
@@ -459,6 +487,12 @@ CNode* App::getNodeForService(std::string name)
                     continue;
                 }
             }
+        }
+        
+        if (maxfee >= 0) {
+            CAmount fee = to_amount(settings.getPluginSettings(name).getFee());
+            if (fee > maxfee)
+                continue;
         }
         
         return res;
