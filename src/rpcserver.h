@@ -694,6 +694,7 @@ extern json_spirit::Value xrReloadConfigs(const json_spirit::Array& params, bool
 extern json_spirit::Value xrStatus(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value xrRegisterDomain(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value xrQueryDomain(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value xrTimeToBlockNumber(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value xrOpenConnections(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value xrPaymentChannels(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value xrClosePaymentChannel(const json_spirit::Array& params, bool fHelp);

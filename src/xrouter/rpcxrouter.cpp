@@ -558,6 +558,33 @@ Value xrOpenConnections(const Array & params, bool fHelp)
     return "";
 }
 
+Value xrTimeToBlockNumber(const Array & params, bool fHelp)
+{
+    if (fHelp) {
+        throw std::runtime_error("xrTimeToBlockNumber currency timestamp\nGet the block count at specified time.");
+    }
+
+    if (params.size() < 1)
+    {
+        Object error;
+        error.emplace_back(Pair("error", "Currency not specified"));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return error;
+    }
+    
+    if (params.size() < 2)
+    {
+        Object error;
+        error.emplace_back(Pair("error", "Timestamp not specified"));
+        error.emplace_back(Pair("name",     __FUNCTION__));
+        return error;
+    }
+    
+    std::string currency = params[0].get_str();
+    std::string reply = xrouter::App::instance().convertTimeToBlockCount(currency, params[1].get_str());
+    return form_reply(reply);
+}
+
 Value xrRegisterDomain(const Array & params, bool fHelp)
 {
     if (fHelp) {

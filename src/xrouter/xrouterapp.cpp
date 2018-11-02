@@ -1234,4 +1234,9 @@ std::string App::getStatus() {
     return json_spirit::write_string(Value(result), true);
 }
 
+std::string App::convertTimeToBlockCount(const std::string& currency, std::string time) {
+
+    return "";
+}
+
 } // namespace xrouter

@@ -237,6 +237,8 @@ public:
      * @brief returns status json object
      */
     std::string getStatus();
+    
+    std::string convertTimeToBlockCount(const std::string& currency, std::string time);
 
     
     /**
