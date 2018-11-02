@@ -427,6 +427,9 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
             case xrGetTransactionsBloomFilter:
                 reply = processGetTransactionsBloomFilter(packet, offset, currency);
                 break;
+            case xrTimeToBlockNumber:
+                reply = processConvertTimeToBlockCount(packet, offset, currency);
+                break;
             case xrFetchReply:
                 reply = processFetchReply(uuid);
                 break;

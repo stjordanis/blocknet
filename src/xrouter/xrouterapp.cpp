@@ -728,12 +728,14 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     
     int sent = 0;
     bool usehash = xrouter_settings.get<int>("Main.usehash", 0) != 0;
+    if (confirmations_count == 1)
+        usehash = false;
     for (CNode* pnode : selectedNodes) {
         CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getCommandFee(command, currency));
         CAmount fee_part1 = fee;
-        std::string payment_tx = usehash && (confirmations_count > 1) ? "hash;nofee" : "nohash;nofee";
+        std::string payment_tx = usehash ? "hash;nofee" : "nohash;nofee";
         if (fee > 0) {
-            if (!usehash || (confirmations_count == 1))
+            if (!usehash)
                 payment_tx = "nohash;" + generatePayment(pnode, fee);
             else {
                 fee_part1 = fee / 2;
