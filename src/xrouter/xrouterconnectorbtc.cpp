@@ -356,6 +356,73 @@ Object BtcWalletConnectorXRouter::sendTransaction(const std::string & transactio
 
 std::string BtcWalletConnectorXRouter::convertTimeToBlockCount(const std::string & timestamp) const
 {
+    Object blockCountObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblockcount", Array());
+
+    Value res = getResult(blockCountObj);
+    int blockcount = res.get_int();
+    if (blockcount <= 51)
+        return "0";
+    
+    // Estimate average block creation time from the last 10 blocks
+    Array paramsGBH { blockcount };
+    Object blockHashObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblockhash", paramsGBH);
+    std::string hash = getResult(blockHashObj).get_str();
+    Array paramsGB { hash };
+    Object blockObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblock", paramsGB);
+    Object block = getResult(blockObj).get_obj();
+    int curblocktime = find_value(block, "time").get_int();
+    
+    Array paramsGBH2 { blockcount-50 };
+    blockHashObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblockhash", paramsGBH2);
+    hash = getResult(blockHashObj).get_str();
+    Array paramsGB2 { hash };
+    blockObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblock", paramsGB2);
+    block = getResult(blockObj).get_obj();
+    int blocktime50ago = find_value(block, "time").get_int();    
+    
+    int averageBlockTime = (curblocktime - blocktime50ago) / 50;
+
+    int time = std::stoi(timestamp);
+    
+    if (time >= curblocktime)
+        return std::to_string(blockcount);
+    
+    int blockEstimate = blockcount - (curblocktime - time) / averageBlockTime;
+    
+    if (blockEstimate <= 1)
+        return "0";
+    
+    Array paramsGBH3 { blockEstimate };
+    blockHashObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblockhash", paramsGBH3);
+    hash = getResult(blockHashObj).get_str();
+    Array paramsGB3 { hash };
+    blockObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblock", paramsGB3);
+    block = getResult(blockObj).get_obj();
+    int cur_estimate = find_value(block, "time").get_int(); 
+
+    int sign = 1;
+    if (cur_estimate > time)
+        sign = -1;
+    
+    while (true) {
+        blockEstimate += sign;
+        Array paramsGBH { blockEstimate };
+        Object blockHashObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblockhash", paramsGBH);
+        std::string hash = getResult(blockHashObj).get_str();
+        Array paramsGB { hash };
+        Object blockObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblock", paramsGB);
+        Object block = getResult(blockObj).get_obj();
+        int new_estimate = find_value(block, "time").get_int();
+        if ((cur_estimate - time) * (new_estimate - time) < 0) {
+            if (sign > 0)
+                return std::to_string(blockEstimate - 1);
+            else
+                return std::to_string(blockEstimate);
+        }
+        
+        cur_estimate = new_estimate;
+    }
+    
     return "0";
 }
 
