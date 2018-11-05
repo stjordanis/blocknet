@@ -187,10 +187,10 @@ Value xrGetTransaction(const Array & params, bool fHelp)
     return form_reply(reply);
 }
 
-Value xrGetAllBlocks(const Array & params, bool fHelp)
+Value xrGetBlocks(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetAllBlocks currency [number]\nReturns a list of all blocks starting with n for selected currency.");
+        throw std::runtime_error("xrGetBlocks currency [number]\nReturns a list of all blocks starting with n for selected currency.");
     }
 
     if (params.size() < 1)
@@ -222,10 +222,10 @@ Value xrGetAllBlocks(const Array & params, bool fHelp)
     return form_reply(reply);
 }
 
-Value xrGetAllTransactions(const Array & params, bool fHelp)
+Value xrGetTransactions(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetAllTransactions currency account [number]\nReturns all transactions to/from account starting from block [number] for selected currency.");
+        throw std::runtime_error("xrGetTransactions currency account [number]\nReturns all transactions to/from account starting from block [number] for selected currency.");
     }
 
     if (params.size() < 1)
