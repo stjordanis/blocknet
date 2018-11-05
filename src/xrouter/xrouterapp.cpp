@@ -724,7 +724,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     std::vector<CNode*> selectedNodes = getAvailableNodes(command, currency);
     
     if ((int)selectedNodes.size() < confirmations_count)
-        return "Not enough nodes";
+        return "No Service Node available to query for less than the specified max fee: " + std::to_string(xrouter_settings.getMaxFee(command, currency));
     
     int sent = 0;
     bool usehash = xrouter_settings.get<int>("Main.usehash", 0) != 0;
