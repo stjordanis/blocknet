@@ -40,7 +40,7 @@
 #include <vector>
 #include <chrono>
 
-#define TEST_RUN_ON_CLIENT 1
+#define TEST_RUN_ON_CLIENT 0
 
 #ifdef _WIN32
 #include <objbase.h>
@@ -746,11 +746,16 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         CAmount fee_part1 = fee;
         std::string payment_tx = usehash ? "hash;nofee" : "nohash;nofee";
         if (fee > 0) {
-            if (!usehash)
-                payment_tx = "nohash;" + generatePayment(pnode, fee);
-            else {
-                fee_part1 = fee / 2;
-                payment_tx = "hash;" + generatePayment(pnode, fee_part1);
+            try {
+                if (!usehash)
+                    payment_tx = "nohash;" + generatePayment(pnode, fee);
+                else {
+                    fee_part1 = fee / 2;
+                    payment_tx = "hash;" + generatePayment(pnode, fee_part1);
+                }
+            } catch (std::runtime_error) {
+                LOG() << "Failed to create payment to node " << pnode->addr.ToString();
+                continue;
             }
         }
         XRouterPacketPtr packet(new XRouterPacket(command));
@@ -826,7 +831,11 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     CAmount fee_part2 = fee - fee/2;
     std::string payment_tx = "nofee";
     if (fee > 0) {
-        payment_tx = "nohash;" + generatePayment(finalnode, fee_part2);
+        try {
+            payment_tx = "nohash;" + generatePayment(finalnode, fee_part2);
+        } catch (std::runtime_error) {
+            LOG() << "Failed to create payment to node " << finalnode->addr.ToString();
+        }
     }
     XRouterPacketPtr fpacket(new XRouterPacket(xrFetchReply));
     fpacket->append(txHash.begin(), 32);
@@ -950,8 +959,14 @@ std::string App::sendTransaction(const std::string & currency, const std::string
     for (CNode* pnode : selectedNodes) {
         CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getCommandFee(xrSendTransaction, currency));
         std::string payment_tx = "nofee";
-        if (fee > 0)
-            payment_tx = "nohash;" + generatePayment(pnode, fee);
+        if (fee > 0) {
+            try {
+                payment_tx = "nohash;" + generatePayment(pnode, fee);
+            } catch (std::runtime_error) {
+                LOG() << "Failed to create payment to node " << pnode->addr.ToString();
+                continue;
+            }
+        }
         
         XRouterPacketPtr packet(new XRouterPacket(xrSendTransaction));
         packet->append(txHash.begin(), 32);
@@ -1029,9 +1044,13 @@ std::string App::sendCustomCall(const std::string & name, std::vector<std::strin
     CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getPluginSettings(name).getFee());
     std::string payment_tx = "nofee";
     if (fee > 0) {
-        payment_tx = "nohash;" + generatePayment(pnode, fee);
-        LOG() << "Payment transaction: " << payment_tx;
-        //std::cout << "Payment transaction: " << payment_tx << std::endl << std::flush;
+        try {
+            payment_tx = "nohash;" + generatePayment(pnode, fee);
+            LOG() << "Payment transaction: " << payment_tx;
+            //std::cout << "Payment transaction: " << payment_tx << std::endl << std::flush;
+        } catch (std::runtime_error) {
+            LOG() << "Failed to create payment to node " << pnode->addr.ToString();
+        }
     }
     
     packet->append(txHash.begin(), 32);
@@ -1078,7 +1097,7 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             res = createAndSignTransaction(dest, fee, payment_tx);
             payment_tx = "single;" + payment_tx;
             if(!res) {
-                return "Failed to create payment transaction";
+                throw std::runtime_error("Failed to create payment transaction");
             }
         } else {
             // Create payment channel first
@@ -1088,7 +1107,7 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             if (!this->paymentChannels.count(pnode)) {
                 channel = createPaymentChannel(getPaymentPubkey(pnode), deposit, channeldate);
                 if (channel.txid == "")
-                    return "Failed to create payment channel";
+                    throw std::runtime_error("Failed to create payment channel");
                 this->paymentChannels[pnode] = channel;
                 payment_tx = channel.raw_tx + ";" + channel.txid + ";" + HexStr(channel.redeemScript.begin(), channel.redeemScript.end()) + ";";
             }
@@ -1099,7 +1118,7 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             std::string paytx;
             bool res = createAndSignChannelTransaction(this->paymentChannels[pnode], dest, deposit, fee + paid, paytx);
             if (!res)
-                return "Failed to pay to payment channel";
+                throw std::runtime_error("Failed to pay to payment channel");
             this->paymentChannels[pnode].latest_tx = paytx;
             this->paymentChannels[pnode].value = fee + paid;
             
