@@ -388,7 +388,6 @@ std::string BtcWalletConnectorXRouter::convertTimeToBlockCount(const std::string
         return std::to_string(blockcount);
     
     int blockEstimate = blockcount - (curblocktime - time) / averageBlockTime;
-    
     if (blockEstimate <= 1)
         return "0";
     
@@ -413,7 +412,9 @@ std::string BtcWalletConnectorXRouter::convertTimeToBlockCount(const std::string
         Object blockObj = CallRPC(m_user, m_passwd, m_ip, m_port, "getblock", paramsGB);
         Object block = getResult(blockObj).get_obj();
         int new_estimate = find_value(block, "time").get_int();
-        if ((cur_estimate - time) * (new_estimate - time) < 0) {
+        //std::cout << blockEstimate << " " << new_estimate << " " << cur_estimate << " " << (new_estimate - time) << " " << (cur_estimate - time) << " " << (cur_estimate - time) * (new_estimate - time) << std::endl << std::flush;
+        int sign1 = (cur_estimate - time > 0) ? 1 : -1;
+        if (sign1 * (new_estimate - time) < 0) {
             if (sign > 0)
                 return std::to_string(blockEstimate - 1);
             else
