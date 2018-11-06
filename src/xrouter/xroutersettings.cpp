@@ -129,7 +129,8 @@ bool XRouterSettings::isAvailableCommand(XRouterCommand c, std::string currency,
 
 double XRouterSettings::getCommandFee(XRouterCommand c, std::string currency, double def)
 {
-    double res = get<double>(std::string(XRouterCommand_ToString(c)) + ".fee", def);
+    double res = get<double>("Main.fee", def);
+    res = get<double>(std::string(XRouterCommand_ToString(c)) + ".fee", res);
     if (!currency.empty())
         res = get<double>(currency + "::" + std::string(XRouterCommand_ToString(c)) + ".fee", res);
     return res;
