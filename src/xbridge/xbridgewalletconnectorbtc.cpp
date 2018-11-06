@@ -237,6 +237,65 @@ bool listaccounts(const std::string & rpcuser, const std::string & rpcpasswd,
 
 //*****************************************************************************
 //*****************************************************************************
+bool listaddressgroupings(const std::string & rpcuser, const std::string & rpcpasswd,
+                           const std::string & rpcip, const std::string & rpcport,
+                           std::vector<std::string> & addresses)
+{
+    try
+    {
+        LOG() << "rpc call <listaddressgroupings>";
+
+        Array params;
+        //params.push_back(addresses);
+        Object reply = CallRPC(rpcuser, rpcpasswd, rpcip, rpcport,
+                               "listaddressgroupings", params);
+
+        // Parse reply
+        const Value & result = find_value(reply, "result");
+        const Value & error  = find_value(reply, "error");
+        if (error.type() != null_type)
+        {
+            // Error
+            LOG() << "error: " << write_string(error, false);
+            // int code = find_value(error.get_obj(), "code").get_int();
+            return false;
+        }
+        else if (result.type() != array_type)
+        {
+            // Result
+            LOG() << "result not an array " <<
+                     (result.type() == null_type ? "" :
+                      result.type() == str_type  ? result.get_str() :
+                                                   write_string(result, true));
+            return false;
+        }
+
+
+        Array arr = result.get_array();
+        for (const Value & v : arr)
+        {
+	    Array varray = v.get_array();
+	    for (const Value & varr : varray)
+	    {
+		Array vaddress = varr.get_array();
+		if (!vaddress.empty() && vaddress[0].type() == str_type)
+		{
+		addresses.push_back(vaddress[0].get_str());
+		}
+	    }
+        }
+    }
+    catch (std::exception & e)
+    {
+        LOG() << "listaddressgroupings exception" << e.what();
+        return false;
+    }
+
+    return true;
+}
+
+//*****************************************************************************
+//*****************************************************************************
 bool getaddressesbyaccount(const std::string & rpcuser, const std::string & rpcpasswd,
                            const std::string & rpcip, const std::string & rpcport,
                            const std::string & account,
@@ -294,51 +353,32 @@ bool getaddressesbyaccount(const std::string & rpcuser, const std::string & rpcp
 //*****************************************************************************
 bool validateaddress(const std::string & rpcuser, const std::string & rpcpasswd,
                      const std::string & rpcip, const std::string & rpcport,
-                     const std::string & address,
-                     bool & isValid, bool & isMine, bool & isWatchOnly, bool & isScript)
+                     const std::string & address)
 {
     try
     {
-        // LOG() << "rpc call <validateaddress>";
-
         Array params;
         params.push_back(address);
+        params.push_back(address); 
         Object reply = CallRPC(rpcuser, rpcpasswd, rpcip, rpcport,
-                               "validateaddress", params);
+                               "signmessage", params);
 
         // Parse reply
-        const Value & result = find_value(reply, "result");
-        const Value & error  = find_value(reply, "error");
-
+        Value result = find_value(reply, "result");
+        Value error  = find_value(reply, "error");
         if (error.type() != null_type)
         {
             // Error
-            LOG() << "error: " << write_string(error, false);
-            // int code = find_value(error.get_obj(), "code").get_int();
-            return false;
-        }
-        else if (result.type() != obj_type)
-        {
-            // Result
-            LOG() << "result not an array " <<
-                     (result.type() == null_type ? "" :
-                      result.type() == str_type  ? result.get_str() :
-                                                   write_string(result, true));
-            return false;
+            LOG() << "signmessage failed for address:" << address << " error: " << write_string(error, false);
+	    return false;
         }
 
-        Object o = result.get_obj();
-        isValid     = find_value(o, "isvalid").get_bool();
-        isMine      = find_value(o, "ismine").get_bool();
-        isWatchOnly = find_value(o, "iswatchonly").get_bool();
-        isScript    = find_value(o, "isscript").get_bool();
     }
     catch (std::exception & e)
     {
-        LOG() << "validateaddress exception " << e.what();
+        LOG() << "signmessage exception " << e.what();
         return false;
     }
-
     return true;
 }
 
@@ -1359,51 +1399,24 @@ std::vector<unsigned char> BtcWalletConnector<CryptoProvider>::toXAddr(const std
 template <class CryptoProvider>
 bool BtcWalletConnector<CryptoProvider>::requestAddressBook(std::vector<wallet::AddressBookEntry> & entries)
 {
-    std::vector<std::string> accounts;
-    if (!rpc::listaccounts(m_user, m_passwd, m_ip, m_port, accounts))
+    std::vector<std::string> addresses;
+    if (!rpc::listaddressgroupings(m_user, m_passwd, m_ip, m_port, addresses))
     {
         return false;
     }
-    // LOG() << "received " << accounts.size() << " accounts";
-    for (std::string & account : accounts)
+
+    std::vector<std::string> copy;
+
+    for (std::string & address : addresses)
     {
-        std::vector<std::string> addrs;
-        if (!rpc::getaddressesbyaccount(m_user, m_passwd, m_ip, m_port, account, addrs))
-        {
-            continue;
-        }
-
-        std::vector<std::string> copy;
-        for (const std::string & a : addrs)
-        {
-            bool isValid     = false;
-            bool isMine      = false;
-            bool isWatchOnly = false;
-            bool isScript    = false;
-            if (!rpc::validateaddress(m_user, m_passwd, m_ip, m_port, a,
-                                      isValid, isMine, isWatchOnly, isScript))
-            {
-                continue;
-            }
-
-            if (!isValid || !isMine || isWatchOnly || isScript)
-            {
-                continue;
-            }
-
-            copy.emplace_back(a);
-        }
-
-        if (copy.empty())
-        {
-            continue;
-        }
-
-        entries.emplace_back(account.empty() ? "_none" : account, copy);
-        // LOG() << acc << " - " << boost::algorithm::join(addrs, ",");
+    	if (!rpc::validateaddress(m_user, m_passwd, m_ip, m_port, address))
+    	{
+		continue;
+    	}
+    	copy.emplace_back(address);
 
     }
-
+    entries.emplace_back("none", copy);
     return true;
 }
 
@@ -1598,6 +1611,20 @@ bool BtcWalletConnector<CryptoProvider>::hasValidAddressPrefix(const std::string
     bool isP2SH  = memcmp(&scriptPrefix[0], &decoded[0], decoded.size()-sizeof(uint160)) == 0;
 
     return isP2PKH || isP2SH;
+}
+
+//******************************************************************************
+//******************************************************************************
+
+/**
+ * \brief Checks if specified address is valid.
+ * \param addr Address to check
+ * \return returns true if address is valid, otherwise false.
+ */
+template <class CryptoProvider>
+bool BtcWalletConnector<CryptoProvider>::isValidAddress(const std::string & addr) const
+{
+    return hasValidAddressPrefix(addr) && rpc::validateaddress(m_user, m_passwd, m_ip, m_port, addr);
 }
 
 //******************************************************************************

@@ -253,9 +253,10 @@ public:
     /**
      * @brief isValidAddress checks the correctness of the address
      * @param address checked address
+     * @param wallet connection to check against
      * @return true, if address valid
      */
-    bool isValidAddress(const std::string &address) const;
+    bool isValidAddress(const std::string &address, WalletConnectorPtr &conn) const;
 
     /**
      * @brief checkAcceptParams checks the correctness of the parameters
@@ -440,7 +441,14 @@ public:
                          const std::vector<std::string> & services,
                          const uint32_t version);
 
-    bool findNodeWithService(const std::set<std::string> & services, CPubKey & node) const;
+    /**
+     * @brief Finds a servicenode with the specified services that is also not in an "excluded" set.
+     * @param services
+     * @param node
+     * @param notIn This set contains servicenode CPubKey's that we are ignoring
+     * @return
+     */
+    bool findNodeWithService(const std::set<std::string> & services, CPubKey & node, const std::set<CPubKey> & notIn) const;
 
 protected:
     void clearMempool();
