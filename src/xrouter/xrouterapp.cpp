@@ -329,12 +329,6 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
         if (!settings.isAvailableCommand(command, wallet))
             continue;
         
-        if (maxfee >= 0) {
-            CAmount fee = to_amount(settings.getCommandFee(command, wallet));
-            if (fee > maxfee)
-                continue;
-        }
-        
         CNode* res = NULL;
         for (CNode* pnode : vNodes) {
             if (key == pnode->addr.ToString()) {
@@ -354,6 +348,21 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
         if (!res)
             continue;
         
+        std::string id = key;
+        BOOST_FOREACH (PAIRTYPE(int, CServicenode) & s, vServicenodeRanks) {        
+            if (s.second.addr.ToString() == res->addr.ToString())
+                id = CBitcoinAddress(s.second.pubKeyCollateralAddress.GetID()).ToString();
+        }
+        
+        if (maxfee >= 0) {
+            CAmount fee = to_amount(settings.getCommandFee(command, wallet));
+            if (fee > maxfee) {
+                LOG() << "Skipping node " << id << " because its fee=" << fee << " is higher than maxfee=" << maxfee;
+                continue;
+            }
+        }
+        
+        
         // If connector is not working, the wallet will be removed from serviceping
         BOOST_FOREACH (PAIRTYPE(int, CServicenode) & s, vServicenodeRanks) {        
             if (s.second.addr.ToString() == res->addr.ToString())
@@ -369,6 +378,7 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
                 std::chrono::time_point<std::chrono::system_clock> prev_time = lastPacketsSent[res][keystr];
                 std::chrono::system_clock::duration diff = time - prev_time;
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(timeout * 1000))) {
+                    LOG() << "Skipping node " << id << " because not enough time passed since the last call";
                     continue;
                 }
             }
@@ -724,7 +734,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     std::vector<CNode*> selectedNodes = getAvailableNodes(command, currency);
     
     if ((int)selectedNodes.size() < confirmations_count)
-        return "No Service Node available to query for less than the specified max fee: " + std::to_string(xrouter_settings.getMaxFee(command, currency));
+        return "Could not find " + std::to_string(confirmations_count) + " Service Nodes to query at the moment.";
     
     int sent = 0;
     bool usehash = xrouter_settings.get<int>("Main.usehash", 0) != 0;
