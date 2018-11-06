@@ -245,20 +245,29 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                 
                 // TODO: verify the channel's correctness
 
-                // Send the closing tx 5 seconds before the deadline
                 int date = getChannelExpiryTime(paymentChannels[node].raw_tx);
-                int deadline = date - std::time(0) - 5000;
+                paymentChannelFlags[node] = false;
                 
-                LOG() << "Created payment channel date = " << date << " expiry = " << deadline << " ms"; 
+                LOG() << "Created payment channel date = " << date << " expiry = " << (date - std::time(0) - 5000) << " ms"; 
                 
-                boost::thread([deadline, this, node]() {
-                    // TODO: add a way to shut this thread programmatically
-                    boost::this_thread::sleep_for(boost::chrono::milliseconds(deadline));
+                boost::thread([date, this, node]() {
+                    while (true) {
+                        boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+                        if (this->paymentChannelFlags[node])
+                            break;
+                        
+                        // Send the closing tx 5 seconds before the deadline
+                        int deadline = date - std::time(0);
+                        if (deadline <= 5000)
+                            break;
+                    }
+                    
                     std::string txid;
                     LOG() << "Closing payment channel: " << this->paymentChannels[node].txid << " Value = " << this->paymentChannels[node].value;
                     
                     sendTransactionBlockchain(this->paymentChannels[node].latest_tx, txid);
                     this->paymentChannels.erase(node);
+                    this->paymentChannelFlags.erase(node);
                 }).detach();
             }
         
