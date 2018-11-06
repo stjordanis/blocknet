@@ -29,7 +29,7 @@ class XRouterServer
     boost::container::map<CNode*, boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> > > lastPacketsReceived;
     
     boost::container::map<CNode*, PaymentChannel> paymentChannels;
-    boost::container::map<CNode*, bool> paymentChannelFlags;
+    boost::container::map<CNode*, std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> > > paymentChannelLocks;
     
     boost::container::map<std::string, std::pair<std::string, CAmount> > hashedQueries;
     boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> > hashedQueriesDeadlines;

@@ -246,28 +246,25 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                 // TODO: verify the channel's correctness
 
                 int date = getChannelExpiryTime(paymentChannels[node].raw_tx);
-                paymentChannelFlags[node] = false;
                 
-                LOG() << "Created payment channel date = " << date << " expiry = " << (date - std::time(0) - 5000) << " ms"; 
+                boost::shared_ptr<boost::mutex> m(new boost::mutex());
+                boost::shared_ptr<boost::condition_variable> cond(new boost::condition_variable());
+                paymentChannelLocks[node] = std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> >(m, cond);
                 
-                boost::thread([date, this, node]() {
-                    while (true) {
-                        boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
-                        if (this->paymentChannelFlags[node])
-                            break;
-                        
-                        // Send the closing tx 5 seconds before the deadline
-                        int deadline = date - std::time(0);
-                        if (deadline <= 5000)
-                            break;
-                    }
+                int deadline = date - std::time(0) - 5000;
+                LOG() << "Created payment channel date = " << date << " expiry = " << deadline << " ms"; 
+                
+                boost::thread([deadline, this, node]() {
+                    // No need to check the result of timed_wait(): if it's true then it means a function to close channel early was called, otherwise it means that the deadline is reached.
+                    boost::mutex::scoped_lock lock(*this->paymentChannelLocks[node].first);
+                    this->paymentChannelLocks[node].second->timed_wait(lock, boost::posix_time::milliseconds(deadline));
                     
                     std::string txid;
                     LOG() << "Closing payment channel: " << this->paymentChannels[node].txid << " Value = " << this->paymentChannels[node].value;
                     
                     sendTransactionBlockchain(this->paymentChannels[node].latest_tx, txid);
                     this->paymentChannels.erase(node);
-                    this->paymentChannelFlags.erase(node);
+                    this->paymentChannelLocks.erase(node);
                 }).detach();
             }
         
