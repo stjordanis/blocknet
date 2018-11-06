@@ -223,6 +223,9 @@ protected:
      * @return
      */
     void clearHashedQueries();
+    
+    void closePaymentChannel(std::string id);
+    void closeAllPaymentChannels();
 };
 
 } // namespace

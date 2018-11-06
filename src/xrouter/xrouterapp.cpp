@@ -297,6 +297,7 @@ std::string App::printConfigs()
 //*****************************************************************************
 bool App::stop()
 {
+    server->closeAllPaymentChannels();
     return true;
 }
  
@@ -1249,6 +1250,14 @@ std::string App::getStatus() {
     result.emplace_back(Pair("nodes", nodes));
     
     return json_spirit::write_string(Value(result), true);
+}
+
+void App::closePaymentChannel(std::string id) {
+    server->closePaymentChannel(id);
+}
+
+void App::closeAllPaymentChannels() {
+    server->closeAllPaymentChannels();
 }
 
 } // namespace xrouter

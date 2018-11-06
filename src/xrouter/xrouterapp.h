@@ -330,6 +330,9 @@ public:
      * @param state variable, used to ban misbehaving nodes
      */
     void onMessageReceived(CNode* node, const std::vector<unsigned char> & message, CValidationState & state);
+    
+    void closePaymentChannel(std::string id);
+    void closeAllPaymentChannels();
 };
 
 } // namespace xrouter

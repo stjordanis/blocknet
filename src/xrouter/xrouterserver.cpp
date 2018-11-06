@@ -867,4 +867,12 @@ void XRouterServer::clearHashedQueries() {
     }
 }
 
+void XRouterServer::closePaymentChannel(std::string id) {
+    
+}
+
+void XRouterServer::closeAllPaymentChannels() {
+    
+}
+
 } // namespace xrouter
