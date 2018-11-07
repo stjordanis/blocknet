@@ -59,7 +59,7 @@ public:
     }
 
     virtual std::string getBlockCount() const = 0;
-    virtual std::string getBlockHash(const std::string & blockId) const = 0;
+    virtual Object getBlockHash(const std::string & blockId) const = 0;
     virtual Object      getBlock(const std::string & blockHash) const = 0;
     virtual Object      getTransaction(const std::string & trHash) const = 0;
     virtual Array       getAllBlocks(const int number, int blocklimit=0) const = 0;

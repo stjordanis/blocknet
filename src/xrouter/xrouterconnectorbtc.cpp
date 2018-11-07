@@ -15,21 +15,24 @@ static Value getResult(Object obj)
 
 static bool getResultOrError(Object obj, Value& res)
 {
-    for (Object::size_type i = 0; i != obj.size(); i++ ) {
-        if (obj[i].name_ == "result") {
-            res =  obj[i].value_;
-            return true;
-        }
+    const Value & result = find_value(obj, "result");
+    const Value & error  = find_value(obj, "error");
+    
+    if (error.type() != null_type)
+    {
+        res = error;
+        return false;
     }
-
-    for (Object::size_type i = 0; i != obj.size(); i++ ) {
-        if (obj[i].name_ == "error") {
-            res =  obj[i].value_;
-            return false;
-        }
+    else if (result.type() != null_type)
+    {
+        res = result;
+        return true;
     }
-    res = Object();
-    return false;
+    else
+    {
+        res = Value();
+        return false;
+    }
 }
 
 static double parseVout(Value vout, std::string account)
@@ -99,14 +102,12 @@ std::string BtcWalletConnectorXRouter::getBlockCount() const
     return std::to_string(getResult(resp).get_int());
 }
 
-std::string BtcWalletConnectorXRouter::getBlockHash(const std::string & blockId) const
+Object BtcWalletConnectorXRouter::getBlockHash(const std::string & blockId) const
 {
     std::string command("getblockhash");
     Array params { std::stoi(blockId) };
 
-    Object resp = CallRPC(m_user, m_passwd, m_ip, m_port, command, params);
-
-    return getResult(resp).get_str();
+    return CallRPC(m_user, m_passwd, m_ip, m_port, command, params);
 }
 
 Object BtcWalletConnectorXRouter::getBlock(const std::string & blockHash) const
