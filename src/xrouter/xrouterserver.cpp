@@ -223,6 +223,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             
             LOG() << "Got direct payment; value = " << paid << " tx = " << parts[2]; 
         } else if (parts[1] == "channel") {
+            throw std::runtime_error("Payment channels are not available in this version.");
             if (!paymentChannels.count(node)) {
                 // There is no payment channel with this node
                 if (parts.size() != 5) {
@@ -371,6 +372,9 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
             if (parts[0] == "hash")
                 usehash = true;        
             
+            if (usehash)
+                throw XRouterError("Hashing replies is not available in this version.", xrouter::BAD_REQUEST);
+            
             fee = to_amount(app.xrouter_settings.getCommandFee(packet->command(), currency));
             
             LOG() << "Fee = " << fee;
@@ -433,7 +437,8 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
                     reply = processGetTransactionsBloomFilter(packet, offset, currency);
                     break;
                 case xrTimeToBlockNumber:
-                    reply = processConvertTimeToBlockCount(packet, offset, currency);
+                    reply = "This call is not implemented yet";
+                    //reply = processConvertTimeToBlockCount(packet, offset, currency);
                     break;
                 case xrFetchReply:
                     reply = processFetchReply(uuid);

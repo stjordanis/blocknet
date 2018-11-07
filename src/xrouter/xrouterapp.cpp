@@ -792,6 +792,9 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         if (confirmations_count == 1)
             usehash = false;
         
+        // Disable usehash option
+        usehash = false;
+        
         int cnt = 0;
         boost::container::map<CNode*, std::string > paytx_map;
         for (CNode* pnode : selectedNodes) {
@@ -1149,7 +1152,8 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
     std::string payment_tx = "nofee";
     bool res;
     if (fee > 0) {
-        if (deposit == 0) {
+        // Disable payment channels
+        if (true or (deposit == 0)) {
             res = createAndSignTransaction(dest, fee, payment_tx);
             payment_tx = "single;" + payment_tx;
             if(!res) {
