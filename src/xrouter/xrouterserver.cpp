@@ -868,11 +868,23 @@ void XRouterServer::clearHashedQueries() {
 }
 
 void XRouterServer::closePaymentChannel(std::string id) {
+    CNode* node = NULL;
+    for (const auto& it : this->paymentChannels) {
+        if (std::to_string(it.first->id) == id) {
+            node = it.first;
+            break;
+        }
+    }
     
+    if (node) {
+        this->paymentChannelLocks[node].second->notify_all();
+    }
 }
 
 void XRouterServer::closeAllPaymentChannels() {
-    
+    for (const auto& it : this->paymentChannelLocks) {
+        it.second.second->notify_all();
+    }
 }
 
 } // namespace xrouter
