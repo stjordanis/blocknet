@@ -299,7 +299,7 @@ SOURCES += \
     src/xbridge/xbridgewalletconnectorbch.cpp \
     src/xbridge/xbridgecryptoproviderbtc.cpp \
     src/xbridge/xbridgepacket.cpp \
-    src/xbridge/xbridgeservicespacket.cpp \
+    src/xbridge/util/xseries.cpp
     src/xrouter/rpcxrouter.cpp \
     src/xrouter/xrouterapp.cpp \
     src/xrouter/xrouterconnector.cpp \
@@ -599,6 +599,8 @@ HEADERS += \
     src/xbridge/xbridgewalletconnectorbch.h \
     src/xbridge/xbridgedef.h \
     src/xbridge/xbridgecryptoproviderbtc.h \
+    src/xbridge/util/xseries.h \
+    src/xbridge/util/xassert.h \
     src/xrouter/version.h \
     src/xrouter/xrouterapp.h \
     src/xrouter/xrouterconnector.h \
