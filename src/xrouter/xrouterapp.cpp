@@ -741,6 +741,10 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
     bool usehash = xrouter_settings.get<int>("Main.usehash", 0) != 0;
     if (confirmations_count == 1)
         usehash = false;
+    
+    // Disable usehash option
+    usehash = false;
+    
     for (CNode* pnode : selectedNodes) {
         CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getCommandFee(command, currency));
         CAmount fee_part1 = fee;
@@ -1093,7 +1097,8 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
     std::string payment_tx = "nofee";
     bool res;
     if (fee > 0) {
-        if (deposit == 0) {
+        // Disable payment channels
+        if (true or (deposit == 0)) {
             res = createAndSignTransaction(dest, fee, payment_tx);
             payment_tx = "single;" + payment_tx;
             if(!res) {

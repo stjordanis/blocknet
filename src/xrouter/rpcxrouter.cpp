@@ -597,6 +597,7 @@ Value xrRegisterDomain(const Array & params, bool fHelp)
         throw std::runtime_error("xrRegisterDomain\nNot implemented yet");
     }
     
+    return "This function is not implemented yet";
     //Object result;
     //xrouter::App::instance().openConnections();
     return "";
@@ -608,6 +609,7 @@ Value xrQueryDomain(const Array & params, bool fHelp)
         throw std::runtime_error("xrQueryDomain\nNot implemented yet");
     }
     
+    return "This function is not implemented yet";
     //Object result;
     //xrouter::App::instance().openConnections();
     return "";
@@ -619,6 +621,7 @@ Value xrPaymentChannels(const Array & params, bool fHelp)
         throw std::runtime_error("xrPaymentChannels\nNot implemented yet");
     }
     
+    return "This function is not implemented yet";
     return xrouter::App::instance().printPaymentChannels();
 }
 
@@ -627,6 +630,8 @@ Value xrClosePaymentChannel(const Array& params, bool fHelp)
     if (fHelp) {
         throw std::runtime_error("xrClosePaymentChannel\nNot implemented yet");
     }
+    
+    return "This function is not implemented yet";
     
     if (params.size() < 1)
     {
@@ -646,6 +651,8 @@ Value xrCloseAllPaymentChannels(const Array& params, bool fHelp)
     if (fHelp) {
         throw std::runtime_error("xrClosePaymentChannel\nNot implemented yet");
     }
+    
+    return "This function is not implemented yet";
     
     xrouter::App::instance().closeAllPaymentChannels();
     return "";

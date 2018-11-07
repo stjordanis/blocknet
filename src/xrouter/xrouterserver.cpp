@@ -229,6 +229,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             
             LOG() << "Got direct payment; value = " << paid << " tx = " << parts[2]; 
         } else if (parts[1] == "channel") {
+            throw std::runtime_error("Payment channels are not available in this version.");
             if (!paymentChannels.count(node)) {
                 // There is no payment channel with this node
                 if (parts.size() != 5) {
@@ -372,7 +373,10 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         std::vector<std::string> parts;
         boost::split(parts, feetx, boost::is_any_of(";"));
         if (parts[0] == "hash")
-            usehash = true;        
+            usehash = true;
+
+        if (usehash)
+            throw std::runtime_error("Hashing replies is not available in this version.");
         
         fee = to_amount(app.xrouter_settings.getCommandFee(packet->command(), currency));
         
