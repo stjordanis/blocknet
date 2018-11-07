@@ -111,7 +111,7 @@ Object CallRPC(const string& strMethod, const Array& params)
     std::string rpcport(GetArg("-rpcport", itostr(BaseParams().RPCPort())));
 
     boost::asio::ip::tcp::iostream stream;
-    stream.expires_from_now(boost::posix_time::seconds(GetArg("-rpcclienttimeout", 15)));
+    stream.expires_from_now(boost::posix_time::seconds(GetArg("-rpcclienttimeout", 60)));
     stream.connect(rpcip, rpcport);
     if (stream.error() != boost::system::errc::success) {
         LogPrint("net", "Failed to make rpc connection to %s:%s error %d: %s", rpcip, rpcport, stream.error(), stream.error().message());
