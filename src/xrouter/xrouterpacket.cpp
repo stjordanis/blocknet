@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+#include "xrouterlogger.h"
 #include "xrouterpacket.h"
 #include "secp256k1.h"
 #include "random.h"
@@ -170,5 +171,26 @@ bool XRouterPacket::verify(const std::vector<unsigned char> & pubkey)
     }
 
     return verify();
+}
+
+bool XRouterPacket::copyFrom(const std::vector<unsigned char> & data)
+{
+    if (data.size() < headerSize)
+    {
+        LOG() << "received data size less than packet header size " << __FUNCTION__;
+        return false;
+    }
+
+    m_body = data;
+
+    //std::cout << sizeField() << " " << data.size() << " " << static_cast<uint32_t>(data.size()) << " " << headerSize << std::endl << std::flush;
+    if (sizeField() != static_cast<uint32_t>(data.size())-headerSize)
+    {
+        LOG() << "incorrect data size " << __FUNCTION__;
+        return false;
+    }
+
+    // TODO check packet crc
+    return true;
 }
 } // namespace xrouter

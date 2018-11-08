@@ -213,25 +213,7 @@ public:
         __oldSizeField() = sizeField()+__headerDifference;
     }
 
-    bool copyFrom(const std::vector<unsigned char> & data)
-    {
-        if (data.size() < headerSize)
-        {
-            std::cerr << "received data size less than packet header size " << __FUNCTION__;
-            return false;
-        }
-
-        m_body = data;
-
-        if (sizeField() != static_cast<uint32_t>(data.size())-headerSize)
-        {
-            std::cerr << "incorrect data size " << __FUNCTION__;
-            return false;
-        }
-
-        // TODO check packet crc
-        return true;
-    }
+    bool copyFrom(const std::vector<unsigned char> & data);
 
     XRouterPacket() : m_body(headerSize, 0)
     {
