@@ -887,4 +887,93 @@ void XRouterServer::closeAllPaymentChannels() {
     }
 }
 
+void XRouterServer::runPerformanceTests() {
+    std::chrono::time_point<std::chrono::system_clock> time;
+    std::chrono::system_clock::duration diff;
+    for (const auto& it : this->m_connectorCurrencyMap) {
+        std::string currency = it.first;
+        WalletConnectorXRouterPtr conn = it.second;
+        TESTLOG() << "Testing connector to currency " << currency;
+        TESTLOG() << "xrGetBlockCount";
+        time = std::chrono::system_clock::now();
+        int blocks = std::stoi(conn->getBlockCount());
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetBlockHash";
+        time = std::chrono::system_clock::now();
+        Object obj = conn->getBlockHash(std::to_string(blocks-1));
+        const Value & result = find_value(obj, "result");
+        std::string blockhash = result.get_str();
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetBlock";
+        time = std::chrono::system_clock::now();
+        conn->getBlock(blockhash);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetBlocks - 10 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getAllBlocks(blocks-10, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetBlocks - 100 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getAllBlocks(blocks-100, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetBlocks - 1000 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getAllBlocks(blocks-1000, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetTransactions - 10 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getAllTransactions("yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt", blocks-10, 0, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetTransactions - 100 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getAllTransactions("yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt", blocks-100, 0, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetTransactions - 1000 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getAllTransactions("yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt", blocks-1000, 0, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetBalanceUpdate - 10 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getBalanceUpdate("yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt", blocks-10, 0, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetBalanceUpdate - 100 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getBalanceUpdate("yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt", blocks-100, 0, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrGetBalanceUpdate - 1000 blocks";
+        time = std::chrono::system_clock::now();
+        conn->getBalanceUpdate("yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt", blocks-1000, 0, 0);
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+        
+        TESTLOG() << "xrTimeToBlockNumber";
+        time = std::chrono::system_clock::now();
+        conn->convertTimeToBlockCount("1241469643");
+        diff = std::chrono::system_clock::now() - time;
+        TESTLOG() << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms";
+    }
+}
+
 } // namespace xrouter

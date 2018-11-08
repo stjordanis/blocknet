@@ -699,6 +699,7 @@ extern json_spirit::Value xrOpenConnections(const json_spirit::Array& params, bo
 extern json_spirit::Value xrPaymentChannels(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value xrClosePaymentChannel(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value xrCloseAllPaymentChannels(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value xrTest(const json_spirit::Array& params, bool fHelp);
 
 /** @} */
 

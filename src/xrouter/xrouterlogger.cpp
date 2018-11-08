@@ -27,14 +27,16 @@ std::string LOG::m_logFileName;
 
 //******************************************************************************
 //******************************************************************************
-LOG::LOG(const char reason)
+LOG::LOG(const char reason, std::string filename)
     : std::basic_stringstream<char, std::char_traits<char>,
                     boost::pool_allocator<char> >()
-    , m_r(reason)
+    , m_r(reason), filenameOverride("")
 {
     *this << "\n" << "[" << (char)std::toupper(m_r) << "] "
           << boost::posix_time::second_clock::local_time()
           << " [0x" << boost::this_thread::get_id() << "] ";
+    if (filename != "")
+        filenameOverride = filename;
 }
 
 //******************************************************************************
@@ -64,6 +66,14 @@ LOG::~LOG()
 
     try
     {
+        if (filenameOverride != "") {
+            boost::filesystem::path directory = GetDataDir(false) / "log";
+            boost::filesystem::create_directory(directory);
+
+            std::ofstream file(directory.string() + "/" + filenameOverride.c_str(), std::ios_base::app);
+            file << str().c_str();
+            return;
+        }
         if (logToFile)
         {
             boost::gregorian::date tmpday =

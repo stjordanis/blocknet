@@ -650,3 +650,13 @@ Value xrCloseAllPaymentChannels(const Array& params, bool fHelp)
     xrouter::App::instance().closeAllPaymentChannels();
     return "";
 }
+
+Value xrTest(const Array& params, bool fHelp)
+{
+    if (fHelp) {
+        throw std::runtime_error("xrTest\nAuxiliary call");
+    }
+    
+    xrouter::App::instance().runTests();
+    return "";
+}

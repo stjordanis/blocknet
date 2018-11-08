@@ -333,6 +333,8 @@ public:
     
     void closePaymentChannel(std::string id);
     void closeAllPaymentChannels();
+    
+    void runTests();
 };
 
 } // namespace xrouter

@@ -1279,4 +1279,8 @@ void App::closeAllPaymentChannels() {
     server->closeAllPaymentChannels();
 }
 
+void App::runTests() {
+    server->runPerformanceTests();
+}
+
 } // namespace xrouter

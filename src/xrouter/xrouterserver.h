@@ -226,6 +226,7 @@ protected:
     
     void closePaymentChannel(std::string id);
     void closeAllPaymentChannels();
+    void runPerformanceTests();
 };
 
 } // namespace

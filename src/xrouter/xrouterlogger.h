@@ -10,6 +10,7 @@
 #define WARN()  LOG('W')
 #define ERR()   LOG('E')
 #define TRACE() LOG('T')
+#define TESTLOG() LOG('I',"test_xrouter.log")
 
 #define DEBUG_TRACE() (TRACE() << __FUNCTION__)
 #define DEBUG_TRACE_LOG(str) (TRACE() << str << " " << __FUNCTION__)
@@ -28,7 +29,7 @@ class LOG : public std::basic_stringstream<char, std::char_traits<char>,
                                         boost::pool_allocator<char> > // std::stringstream
 {
 public:
-    LOG(const char reason = 'I');
+    LOG(const char reason = 'I', std::string filename="");
     virtual ~LOG();
 
     static std::string logFileName();
@@ -40,6 +41,7 @@ private:
     char m_r;
 
     static std::string m_logFileName;
+    std::string filenameOverride;
 };
 
 }
