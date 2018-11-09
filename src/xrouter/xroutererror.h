@@ -26,6 +26,12 @@ namespace xrouter
       INTERNAL_SERVER_ERROR = 1002
     };
 
+    class XRouterError {
+    public:
+        std::string msg;
+        Error code; 
+        XRouterError(std::string message, enum Error errcode) : msg(message), code(errcode) { }
+    };
 } // namespace xrouter
 
 #endif // XROUTERERROR_H
