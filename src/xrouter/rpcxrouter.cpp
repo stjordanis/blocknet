@@ -8,6 +8,7 @@
 #include "core_io.h"
 
 #include "xrouterapp.h"
+#include "xroutererror.h"
 #include "uint256.h"
 using namespace json_spirit;
 

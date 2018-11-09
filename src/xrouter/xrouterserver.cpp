@@ -5,6 +5,7 @@
 #include "xrouterlogger.h"
 #include "xbridge/util/settings.h"
 #include "xrouterapp.h"
+#include "xroutererror.h"
 #include "servicenodeman.h"
 #include "activeservicenode.h"
 #include "rpcserver.h"

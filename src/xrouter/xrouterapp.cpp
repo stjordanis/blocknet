@@ -21,6 +21,7 @@
 #include "xrouterconnector.h"
 #include "xrouterconnectorbtc.h"
 #include "xrouterconnectoreth.h"
+#include "xroutererror.h"
 
 #include "json/json_spirit_reader_template.h"
 #include "json/json_spirit_writer_template.h"
@@ -769,7 +770,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         if (!param2.empty())
             packet->append(param2);
         packet->sign(key);
-
+        
         pnode->PushMessage("xrouter", packet->body());
         sent++;
         
