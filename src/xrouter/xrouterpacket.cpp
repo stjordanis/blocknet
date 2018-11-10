@@ -175,6 +175,8 @@ bool XRouterPacket::verify(const std::vector<unsigned char> & pubkey)
 
 bool XRouterPacket::copyFrom(const std::vector<unsigned char> & data)
 {
+    std::cout << "data.size()=" << data.size() << " headerSize=" << headerSize << std::endl << std::flush;
+    LOG() << "data.size()=" << data.size() << " headerSize=" << headerSize;
     if (data.size() < headerSize)
     {
         LOG() << "received data size less than packet header size " << __FUNCTION__;
@@ -183,7 +185,8 @@ bool XRouterPacket::copyFrom(const std::vector<unsigned char> & data)
 
     m_body = data;
 
-    //std::cout << sizeField() << " " << data.size() << " " << static_cast<uint32_t>(data.size()) << " " << headerSize << std::endl << std::flush;
+    std::cout << "sizefield()=" << sizeField() << " data.size()=" << data.size() << " headerSize=" << headerSize << std::endl << std::flush;
+    LOG() << "sizefield()=" << sizeField() << " data.size()=" << data.size() << " headerSize=" << headerSize;
     if (sizeField() != static_cast<uint32_t>(data.size())-headerSize)
     {
         LOG() << "incorrect data size " << __FUNCTION__;

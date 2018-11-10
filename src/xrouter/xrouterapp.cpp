@@ -607,6 +607,8 @@ void App::onMessageReceived(CNode* node, const std::vector<unsigned char>& messa
 {
     LOG() << "Received xrouter packet";
 
+    LOG() << HexStr(message.begin(), message.end());
+    std::cout << HexStr(message.begin(), message.end()) << std::endl << std::flush;
     // If xrouter == 0, xrouter is turned off on this snode
     if (!isEnabled())
         return;
