@@ -11,7 +11,6 @@ namespace xrouter
     enum Error
     {
       SUCCESS = 0,
-      UNKNOWN_ERROR = 1002,
       BAD_REQUEST = 1004,
       BAD_CONNECTOR = 1018,
       INVALID_PARAMETERS = 1025,
@@ -23,7 +22,8 @@ namespace xrouter
       NOT_ENOUGH_NODES = 1032,
       MAXFEE_TOO_HIGH = 1033,
       UNAUTHORIZED = 1001,
-      INTERNAL_SERVER_ERROR = 1002
+      INTERNAL_SERVER_ERROR = 1002,
+      SERVER_TIMEOUT = 1003
     };
 
     class XRouterError {

@@ -803,9 +803,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
 
         std::string result = "";
         if(confirmation_count <= confirmations_count / 2) {
-            error.emplace_back(Pair("error", "Failed to get response in time. Try xrGetReply command later."));
-            error.emplace_back(Pair("uuid", id));
-            return json_spirit::write_string(Value(error), true);
+            throw XRouterError("Failed to get response in time. Try xrGetReply command later.", xrouter::SERVER_TIMEOUT);
         }
         else {
             BOOST_FOREACH( queries_map::value_type &i, queries[id] ) {
@@ -847,6 +845,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
                 payment_tx = "nohash;" + generatePayment(finalnode, fee_part2);
             } catch (std::runtime_error) {
                 LOG() << "Failed to create payment to node " << finalnode->addr.ToString();
+                throw XRouterError("Could not create payment to service node", xrouter::INSUFFICIENT_FUNDS);
             }
         }
         XRouterPacketPtr fpacket(new XRouterPacket(xrFetchReply));
@@ -869,7 +868,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             std::string reply = queries[id][finalnode];
             return reply;
         } else {
-            return "Failed to fetch reply from service node";
+            throw XRouterError("Failed to fetch reply from service node", xrouter::SERVER_TIMEOUT);
         }
     } catch (XRouterError e) {
         Object error;
@@ -1020,88 +1019,96 @@ std::string App::sendTransaction(const std::string & currency, const std::string
 
 std::string App::sendCustomCall(const std::string & name, std::vector<std::string> & params)
 {
-    if (!isEnabled())
-        return "XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.";
-    
-    if (this->xrouter_settings.hasPlugin(name)) {
-        // Run the plugin locally
-        return server->processCustomCall(name, params);
-    }
-    
-    updateConfigs();
-    
-    XRouterPacketPtr packet(new XRouterPacket(xrCustomCall));
-
-    uint256 txHash;
-    uint32_t vout = 0;
-    CKey key;
-    if (!satisfyBlockRequirement(txHash, vout, key)) {
-        return "Minimum block requirement not satisfied. Make sure that your wallet is unlocked.";
-    }
-    
-    std::string id = generateUUID();
-
-    boost::shared_ptr<boost::mutex> m(new boost::mutex());
-    boost::shared_ptr<boost::condition_variable> cond(new boost::condition_variable());
-    boost::mutex::scoped_lock lock(*m);
-    queriesLocks[id] = std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> >(m, cond);
-    
-    CNode* pnode = getNodeForService(name);
-    if (!pnode)
-        return "No available nodes";
-    
-    unsigned int min_count = snodeConfigs[pnode->addr.ToString()].getPluginSettings(name).getMinParamCount();
-    if (params.size() < min_count) {
-        return "Not enough plugin parameters";
-    }
-    
-    unsigned int max_count = snodeConfigs[pnode->addr.ToString()].getPluginSettings(name).getMaxParamCount();
-    if (params.size() > max_count) {
-        return "Too many plugin parameters";
-    }
-    
-    std::string strtxid;
-    CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getPluginSettings(name).getFee());
-    std::string payment_tx = "nofee";
-    if (fee > 0) {
-        try {
-            payment_tx = "nohash;" + generatePayment(pnode, fee);
-            LOG() << "Payment transaction: " << payment_tx;
-            //std::cout << "Payment transaction: " << payment_tx << std::endl << std::flush;
-        } catch (std::runtime_error) {
-            LOG() << "Failed to create payment to node " << pnode->addr.ToString();
+    std::string id;
+    try {
+        if (!isEnabled())
+            throw XRouterError("XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.", xrouter::UNAUTHORIZED);
+        
+        if (this->xrouter_settings.hasPlugin(name)) {
+            // Run the plugin locally
+            return server->processCustomCall(name, params);
         }
+        
+        updateConfigs();
+        
+        XRouterPacketPtr packet(new XRouterPacket(xrCustomCall));
+
+        uint256 txHash;
+        uint32_t vout = 0;
+        CKey key;
+        if (!satisfyBlockRequirement(txHash, vout, key)) {
+            throw XRouterError("Minimum block requirement not satisfied. Make sure that your wallet is unlocked.", xrouter::INSUFFICIENT_FUNDS);
+        }
+        
+        id = generateUUID();
+
+        boost::shared_ptr<boost::mutex> m(new boost::mutex());
+        boost::shared_ptr<boost::condition_variable> cond(new boost::condition_variable());
+        boost::mutex::scoped_lock lock(*m);
+        queriesLocks[id] = std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> >(m, cond);
+        
+        CNode* pnode = getNodeForService(name);
+        if (!pnode)
+            throw XRouterError("Plugin not found", xrouter::UNSUPPORTED_SERVICE);
+        
+        unsigned int min_count = snodeConfigs[pnode->addr.ToString()].getPluginSettings(name).getMinParamCount();
+        if (params.size() < min_count) {
+            throw XRouterError("Not enough plugin parameters", xrouter::INVALID_PARAMETERS);
+        }
+        
+        unsigned int max_count = snodeConfigs[pnode->addr.ToString()].getPluginSettings(name).getMaxParamCount();
+        if (params.size() > max_count) {
+            throw XRouterError("Too many plugin parameters", xrouter::INVALID_PARAMETERS);
+        }
+        
+        std::string strtxid;
+        CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getPluginSettings(name).getFee());
+        std::string payment_tx = "nofee";
+        if (fee > 0) {
+            try {
+                payment_tx = "nohash;" + generatePayment(pnode, fee);
+                LOG() << "Payment transaction: " << payment_tx;
+                //std::cout << "Payment transaction: " << payment_tx << std::endl << std::flush;
+            } catch (std::runtime_error) {
+                LOG() << "Failed to create payment to node " << pnode->addr.ToString();
+            }
+        }
+        
+        packet->append(txHash.begin(), 32);
+        packet->append(vout);
+        packet->append(id);
+        packet->append(name);
+        packet->append(payment_tx);
+        for (std::string param: params)
+            packet->append(param);
+        packet->sign(key);
+        std::vector<unsigned char> msg;
+        msg.insert(msg.end(), packet->body().begin(), packet->body().end());
+        
+        Object result;
+        
+        std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
+        if (!lastPacketsSent.count(pnode)) {
+            lastPacketsSent[pnode] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
+        }
+        lastPacketsSent[pnode][name] = time;
+        
+        pnode->PushMessage("xrouter", msg);
+        int timeout = this->xrouter_settings.get<int>("Main.wait", XROUTER_DEFAULT_WAIT);
+        if (cond->timed_wait(lock, boost::posix_time::milliseconds(timeout))) {
+            std::string reply = queries[id][pnode];
+            return reply;
+        }
+        
+        throw XRouterError("Failed to get response in time. Try xrGetReply command later.", xrouter::SERVER_TIMEOUT);
+    } catch (XRouterError e) {
+        Object error;
+        error.emplace_back(Pair("error", e.msg));
+        error.emplace_back(Pair("code", e.code));
+        error.emplace_back(Pair("uuid", id));
+        LOG() << e.msg;
+        return json_spirit::write_string(Value(error), true);
     }
-    
-    packet->append(txHash.begin(), 32);
-    packet->append(vout);
-    packet->append(id);
-    packet->append(name);
-    packet->append(payment_tx);
-    for (std::string param: params)
-        packet->append(param);
-    packet->sign(key);
-    std::vector<unsigned char> msg;
-    msg.insert(msg.end(), packet->body().begin(), packet->body().end());
-    
-    Object result;
-    
-    std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
-    if (!lastPacketsSent.count(pnode)) {
-        lastPacketsSent[pnode] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
-    }
-    lastPacketsSent[pnode][name] = time;
-    
-    pnode->PushMessage("xrouter", msg);
-    int timeout = this->xrouter_settings.get<int>("Main.wait", XROUTER_DEFAULT_WAIT);
-    if (cond->timed_wait(lock, boost::posix_time::milliseconds(timeout))) {
-        std::string reply = queries[id][pnode];
-        return reply;
-    }
-    
-    result.emplace_back(Pair("error", "Failed to get response"));
-    result.emplace_back(Pair("uuid", id));
-    return json_spirit::write_string(Value(result), true);
 }
 
 std::string App::generatePayment(CNode* pnode, CAmount fee)
