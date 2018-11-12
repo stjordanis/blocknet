@@ -66,9 +66,7 @@ protected:
      * @param packet send message via xrouter
      * @param wallet walletconnector ID = currency ID (BTC, LTC etc)
      */
-    void sendPacketToClient(const XRouterPacketPtr & packet, CNode* pnode);
-    
-    inline void sendReply(CNode* node, std::string uuid, std::string reply);
+    void sendPacketToClient(std::string uuid, std::string reply, CNode* pnode);
     
     /**
      * @brief onMessageReceived  call when message from xrouter network received

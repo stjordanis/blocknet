@@ -121,9 +121,13 @@ WalletConnectorXRouterPtr XRouterServer::connectorByCurrency(const std::string &
     return WalletConnectorXRouterPtr();
 }
 
-void XRouterServer::sendPacketToClient(const XRouterPacketPtr& packet, CNode* pnode)
+void XRouterServer::sendPacketToClient(std::string uuid, std::string reply, CNode* pnode)
 {
-    pnode->PushMessage("xrouter", packet->body());
+    
+    XRouterPacketPtr rpacket(new XRouterPacket(xrReply));
+    rpacket->append(uuid);
+    rpacket->append(reply);
+    pnode->PushMessage("xrouter", rpacket->body());
 }
 
 //*****************************************************************************
@@ -183,15 +187,6 @@ static bool verifyBlockRequirement(const XRouterPacketPtr& packet)
     }
 
     return true;
-}
-
-inline void XRouterServer::sendReply(CNode* node, std::string uuid, std::string reply)
-{
-    XRouterPacketPtr rpacket(new XRouterPacket(xrReply));
-    rpacket->append(uuid);
-    rpacket->append(reply);
-    sendPacketToClient(rpacket, node);
-    LOG() << reply;
 }
 
 void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
@@ -295,181 +290,184 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
     LOG() << "Processing packet on server side";
     App& app = App::instance();
     clearHashedQueries();
-    
-    if (!packet->verify()) {
-        LOG() << "unsigned packet or signature error " << __FUNCTION__;
-        state.DoS(10, error("XRouter: unsigned packet or signature error"), REJECT_INVALID, "xrouter-error");
-        return;
-    }
+    std::string uuid="", reply="";
+    try {
+        if (!packet->verify()) {
+            LOG() << "unsigned packet or signature error " << __FUNCTION__;
+            state.DoS(10, error("XRouter: unsigned packet or signature error"), REJECT_INVALID, "xrouter-error");
+            return;
+        }
 
-    if (!verifyBlockRequirement(packet)) {
-        LOG() << "Block requirement not satisfied\n";
-        state.DoS(10, error("XRouter: block requirement not satisfied"), REJECT_INVALID, "xrouter-error");
-        return;
-    }
+        if (!verifyBlockRequirement(packet)) {
+            LOG() << "Block requirement not satisfied\n";
+            state.DoS(10, error("XRouter: block requirement not satisfied"), REJECT_INVALID, "xrouter-error");
+            return;
+        }
 
-    std::string reply;
-    uint32_t offset = 36;
-    std::string uuid((const char *)packet->data()+offset);
-    offset += uuid.size() + 1;
-    std::string currency((const char *)packet->data()+offset);
-    offset += currency.size() + 1;
-    LOG() << "XRouter command: " << std::string(XRouterCommand_ToString(packet->command()));
-    if (!app.xrouter_settings.isAvailableCommand(packet->command(), currency)) {
-        LOG() << "This command is blocked in xrouter.conf";
-        return;
-    }
+        uint32_t offset = 36;
+        uuid = std::string((const char *)packet->data()+offset);
+        offset += uuid.size() + 1;
+        std::string currency((const char *)packet->data()+offset);
+        offset += currency.size() + 1;
+        LOG() << "XRouter command: " << std::string(XRouterCommand_ToString(packet->command()));
+        if (!app.xrouter_settings.isAvailableCommand(packet->command(), currency)) {
+            LOG() << "This command is blocked in xrouter.conf";
+            return;
+        }
 
-    bool usehash = false;
-    CAmount fee = 0;
-    std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
-    if (packet->command() == xrCustomCall) {
-        XRouterPluginSettings psettings = app.xrouter_settings.getPluginSettings(currency);
-        
-        std::string keystr = currency;
-        double timeout = psettings.get<double>("timeout", -1.0);
-        if (timeout >= 0) {
-            if (lastPacketsReceived.count(node)) {
-                if (lastPacketsReceived[node].count(keystr)) {
-                    std::chrono::time_point<std::chrono::system_clock> prev_time = lastPacketsReceived[node][keystr];
-                    std::chrono::system_clock::duration diff = time - prev_time;
-                    if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(timeout * 1000))) {
-                        std::string err_msg = "XRouter: too many requests to plugin " + keystr; 
-                        state.DoS(100, error(err_msg.c_str()), REJECT_INVALID, "xrouter-error");
+        bool usehash = false;
+        CAmount fee = 0;
+        std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
+        if (packet->command() == xrCustomCall) {
+            XRouterPluginSettings psettings = app.xrouter_settings.getPluginSettings(currency);
+            
+            std::string keystr = currency;
+            double timeout = psettings.get<double>("timeout", -1.0);
+            if (timeout >= 0) {
+                if (lastPacketsReceived.count(node)) {
+                    if (lastPacketsReceived[node].count(keystr)) {
+                        std::chrono::time_point<std::chrono::system_clock> prev_time = lastPacketsReceived[node][keystr];
+                        std::chrono::system_clock::duration diff = time - prev_time;
+                        if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(timeout * 1000))) {
+                            std::string err_msg = "XRouter: too many requests to plugin " + keystr; 
+                            state.DoS(100, error(err_msg.c_str()), REJECT_INVALID, "xrouter-error");
+                        }
+                        if (!lastPacketsReceived.count(node))
+                            lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
+                        lastPacketsReceived[node][keystr] = time;
+                    } else {
+                        lastPacketsReceived[node][keystr] = time;
                     }
-                    if (!lastPacketsReceived.count(node))
-                        lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
-                    lastPacketsReceived[node][keystr] = time;
                 } else {
+                    lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
                     lastPacketsReceived[node][keystr] = time;
                 }
-            } else {
-                lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
-                lastPacketsReceived[node][keystr] = time;
             }
-        }
-        
-        std::string feetx((const char *)packet->data()+offset);
-        offset += feetx.size() + 1;
-        
-        CAmount fee = to_amount(psettings.getFee());
-        
-        this->processPayment(node, feetx, fee);
-        
-        std::vector<std::string> params;
-        int count = psettings.getMaxParamCount();
-        std::string p;
-        for (int i = 0; i < count; i++) {
-            p = (const char *)packet->data()+offset;
-            params.push_back(p);
-            offset += p.size() + 1;
-        }
-        
-        reply = processCustomCall(currency, params);
-    } else {
-        std::string feetx((const char *)packet->data()+offset);
-        offset += feetx.size() + 1;
-        
-        std::vector<std::string> parts;
-        boost::split(parts, feetx, boost::is_any_of(";"));
-        if (parts[0] == "hash")
-            usehash = true;        
-        
-        fee = to_amount(app.xrouter_settings.getCommandFee(packet->command(), currency));
-        
-        LOG() << "Fee = " << fee;
-        LOG() << "Feetx = " << feetx;
-        try {
-            CAmount fee_part1 = fee;
-            if (packet->command() == xrFetchReply)
-                fee_part1 = hashedQueries[uuid].second;
             
-            this->processPayment(node, feetx, fee_part1);
-            std::string keystr = currency + "::" + XRouterCommand_ToString(packet->command());
-            double timeout = app.xrouter_settings.getCommandTimeout(packet->command(), currency);
-            if (lastPacketsReceived.count(node)) {
-                if (lastPacketsReceived[node].count(keystr)) {
-                    std::chrono::time_point<std::chrono::system_clock> prev_time = lastPacketsReceived[node][keystr];
-                    std::chrono::system_clock::duration diff = time - prev_time;
-                    if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(timeout * 1000))) {
-                        std::string err_msg = "XRouter: too many requests of type " + keystr; 
-                        state.DoS(100, error(err_msg.c_str()), REJECT_INVALID, "xrouter-error");
+            std::string feetx((const char *)packet->data()+offset);
+            offset += feetx.size() + 1;
+            
+            CAmount fee = to_amount(psettings.getFee());
+            
+            this->processPayment(node, feetx, fee);
+            
+            std::vector<std::string> params;
+            int count = psettings.getMaxParamCount();
+            std::string p;
+            for (int i = 0; i < count; i++) {
+                p = (const char *)packet->data()+offset;
+                params.push_back(p);
+                offset += p.size() + 1;
+            }
+            
+            reply = processCustomCall(currency, params);
+        } else {
+            std::string feetx((const char *)packet->data()+offset);
+            offset += feetx.size() + 1;
+            
+            std::vector<std::string> parts;
+            boost::split(parts, feetx, boost::is_any_of(";"));
+            if (parts[0] == "hash")
+                usehash = true;        
+            
+            fee = to_amount(app.xrouter_settings.getCommandFee(packet->command(), currency));
+            
+            LOG() << "Fee = " << fee;
+            LOG() << "Feetx = " << feetx;
+            try {
+                CAmount fee_part1 = fee;
+                if (packet->command() == xrFetchReply)
+                    fee_part1 = hashedQueries[uuid].second;
+                
+                this->processPayment(node, feetx, fee_part1);
+                std::string keystr = currency + "::" + XRouterCommand_ToString(packet->command());
+                double timeout = app.xrouter_settings.getCommandTimeout(packet->command(), currency);
+                if (lastPacketsReceived.count(node)) {
+                    if (lastPacketsReceived[node].count(keystr)) {
+                        std::chrono::time_point<std::chrono::system_clock> prev_time = lastPacketsReceived[node][keystr];
+                        std::chrono::system_clock::duration diff = time - prev_time;
+                        if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(timeout * 1000))) {
+                            std::string err_msg = "XRouter: too many requests of type " + keystr; 
+                            state.DoS(100, error(err_msg.c_str()), REJECT_INVALID, "xrouter-error");
+                        }
+                        if (!lastPacketsReceived.count(node))
+                            lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
+                        lastPacketsReceived[node][keystr] = time;
+                    } else {
+                        lastPacketsReceived[node][keystr] = time;
                     }
-                    if (!lastPacketsReceived.count(node))
-                        lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
-                    lastPacketsReceived[node][keystr] = time;
                 } else {
+                    lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
                     lastPacketsReceived[node][keystr] = time;
                 }
-            } else {
-                lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
-                lastPacketsReceived[node][keystr] = time;
+                
+                switch (packet->command()) {
+                case xrGetBlockCount:
+                    reply = processGetBlockCount(packet, offset, currency);
+                    break;
+                case xrGetBlockHash:
+                    reply = processGetBlockHash(packet, offset, currency);
+                    break;
+                case xrGetBlock:
+                    reply = processGetBlock(packet, offset, currency);
+                    break;
+                case xrGetTransaction:
+                    reply = processGetTransaction(packet, offset, currency);
+                    break;
+                case xrGetAllBlocks:
+                    reply = processGetAllBlocks(packet, offset, currency);
+                    break;
+                case xrGetAllTransactions:
+                    reply = processGetAllTransactions(packet, offset, currency);
+                    break;
+                case xrGetBalance:
+                    reply = "Obsolete packet";
+                    //reply = processGetBalance(packet, offset, currency);
+                    break;
+                case xrGetBalanceUpdate:
+                    reply = processGetBalanceUpdate(packet, offset, currency);
+                    break;
+                case xrGetTransactionsBloomFilter:
+                    reply = processGetTransactionsBloomFilter(packet, offset, currency);
+                    break;
+                case xrTimeToBlockNumber:
+                    reply = processConvertTimeToBlockCount(packet, offset, currency);
+                    break;
+                case xrFetchReply:
+                    reply = processFetchReply(uuid);
+                    break;
+                case xrSendTransaction:
+                    reply = processSendTransaction(packet, offset, currency);
+                    break;
+                default:
+                    LOG() << "Unknown packet";
+                    return;
+                }
             }
-            
-            switch (packet->command()) {
-            case xrGetBlockCount:
-                reply = processGetBlockCount(packet, offset, currency);
-                break;
-            case xrGetBlockHash:
-                reply = processGetBlockHash(packet, offset, currency);
-                break;
-            case xrGetBlock:
-                reply = processGetBlock(packet, offset, currency);
-                break;
-            case xrGetTransaction:
-                reply = processGetTransaction(packet, offset, currency);
-                break;
-            case xrGetAllBlocks:
-                reply = processGetAllBlocks(packet, offset, currency);
-                break;
-            case xrGetAllTransactions:
-                reply = processGetAllTransactions(packet, offset, currency);
-                break;
-            case xrGetBalance:
-                reply = "Obsolete packet";
-                //reply = processGetBalance(packet, offset, currency);
-                break;
-            case xrGetBalanceUpdate:
-                reply = processGetBalanceUpdate(packet, offset, currency);
-                break;
-            case xrGetTransactionsBloomFilter:
-                reply = processGetTransactionsBloomFilter(packet, offset, currency);
-                break;
-            case xrTimeToBlockNumber:
-                reply = processConvertTimeToBlockCount(packet, offset, currency);
-                break;
-            case xrFetchReply:
-                reply = processFetchReply(uuid);
-                break;
-            case xrSendTransaction:
-                reply = processSendTransaction(packet, offset, currency);
-                break;
-            default:
-                LOG() << "Unknown packet";
-                return;
+            catch (std::runtime_error & e)
+            {
+                reply = e.what();
             }
-        }
-        catch (std::runtime_error & e)
-        {
-            reply = e.what();
         }
         
+        if (!usehash || (packet->command() == xrSendTransaction) || (packet->command() == xrFetchReply)) {
+            // Send 'reply' string
+        } else {
+            hashedQueries[uuid] = std::pair<std::string, CAmount>(reply, fee - fee/2);
+            std::string hash = Hash160(reply.begin(), reply.end()).ToString();
+            hashedQueriesDeadlines[uuid] = std::chrono::system_clock::now();
+            reply = hash;
+        }
+    } catch (XRouterError e) {
+        Object error;
+        error.emplace_back(Pair("error", e.msg));
+        error.emplace_back(Pair("code", e.code));
+        error.emplace_back(Pair("uuid", uuid));
+        LOG() << e.msg;
+        reply = json_spirit::write_string(Value(error), true);
     }
 
-    XRouterPacketPtr rpacket(new XRouterPacket(xrReply));
-
-    rpacket->append(uuid);
-    if (!usehash || (packet->command() == xrSendTransaction) || (packet->command() == xrFetchReply)) {
-        rpacket->append(reply);
-    } else {
-        // TODO: clean replies after some period of time
-        hashedQueries[uuid] = std::pair<std::string, CAmount>(reply, fee - fee/2);
-        std::string hash = Hash160(reply.begin(), reply.end()).ToString();
-        hashedQueriesDeadlines[uuid] = std::chrono::system_clock::now();
-        rpacket->append(hash);
-    }
-    sendPacketToClient(rpacket, node);
-    return;
+    sendPacketToClient(uuid, reply, node);
 }
 
 //*****************************************************************************
