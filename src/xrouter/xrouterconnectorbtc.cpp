@@ -236,7 +236,7 @@ Array BtcWalletConnectorXRouter::getAllTransactions(const std::string & account,
 
 std::string BtcWalletConnectorXRouter::getBalance(const std::string & account, const int time, int blocklimit) const
 {
-    return getBalanceUpdate(account, 0, blocklimit);
+    return getBalanceUpdate(account, 0, time, blocklimit);
 }
 
 std::string BtcWalletConnectorXRouter::getBalanceUpdate(const std::string & account, const int number, const int time, int blocklimit) const
