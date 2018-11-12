@@ -209,3 +209,7 @@ BlocknetBIP38Tool QScrollArea { background-color:transparent; }
 BlocknetBIP38Tool #contentFrame { background-color:transparent; }
 
 BlocknetAddressBtn { background-color: #016AFF; }
+
+BlocknetDebugConsole QTextEdit { background-color: #172F49; padding: 10px 15px; }
+BlocknetDebugConsole #consoleBox QLabel { color: white }
+BlocknetDebugConsole #consoleBox QLineEdit { height: 40px; font-size: 13px; color: white; font-family: "Roboto"; padding-left: 15px; border: 1px solid #6F8097; border-radius: 0; background-color: rgba(0,0,0,0); }
