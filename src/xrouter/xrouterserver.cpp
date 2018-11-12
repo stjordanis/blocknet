@@ -426,7 +426,8 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
                 reply = processGetAllTransactions(packet, offset, currency);
                 break;
             case xrGetBalance:
-                reply = processGetBalance(packet, offset, currency);
+                reply = "Obsolete packet";
+                //reply = processGetBalance(packet, offset, currency);
                 break;
             case xrGetBalanceUpdate:
                 reply = processGetBalanceUpdate(packet, offset, currency);
