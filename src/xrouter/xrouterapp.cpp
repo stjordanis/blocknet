@@ -697,6 +697,7 @@ static bool satisfyBlockRequirement(uint256& txHash, uint32_t& vout, CKey& key)
 //*****************************************************************************
 std::string App::xrouterCall(enum XRouterCommand command, const std::string & currency, std::string param1, std::string param2, std::string confirmations)
 {
+    std::string id = "";
     try {
         if (!isEnabled())
             throw XRouterError("XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.", xrouter::UNAUTHORIZED);
@@ -710,7 +711,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             throw XRouterError("Minimum block requirement not satisfied. Make sure that your wallet is unlocked.", xrouter::INSUFFICIENT_FUNDS);
         }
 
-        std::string id = generateUUID();
+        id = generateUUID();
         int confirmations_count = 0;
         if (confirmations != "") {
             try {
@@ -822,8 +823,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             
             
             if (result.empty()) {
-                error.emplace_back(Pair("error", "No consensus between responses"));
-                return json_spirit::write_string(Value(error), true);
+                throw XRouterError("No consensus between responses", xrouter::INTERNAL_SERVER_ERROR);
             } else {
                 if (!usehash)
                     return result;
@@ -875,6 +875,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         Object error;
         error.emplace_back(Pair("error", e.msg));
         error.emplace_back(Pair("code", e.code));
+        error.emplace_back(Pair("uuid", id));
         LOG() << e.msg;
         return json_spirit::write_string(Value(error), true);
     }
