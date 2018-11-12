@@ -737,10 +737,12 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         if ((int)selectedNodes.size() < confirmations_count)
             throw XRouterError("Could not find " + std::to_string(confirmations_count) + " Service Nodes to query at the moment.", xrouter::NOT_ENOUGH_NODES);
         
-        int sent = 0;
         bool usehash = xrouter_settings.get<int>("Main.usehash", 0) != 0;
         if (confirmations_count == 1)
             usehash = false;
+        
+        int cnt = 0;
+        boost::container::map<CNode*, std::string > paytx_map;
         for (CNode* pnode : selectedNodes) {
             CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getCommandFee(command, currency));
             CAmount fee_part1 = fee;
@@ -758,12 +760,25 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
                     continue;
                 }
             }
+            
+            paytx_map[pnode] = payment_tx;
+            cnt++;
+            if (cnt == confirmations_count)
+                break;
+        }
+        
+        if (cnt < confirmations_count)
+            throw XRouterError("Could not create payments to service nodes", xrouter::INSUFFICIENT_FUNDS);
+            
+        for (CNode* pnode : selectedNodes) {
+            if (!paytx_map.count(pnode))
+                continue;
             XRouterPacketPtr packet(new XRouterPacket(command));
             packet->append(txHash.begin(), 32);
             packet->append(vout);
             packet->append(id);
             packet->append(currency);
-            packet->append(payment_tx);
+            packet->append(paytx_map[pnode]);
             if (!param1.empty())
                 packet->append(param1);
             if (!param2.empty())
@@ -771,7 +786,6 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             packet->sign(key);
             
             pnode->PushMessage("xrouter", packet->body());
-            sent++;
             
             std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
             std::string keystr = currency + "::" + XRouterCommand_ToString(packet->command());
@@ -780,8 +794,6 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             }
             lastPacketsSent[pnode][keystr] = time;
             LOG() << "Sent message to node " << pnode->addrName;
-            if (sent == confirmations_count)
-                break;
         }
 
         int confirmation_count = 0;
