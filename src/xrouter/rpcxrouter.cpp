@@ -74,7 +74,7 @@ Value xrGetBlockCount(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -100,7 +100,7 @@ Value xrGetBlockHash(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -110,7 +110,7 @@ Value xrGetBlockHash(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Block hash not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -136,7 +136,7 @@ Value xrGetBlock(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -145,7 +145,7 @@ Value xrGetBlock(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Block hash not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -171,7 +171,7 @@ Value xrGetTransaction(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -180,7 +180,7 @@ Value xrGetTransaction(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Tx hash not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -206,7 +206,7 @@ Value xrGetBlocks(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -242,7 +242,7 @@ Value xrGetTransactions(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -251,7 +251,7 @@ Value xrGetTransactions(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Address not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -287,7 +287,7 @@ Value xrGetBalance(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -296,7 +296,7 @@ Value xrGetBalance(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Account not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -323,7 +323,7 @@ Value xrGetBalanceUpdate(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -332,7 +332,7 @@ Value xrGetBalanceUpdate(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Account not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -369,7 +369,7 @@ Value xrGetTransactionsBloomFilter(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -378,7 +378,7 @@ Value xrGetTransactionsBloomFilter(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Filter not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -459,7 +459,7 @@ Value xrCustomCall(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Service name not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -482,7 +482,7 @@ Value xrSendTransaction(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
 
@@ -491,7 +491,7 @@ Value xrSendTransaction(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Transaction not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -512,7 +512,7 @@ Value xrGetReply(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "UUID not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -590,7 +590,7 @@ Value xrTimeToBlockNumber(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Currency not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -599,7 +599,7 @@ Value xrTimeToBlockNumber(const Array & params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Timestamp not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
@@ -656,7 +656,7 @@ Value xrClosePaymentChannel(const Array& params, bool fHelp)
         Object error;
         error.emplace_back(Pair("error", "Node id not specified"));
         error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
-        error.emplace_back(Pair("name",     __FUNCTION__));
+        error.emplace_back(Pair("uuid", ""));
         return error;
     }
     
