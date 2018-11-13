@@ -41,7 +41,7 @@
 #include <vector>
 #include <chrono>
 
-#define TEST_RUN_ON_CLIENT 0
+#define TEST_RUN_ON_CLIENT 1
 
 #ifdef _WIN32
 #include <objbase.h>
@@ -730,7 +730,12 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         int confirmations_count = 0;
         if (confirmations != "") {
             try {
-                confirmations_count = std::stoi(confirmations);
+                std::string::size_type idx;
+                confirmations_count = std::stoi(confirmations, &idx);
+                if (confirmations_count < 1)
+                    throw "";
+                if (idx != confirmations.size())
+                    throw "";
             } catch(...) {
                 throw XRouterError("Incorrect confirmations number: " + confirmations, xrouter::INVALID_PARAMETERS);
             }
