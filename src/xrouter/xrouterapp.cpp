@@ -951,70 +951,80 @@ std::string App::getReply(const std::string & id)
 
 std::string App::sendTransaction(const std::string & currency, const std::string & transaction)
 {
-    if (!isEnabled())
-        return "XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.";
-    
-    updateConfigs();
-    
-    uint256 txHash;
-    uint32_t vout = 0;
-    CKey key;
-    if (!satisfyBlockRequirement(txHash, vout, key)) {
-        return "Minimum block requirement not satisfied. Make sure that your wallet is unlocked.";
-    }
+    std::string id;
+    try {
+        if (!isEnabled())
+            return "XRouter is turned off. Please set 'xrouter=1' in blocknetdx.conf to run XRouter.";
+        
+        updateConfigs();
+        
+        uint256 txHash;
+        uint32_t vout = 0;
+        CKey key;
+        if (!satisfyBlockRequirement(txHash, vout, key)) {
+            return "Minimum block requirement not satisfied. Make sure that your wallet is unlocked.";
+        }
 
-    std::string id = generateUUID();
-    
-    boost::shared_ptr<boost::mutex> m(new boost::mutex());
-    boost::shared_ptr<boost::condition_variable> cond(new boost::condition_variable());
-    boost::mutex::scoped_lock lock(*m);
-    queriesLocks[id] = std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> >(m, cond);
+        id = generateUUID();
+        
+        boost::shared_ptr<boost::mutex> m(new boost::mutex());
+        boost::shared_ptr<boost::condition_variable> cond(new boost::condition_variable());
+        boost::mutex::scoped_lock lock(*m);
+        queriesLocks[id] = std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> >(m, cond);
 
-    std::vector<CNode*> selectedNodes = getAvailableNodes(xrSendTransaction, currency);
-    
-    if ((int)selectedNodes.size() == 0)
-        return "No available nodes";
-    
-    for (CNode* pnode : selectedNodes) {
-        CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getCommandFee(xrSendTransaction, currency));
-        std::string payment_tx = "nofee";
-        if (fee > 0) {
-            try {
-                payment_tx = "nohash;" + generatePayment(pnode, fee);
-            } catch (std::runtime_error) {
-                LOG() << "Failed to create payment to node " << pnode->addr.ToString();
-                continue;
+        std::vector<CNode*> selectedNodes = getAvailableNodes(xrSendTransaction, currency);
+        
+        if ((int)selectedNodes.size() == 0)
+            return "No available nodes";
+        
+        for (CNode* pnode : selectedNodes) {
+            CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getCommandFee(xrSendTransaction, currency));
+            std::string payment_tx = "nofee";
+            if (fee > 0) {
+                try {
+                    payment_tx = "nohash;" + generatePayment(pnode, fee);
+                } catch (std::runtime_error) {
+                    LOG() << "Failed to create payment to node " << pnode->addr.ToString();
+                    continue;
+                }
+            }
+            
+            XRouterPacketPtr packet(new XRouterPacket(xrSendTransaction));
+            packet->append(txHash.begin(), 32);
+            packet->append(vout);
+            packet->append(id);
+            packet->append(currency);
+            packet->append(payment_tx);
+            packet->append(transaction);
+            packet->sign(key);
+
+            pnode->PushMessage("xrouter", packet->body());
+            if (cond->timed_wait(lock, boost::posix_time::milliseconds(3000))) {
+                std::string reply = queries[id][pnode];
+                Value reply_val;
+                read_string(reply, reply_val);
+                Object reply_obj = reply_val.get_obj();
+                const Value & errorcode  = find_value(reply_obj, "errorcode");
+                if (errorcode.type() != null_type)
+                    if (errorcode.get_int() < 0) {
+                        // Try sending to another node
+                        queries[id].clear();
+                        continue;
+                    }
+            
+                return reply;
             }
         }
         
-        XRouterPacketPtr packet(new XRouterPacket(xrSendTransaction));
-        packet->append(txHash.begin(), 32);
-        packet->append(vout);
-        packet->append(id);
-        packet->append(currency);
-        packet->append(payment_tx);
-        packet->append(transaction);
-        packet->sign(key);
-
-        pnode->PushMessage("xrouter", packet->body());
-        if (cond->timed_wait(lock, boost::posix_time::milliseconds(3000))) {
-            std::string reply = queries[id][pnode];
-            Value reply_val;
-            read_string(reply, reply_val);
-            Object reply_obj = reply_val.get_obj();
-            const Value & errorcode  = find_value(reply_obj, "errorcode");
-            if (errorcode.type() != null_type)
-                if (errorcode.get_int() < 0) {
-                    // Try sending to another node
-                    queries[id].clear();
-                    continue;
-                }
-        
-            return reply;
-        }
+        return "No available nodes";
+    } catch (XRouterError e) {
+        Object error;
+        error.emplace_back(Pair("error", e.msg));
+        error.emplace_back(Pair("code", e.code));
+        error.emplace_back(Pair("uuid", id));
+        LOG() << e.msg;
+        return json_spirit::write_string(Value(error), true);
     }
-    
-    return "No available nodes";
 }
 
 std::string App::sendCustomCall(const std::string & name, std::vector<std::string> & params)
