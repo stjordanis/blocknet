@@ -305,7 +305,7 @@ bool App::stop()
 //*****************************************************************************
 //*****************************************************************************
 
-std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::string wallet)
+std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::string wallet, int confirmations)
 {
     // Send only to the service nodes that have the required wallet
     std::vector<pair<int, CServicenode> > vServicenodeRanks = getServiceNodes();
@@ -323,6 +323,9 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
     else
         maxfee = -1;
     
+    int supported = 0;
+    int ready = 0;
+    int below_maxfee = 0;
     BOOST_FOREACH(const std::string key, snodeConfigs | boost::adaptors::map_keys)
     {
         XRouterSettings settings = snodeConfigs[key];
@@ -331,6 +334,7 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
         if (!settings.isAvailableCommand(command, wallet))
             continue;
         
+        supported++;
         CNode* res = NULL;
         for (CNode* pnode : vNodes) {
             if (key == pnode->addr.ToString()) {
@@ -364,6 +368,7 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
             }
         }
         
+        below_maxfee++;
         
         // If connector is not working, the wallet will be removed from serviceping
         BOOST_FOREACH (PAIRTYPE(int, CServicenode) & s, vServicenodeRanks) {        
@@ -386,6 +391,7 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
             }
         }
         
+        ready++;
         selectedNodes.push_back(res);
     }
     
@@ -395,6 +401,15 @@ std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::str
     }
     
     std::sort(selectedNodes.begin(), selectedNodes.end(), cmpNodeScore);
+    
+    if (supported < confirmations)
+        throw XRouterError("Could not find " + std::to_string(confirmations) + " Service Nodes supporting blockchain " + wallet, xrouter::UNSUPPORTED_BLOCKCHAIN);
+    
+    if (below_maxfee < confirmations)
+        throw XRouterError("Could not find " + std::to_string(confirmations) + " Service Nodes with fee below maxfee.", xrouter::MAXFEE_TOO_LOW);
+    
+    if (ready < confirmations)
+        throw XRouterError("Could not find " + std::to_string(confirmations) + " Service Nodes ready for query at the moment.", xrouter::NOT_ENOUGH_NODES);
     
     return selectedNodes;
 }
@@ -733,7 +748,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         LOG() << "Sending query " << id;
         queriesLocks[id] = std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> >(m, cond);
         
-        std::vector<CNode*> selectedNodes = getAvailableNodes(command, currency);
+        std::vector<CNode*> selectedNodes = getAvailableNodes(command, currency, confirmations_count);
         
         if ((int)selectedNodes.size() < confirmations_count)
             throw XRouterError("Could not find " + std::to_string(confirmations_count) + " Service Nodes to query at the moment.", xrouter::NOT_ENOUGH_NODES);

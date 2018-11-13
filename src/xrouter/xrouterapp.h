@@ -238,7 +238,6 @@ public:
     std::string getStatus();
     
     std::string convertTimeToBlockCount(const std::string& currency, std::string time, const std::string& confirmations);
-
     
     /**
      * @brief gets address for comission payment
@@ -304,7 +303,7 @@ public:
      * @param wallet currency
      * @return
      */
-    std::vector<CNode*> getAvailableNodes(enum XRouterCommand command, std::string wallet);
+    std::vector<CNode*> getAvailableNodes(enum XRouterCommand command, std::string wallet, int confirmations=1);
     
     /**
      * @brief find the node that supports a given plugin 
