@@ -32,11 +32,13 @@ static Object form_reply(std::string reply)
     
     if (reply_val.type() == array_type) {
         ret.emplace_back(Pair("reply", reply_val));
+        ret.emplace_back(Pair("code", xrouter::SUCCESS));
         return ret;
     }
     
     if (reply_val.type() != obj_type) {
         ret.emplace_back(Pair("reply", reply));
+        ret.emplace_back(Pair("code", xrouter::SUCCESS));
         return ret;
     }
     
@@ -52,6 +54,7 @@ static Object form_reply(std::string reply)
     else if (result.type() != null_type)
     {
         ret.emplace_back(Pair("reply", result));
+        ret.emplace_back(Pair("code", xrouter::SUCCESS));
     }
     else
     {
