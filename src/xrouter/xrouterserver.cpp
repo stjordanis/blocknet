@@ -297,6 +297,11 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
             state.DoS(10, error("XRouter: unsigned packet or signature error"), REJECT_INVALID, "xrouter-error");
             return;
         }
+        
+        if (packet->version() != static_cast<boost::uint32_t>(XROUTER_PROTOCOL_VERSION))
+        {
+            throw XRouterError("You are using a different version of XRouter protocol. This node runs version " + std::to_string(XROUTER_PROTOCOL_VERSION), xrouter::BAD_VERSION);
+        }
 
         if (!verifyBlockRequirement(packet)) {
             LOG() << "Block requirement not satisfied\n";

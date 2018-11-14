@@ -12,6 +12,7 @@ namespace xrouter
     {
       SUCCESS = 0,
       BAD_REQUEST = 1004,
+      BAD_VERSION = 1005,
       BAD_CONNECTOR = 1018,
       INVALID_PARAMETERS = 1025,
       BAD_ADDRESS = 1026,
