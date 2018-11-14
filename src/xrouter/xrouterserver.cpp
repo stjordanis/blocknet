@@ -195,14 +195,14 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
         std::vector<std::string> parts;
         boost::split(parts, feetx, boost::is_any_of(";"));
         if (parts.size() < 3)
-            throw std::runtime_error("Incorrect payment data format");
+            throw XRouterError("Incorrect payment data format", xrouter::INVALID_PARAMETERS);
         bool usehash;
         if (parts[0] == "nohash")
             usehash = false;
         else if (parts[0] == "hash")
             usehash = true;
         else
-            throw std::runtime_error("Incorrect hash/no hash field");
+            throw XRouterError("Incorrect hash/no hash field", xrouter::INVALID_PARAMETERS);
         
         CAmount fee_part1 = fee;
         if (usehash)
@@ -213,14 +213,12 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             std::string txid;
             CAmount paid = to_amount(getTxValue(parts[2], getMyPaymentAddress()));
             if (paid < fee_part1) {
-                LOG() << "Fee paid is not enough: paid" << paid << "; fee = " << fee;
-                throw std::runtime_error("Fee paid is not enough");
+                throw XRouterError("Fee paid is not enough", xrouter::INSUFFICIENT_FEE);
             }
 
             bool res = sendTransactionBlockchain(parts[2], txid);
             if (!res) {
-                LOG() << "Could not send transaction to blockchain";
-                throw std::runtime_error("Could not send transaction " + parts[2] + " to blockchain");
+                throw XRouterError("Could not send transaction " + parts[2] + " to blockchain", xrouter::INTERNAL_SERVER_ERROR);
             }
             
             LOG() << "Got direct payment; value = " << paid << " tx = " << parts[2]; 
@@ -228,7 +226,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             if (!paymentChannels.count(node)) {
                 // There is no payment channel with this node
                 if (parts.size() != 5) {
-                    throw std::runtime_error("Incorrect channel creation parameters");
+                    throw XRouterError("Incorrect channel creation parameters", xrouter::INVALID_PARAMETERS);
                 }
                 
                 paymentChannels[node] = PaymentChannel();
@@ -268,7 +266,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                 CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
                 LOG() << "Got payment via channel; value = " << paid - paymentChannels[node].value << " total value = " << paid << " tx = " << feetx; 
                 if (paid - paymentChannels[node].value < fee_part1) {
-                    throw std::runtime_error("Fee paid is not enough");
+                    throw XRouterError("Fee paid is not enough", xrouter::INSUFFICIENT_FEE);
                 }
                 
                 finalizeChannelTransaction(paymentChannels[node], this->getMyPaymentAddressKey(), feetx, paymentChannels[node].latest_tx);
@@ -276,7 +274,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             }
             
         } else {
-            throw std::runtime_error("Unknown payment format: " + parts[0]);
+            throw XRouterError("Unknown payment format: " + parts[0], xrouter::INVALID_PARAMETERS);
         }
     }
 
@@ -293,9 +291,9 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
     std::string uuid="", reply="";
     try {
         if (!packet->verify()) {
-            LOG() << "unsigned packet or signature error " << __FUNCTION__;
             state.DoS(10, error("XRouter: unsigned packet or signature error"), REJECT_INVALID, "xrouter-error");
-            return;
+            throw XRouterError("Unsigned packet or signature error", xrouter::BAD_REQUEST);
+            
         }
         
         if (packet->version() != static_cast<boost::uint32_t>(XROUTER_PROTOCOL_VERSION))
@@ -304,9 +302,8 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         }
 
         if (!verifyBlockRequirement(packet)) {
-            LOG() << "Block requirement not satisfied\n";
             state.DoS(10, error("XRouter: block requirement not satisfied"), REJECT_INVALID, "xrouter-error");
-            return;
+            throw XRouterError("Block requirement not satisfied", xrouter::INSUFFICIENT_FUNDS);
         }
 
         uint32_t offset = 36;
@@ -316,8 +313,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         offset += currency.size() + 1;
         LOG() << "XRouter command: " << std::string(XRouterCommand_ToString(packet->command()));
         if (!app.xrouter_settings.isAvailableCommand(packet->command(), currency)) {
-            LOG() << "This command is blocked in xrouter.conf";
-            return;
+            throw XRouterError("This command is blocked in xrouter.conf", xrouter::UNSUPPORTED_BLOCKCHAIN);
         }
 
         bool usehash = false;
@@ -394,6 +390,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
                         if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(timeout * 1000))) {
                             std::string err_msg = "XRouter: too many requests of type " + keystr; 
                             state.DoS(100, error(err_msg.c_str()), REJECT_INVALID, "xrouter-error");
+                            throw XRouterError(err_msg, xrouter::TOO_MANY_REQUESTS);
                         }
                         if (!lastPacketsReceived.count(node))
                             lastPacketsReceived[node] = boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> >();
@@ -426,7 +423,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
                     reply = processGetAllTransactions(packet, offset, currency);
                     break;
                 case xrGetBalance:
-                    reply = "Obsolete packet";
+                    throw XRouterError("Obsolete command", xrouter::INVALID_PARAMETERS);
                     //reply = processGetBalance(packet, offset, currency);
                     break;
                 case xrGetBalanceUpdate:
@@ -445,13 +442,12 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
                     reply = processSendTransaction(packet, offset, currency);
                     break;
                 default:
-                    LOG() << "Unknown packet";
-                    return;
+                    throw XRouterError("Unknown packet command", xrouter::INVALID_PARAMETERS);
                 }
             }
             catch (std::runtime_error & e)
             {
-                reply = e.what();
+                throw XRouterError("Error happened while processing your request: " + std::string(e.what()), xrouter::INTERNAL_SERVER_ERROR);
             }
         }
         
