@@ -1,4 +1,5 @@
 #include "xrouterconnectorbtc.h"
+#include "xroutererror.h"
 
 namespace xrouter
 {
@@ -162,8 +163,7 @@ Array BtcWalletConnectorXRouter::getAllBlocks(const int number, int blocklimit) 
 
     Array result;
     if ((blocklimit > 0) && (blockcount - number > blocklimit)) {
-        result.push_back(Value("Error: too many blocks requested"));
-        return result;
+        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
     }
     
     for (int id = number; id <= blockcount; id++)
@@ -195,8 +195,7 @@ Array BtcWalletConnectorXRouter::getAllTransactions(const std::string & account,
 
     Array result;
     if ((blocklimit > 0) && (blockcount - number > blocklimit)) {
-        result.push_back(Value("Error: too many blocks requested"));
-        return result;
+        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
     }
     
     for (int id = blockcount; id >= number; id--)
@@ -253,7 +252,7 @@ std::string BtcWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
     int blockcount = getResult(blockCountObj).get_int();
 
     if ((blocklimit > 0) && (blockcount - number > blocklimit)) {
-        return "Error: too many blocks requested";
+        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
     }
     
     for (int id = blockcount; id >= number; id--)
@@ -309,8 +308,7 @@ Array BtcWalletConnectorXRouter::getTransactionsBloomFilter(const int number, CD
     int blockcount = getResult(blockCountObj).get_int();
 
     if ((blocklimit > 0) && (blockcount - number > blocklimit)) {
-        result.push_back(Value("Error: too many blocks requested"));
-        return result;
+        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
     }
     
     for (int id = number; id <= blockcount; id++)
