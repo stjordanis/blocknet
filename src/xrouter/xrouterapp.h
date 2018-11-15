@@ -333,6 +333,9 @@ public:
     void closeAllPaymentChannels();
     
     void runTests();
+    
+    bool debug_on_client();
+    bool isDebug();
 };
 
 } // namespace xrouter

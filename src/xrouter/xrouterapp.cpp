@@ -41,8 +41,6 @@
 #include <vector>
 #include <chrono>
 
-#define TEST_RUN_ON_CLIENT 1
-
 #ifdef _WIN32
 #include <objbase.h>
     
@@ -232,7 +230,7 @@ std::string App::updateConfigs()
                 continue;
         }
          
-        if (TEST_RUN_ON_CLIENT) {
+        if (debug_on_client()) {
             std::string uuid = this->getXrouterConfig(pnode);
             LOG() << "Getting config from node " << pnode->addr.ToString()  << " request id = " << uuid;
             lastConfigUpdates[pnode] = time;
@@ -1128,7 +1126,7 @@ std::string App::getPaymentAddress(CNode* node)
         }
     }
     
-    if (TEST_RUN_ON_CLIENT)
+    if (debug_on_client())
         return "yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt";
     
     return "";
@@ -1144,7 +1142,7 @@ CPubKey App::getPaymentPubkey(CNode* node)
         }
     }
     
-    if (TEST_RUN_ON_CLIENT) {
+    if (debug_on_client()) {
         std::string test = "0258c89fd899b3a8f08a11fe0de803a7e685127b3b770a10896f97d7371d4c75fa";
         return CPubKey(ParseHex(test));
     }
@@ -1265,6 +1263,14 @@ void App::closeAllPaymentChannels() {
 
 void App::runTests() {
     server->runPerformanceTests();
+}
+
+bool App::debug_on_client() {
+    return xrouter_settings.get<int>("Main.debug_on_client", 0) != 0;
+}
+
+bool App::isDebug() {
+    return xrouter_settings.get<int>("Main.debug", 0) != 0;
 }
 
 } // namespace xrouter
