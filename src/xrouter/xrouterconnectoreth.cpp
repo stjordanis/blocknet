@@ -11,6 +11,7 @@
 #include <boost/asio/ssl.hpp>
 #include <stdio.h>
 #include <cstdint>
+#include "xroutererror.h"
 
 namespace rpc
 {
@@ -174,6 +175,10 @@ Array EthWalletConnectorXRouter::getAllBlocks(const int number, int blocklimit) 
     std::string hexValueStr = getResult(blockCountObj).get_str();
     uint256 blockCount(hexValueStr);
 
+    if ((blocklimit > 0) && (blockCount - number > blocklimit)) {
+        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
+    }
+    
     Array result;
 
     for(uint256 id = number; id <= blockCount; id++)
@@ -197,6 +202,10 @@ Array EthWalletConnectorXRouter::getAllTransactions(const std::string & account,
     std::string hexValueStr = getResult(blockCountObj).get_str();
     uint256 blockCount(hexValueStr);
 
+    if ((blocklimit > 0) && (blockCount - number > blocklimit)) {
+        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
+    }
+    
     Array result;
 
     for(uint256 id = number; id <= blockCount; id++)
@@ -306,6 +315,10 @@ std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
     uint256 result;
     bool isPositive = true;
 
+    if ((blocklimit > 0) && (blockCount - number > blocklimit)) {
+        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
+    }
+    
     for(uint256 id = number; id <= blockCount; id++)
     {
         Array params { id.ToString(), true };
