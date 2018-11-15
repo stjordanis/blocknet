@@ -9,7 +9,7 @@
 #include <queue>
 #include <memory>
 
-#define MIN_BLOCK 200
+#define MIN_BLOCK 2
 #define XROUTER_DEFAULT_TIMEOUT 10
 #define XROUTER_DEFAULT_WAIT 20000
 #define XROUTER_DEFAULT_BLOCK_LIMIT 50
