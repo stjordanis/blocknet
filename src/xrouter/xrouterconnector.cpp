@@ -360,6 +360,10 @@ bool createAndSignTransaction(boost::container::map<std::string, CAmount> addrs,
 }
 
 void unlockOutputs(std::string tx) {
+    CMutableTransaction txobj = decodeTransaction(tx);
+    for (size_t i = 0; i < txobj.vin.size(); i++) {
+        pwalletMain->UnlockCoin(txobj.vin[0].prevout);
+    }
 }
 
 std::string signTransaction(std::string& raw_tx)
