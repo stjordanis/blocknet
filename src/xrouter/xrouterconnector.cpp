@@ -340,6 +340,28 @@ bool createAndSignTransaction(std::string address, CAmount amount, string & raw_
     return createAndSignTransaction(params, raw_tx);
 }
 
+bool createAndSignTransaction(boost::container::map<std::string, CAmount> addrs, string & raw_tx)
+{
+    Array outputs;
+    typedef boost::container::map<std::string, CAmount> addr_map;
+    BOOST_FOREACH( addr_map::value_type &it, addrs ) {
+        Object out;
+        out.push_back(Pair("address", it.first));
+        out.push_back(Pair("amount", ValueFromAmount(it.second)));
+        outputs.push_back(out);
+    }
+    Array inputs;
+    Value result;
+
+    Array params;
+    params.push_back(inputs);
+    params.push_back(outputs);
+    return createAndSignTransaction(params, raw_tx);
+}
+
+void unlockOutputs(std::string tx) {
+}
+
 std::string signTransaction(std::string& raw_tx)
 {
     std::vector<std::string> params;

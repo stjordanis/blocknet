@@ -8,6 +8,7 @@
 #include "xbridge/xbridgewallet.h"
 #include "streams.h"
 #include "wallet.h"
+#include <boost/container/map.hpp>
 
 using namespace json_spirit;
 
@@ -35,7 +36,9 @@ Object CallRPC(const std::string & rpcuser, const std::string & rpcpasswd,
                const std::string & strMethod, const Array & params);
 
 bool createAndSignTransaction(std::string address, CAmount amount, std::string & raw_tx);
+bool createAndSignTransaction(boost::container::map<std::string, CAmount> addrs, string & raw_tx);
 bool createAndSignTransaction(Array txparams, std::string & raw_tx);
+void unlockOutputs(std::string tx);
 std::string signTransaction(std::string& raw_tx);
 bool sendTransactionBlockchain(std::string raw_tx, std::string & txid);
 bool sendTransactionBlockchain(std::string address, CAmount amount, std::string & raw_tx);
