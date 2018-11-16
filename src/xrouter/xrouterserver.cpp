@@ -161,11 +161,11 @@ static bool verifyBlockRequirement(const XRouterPacketPtr& packet)
         return false;
     }
 
-    if (txOut.nValue < MIN_BLOCK) {
+    if (txOut.nValue < to_amount(MIN_BLOCK)) {
         LOG() << "Insufficient BLOCK " << txOut.nValue;
         return false;
     }
-
+    
     CTxDestination destination;
     if (!ExtractDestination(txOut.scriptPubKey, destination)) {
         LOG() << "Unable to extract destination";

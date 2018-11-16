@@ -687,7 +687,7 @@ static bool satisfyBlockRequirement(uint256& txHash, uint32_t& vout, CKey& key)
     }
     for (auto& addressCoins : pwalletMain->AvailableCoinsByAddress()) {
         for (auto& output : addressCoins.second) {
-            if (output.Value() >= MIN_BLOCK) {
+            if (output.Value() >= to_amount(MIN_BLOCK)) {
                 CKeyID keyID;
                 if (!addressCoins.first.GetKeyID(keyID)) {
                     //std::cerr << "GetKeyID failed\n";
