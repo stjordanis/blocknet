@@ -786,8 +786,48 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
                 break;
         }
         
-        if (cnt < confirmations_count)
-            throw XRouterError("Could not create payments to service nodes", xrouter::INSUFFICIENT_FUNDS);
+        if (cnt < confirmations_count) {
+            for (CNode* pnode : selectedNodes) {
+                if (paytx_map.count(pnode))
+                    unlockOutputs(paytx_map[pnode]);
+            }
+            
+            boost::container::map<std::string, CAmount> addr_map;
+            cnt = 0;
+            paytx_map.clear();
+            for (CNode* pnode : selectedNodes) {
+                CAmount fee = to_amount(snodeConfigs[pnode->addr.ToString()].getCommandFee(command, currency));
+                CAmount fee_part1 = fee;
+                if (fee > 0) {
+                    if (usehash)
+                        fee_part1 = fee / 2;
+                }
+                std::string dest = getPaymentAddress(pnode);
+                addr_map[dest] = fee_part1;
+                paytx_map[pnode] = "";
+                cnt++;
+                if (cnt == confirmations_count)
+                    break;
+            }
+            
+            std::string payment_tx;
+            if (!usehash)
+                payment_tx = "nohash;single;";
+            else
+                payment_tx = "hash;single;";
+            try {
+                std::string tx;
+                createAndSignTransaction(addr_map, tx);
+                payment_tx += tx;
+                for (CNode* pnode : selectedNodes) {
+                    if (paytx_map.count(pnode))
+                        paytx_map[pnode] = payment_tx;
+                }
+            } catch (std::runtime_error e) {
+                LOG() << "Failed to create payment";
+                throw XRouterError("Could not create payments to service nodes", xrouter::INSUFFICIENT_FUNDS);
+            }
+        }
             
         for (CNode* pnode : selectedNodes) {
             if (!paytx_map.count(pnode))
