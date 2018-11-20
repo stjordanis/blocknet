@@ -176,7 +176,7 @@ Array EthWalletConnectorXRouter::getAllBlocks(const int number, int blocklimit) 
     uint256 blockCount(hexValueStr);
 
     if ((blocklimit > 0) && (blockCount - number > blocklimit)) {
-        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
+        throw XRouterError("Too many blocks requested", xrouter::INVALID_PARAMETERS);
     }
     
     Array result;
@@ -203,7 +203,7 @@ Array EthWalletConnectorXRouter::getAllTransactions(const std::string & account,
     uint256 blockCount(hexValueStr);
 
     if ((blocklimit > 0) && (blockCount - number > blocklimit)) {
-        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
+        throw XRouterError("Too many blocks requested", xrouter::INVALID_PARAMETERS);
     }
     
     Array result;
@@ -316,7 +316,7 @@ std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
     bool isPositive = true;
 
     if ((blocklimit > 0) && (blockCount - number > blocklimit)) {
-        throw XRouterError("Error: too many blocks requested", xrouter::INVALID_PARAMETERS);
+        throw XRouterError("Too many blocks requested", xrouter::INVALID_PARAMETERS);
     }
     
     for(uint256 id = number; id <= blockCount; id++)
