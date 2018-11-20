@@ -202,7 +202,7 @@ public:
      * @param number block number where to start
      * @return balance change (float converted to string)
      */
-    std::string getTransactionsBloomFilter(const std::string & currency, const std::string & account, const std::string & number, const std::string & confirmations);
+    std::string getTransactionsBloomFilter(const std::string & currency, const std::string & filter, const std::string & number, const std::string & confirmations);
 
     /**
      * @brief fetches the reply to the giver request

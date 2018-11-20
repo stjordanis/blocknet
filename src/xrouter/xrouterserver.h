@@ -218,7 +218,7 @@ protected:
     
     /**
      * @brief clears stored replies to queries periodically after timeout
-     * @return
+     * @return 
      */
     void clearHashedQueries();
     

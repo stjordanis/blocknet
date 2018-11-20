@@ -674,15 +674,16 @@ std::string XRouterServer::processGetBalanceUpdate(XRouterPacketPtr packet, uint
 }
 
 std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
+    std::string filter((const char *)packet->data()+offset);
+    CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+    stream.resize(filter.size());
+    memcpy(&stream[0], packet->data()+offset, filter.size());
+    offset += filter.size() + 1;
+
     std::string number_s((const char *)packet->data()+offset);
     offset += number_s.size() + 1;
     if (!is_number(number_s))
         throw XRouterError("Incorrect block number: " + number_s, xrouter::INVALID_PARAMETERS);
-    
-    CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
-    stream.resize(packet->size() - offset);
-    memcpy(&stream[0], packet->data()+offset, packet->size() - offset);
-
     int number = std::stoi(number_s);
 
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);

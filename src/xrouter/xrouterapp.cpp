@@ -993,9 +993,9 @@ std::string App::getBalanceUpdate(const std::string & currency, const std::strin
     return this->xrouterCall(xrGetBalanceUpdate, currency, account, number, confirmations);
 }
 
-std::string App::getTransactionsBloomFilter(const std::string & currency, const std::string & number, const std::string & filter, const std::string & confirmations)
+std::string App::getTransactionsBloomFilter(const std::string & currency, const std::string & filter, const std::string & number, const std::string & confirmations)
 {
-    return this->xrouterCall(xrGetTransactionsBloomFilter, currency, number, filter, confirmations);
+    return this->xrouterCall(xrGetTransactionsBloomFilter, currency, filter, number, confirmations);
 }
 
 std::string App::convertTimeToBlockCount(const std::string& currency, std::string time, const std::string& confirmations) {

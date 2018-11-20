@@ -406,14 +406,13 @@ Value xrGetTransactionsBloomFilter(const Array & params, bool fHelp)
     }
     
     std::string currency = params[0].get_str();
-    std::string account = params[1].get_str();
-    
+
     CBloomFilter f(params[1].get_str().size(), 0.1, 5, 0);
     f.from_hex(params[1].get_str());
     CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << f;
 
-    std::string reply = xrouter::App::instance().getTransactionsBloomFilter(currency, number, stream.str(), confirmations);
+    std::string reply = xrouter::App::instance().getTransactionsBloomFilter(currency, stream.str(), number, confirmations);
     return form_reply(reply);
 }
 
