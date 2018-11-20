@@ -54,7 +54,7 @@ bool is_number(std::string s)
     try {
         std::string::size_type idx;
         int res = std::stoi(s, &idx);
-        if (res < 1)
+        if (res < 0)
             throw "";
         if (idx != s.size())
             throw "";

@@ -484,8 +484,7 @@ std::string XRouterServer::processGetBlockCount(XRouterPacketPtr packet, uint32_
     }
     else
     {
-        error.emplace_back(Pair("error", "No connector for currency " + currency));
-        result = error;
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
     }
 
     return json_spirit::write_string(Value(result), true);
@@ -498,6 +497,9 @@ std::string XRouterServer::processGetBlockHash(XRouterPacketPtr packet, uint32_t
     Object result;
     Object error;
 
+    if (!is_number(blockId))
+        throw XRouterError("Incorrect block number: " + blockId, xrouter::INVALID_PARAMETERS);
+    
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
     if (conn)
     {
@@ -505,8 +507,7 @@ std::string XRouterServer::processGetBlockHash(XRouterPacketPtr packet, uint32_t
     }
     else
     {
-        error.emplace_back(Pair("error", "No connector for currency " + currency));
-        result = error;
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
     }
 
     return json_spirit::write_string(Value(result), true);
@@ -526,8 +527,7 @@ std::string XRouterServer::processGetBlock(XRouterPacketPtr packet, uint32_t off
     }
     else
     {
-        error.emplace_back(Pair("error", "No connector for currency " + currency));
-        result = error;
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
     }
     
     return json_spirit::write_string(Value(result), true);
@@ -547,8 +547,7 @@ std::string XRouterServer::processGetTransaction(XRouterPacketPtr packet, uint32
     }
     else
     {
-        error.emplace_back(Pair("error", "No connector for currency " + currency));
-        result = error;
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
     }
 
     return json_spirit::write_string(Value(result), true);
@@ -557,6 +556,10 @@ std::string XRouterServer::processGetTransaction(XRouterPacketPtr packet, uint32
 std::string XRouterServer::processGetAllBlocks(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
     std::string number_s((const char *)packet->data()+offset);
     offset += number_s.size() + 1;
+    
+    if (!is_number(number_s))
+        throw XRouterError("Incorrect block number: " + number_s, xrouter::INVALID_PARAMETERS);
+    
     int number = std::stoi(number_s);
 
     App& app = App::instance();
@@ -568,6 +571,10 @@ std::string XRouterServer::processGetAllBlocks(XRouterPacketPtr packet, uint32_t
     {
         result = conn->getAllBlocks(number, blocklimit);
     }
+    else
+    {
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
+    }
 
     return json_spirit::write_string(Value(result), true);
 }
@@ -577,6 +584,9 @@ std::string XRouterServer::processGetAllTransactions(XRouterPacketPtr packet, ui
     offset += account.size() + 1;
     std::string number_s((const char *)packet->data()+offset);
     offset += number_s.size() + 1;
+    if (!is_number(number_s))
+        throw XRouterError("Incorrect block number: " + number_s, xrouter::INVALID_PARAMETERS);
+    
     int number = std::stoi(number_s);
 
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
@@ -594,7 +604,11 @@ std::string XRouterServer::processGetAllTransactions(XRouterPacketPtr packet, ui
     {
         result = conn->getAllTransactions(account, number, time, blocklimit);
     }
-
+    else
+    {
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
+    }
+    
     return json_spirit::write_string(Value(result), true);
 }
 
@@ -618,6 +632,10 @@ std::string XRouterServer::processGetBalance(XRouterPacketPtr packet, uint32_t o
     {
         result = conn->getBalance(account, time, blocklimit);
     }
+    else
+    {
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
+    }
 
     return result;
 }
@@ -627,6 +645,9 @@ std::string XRouterServer::processGetBalanceUpdate(XRouterPacketPtr packet, uint
     offset += account.size() + 1;
     std::string number_s((const char *)packet->data()+offset);
     offset += number_s.size() + 1;
+    if (!is_number(number_s))
+        throw XRouterError("Incorrect block number: " + number_s, xrouter::INVALID_PARAMETERS);
+    
     int number = std::stoi(number_s);
 
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
@@ -644,6 +665,10 @@ std::string XRouterServer::processGetBalanceUpdate(XRouterPacketPtr packet, uint
     {
         result = conn->getBalanceUpdate(account, number, time, blocklimit);
     }
+    else
+    {
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
+    }
 
     return result;
 }
@@ -651,7 +676,9 @@ std::string XRouterServer::processGetBalanceUpdate(XRouterPacketPtr packet, uint
 std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
     std::string number_s((const char *)packet->data()+offset);
     offset += number_s.size() + 1;
-
+    if (!is_number(number_s))
+        throw XRouterError("Incorrect block number: " + number_s, xrouter::INVALID_PARAMETERS);
+    
     CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream.resize(packet->size() - offset);
     memcpy(&stream[0], packet->data()+offset, packet->size() - offset);
@@ -666,6 +693,10 @@ std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr pa
     if (conn)
     {
         result = conn->getTransactionsBloomFilter(number, stream, blocklimit);
+    }
+    else
+    {
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
     }
 
     return json_spirit::write_string(Value(result), true);
@@ -685,8 +716,7 @@ std::string XRouterServer::processConvertTimeToBlockCount(XRouterPacketPtr packe
     }
     else
     {
-        error.emplace_back(Pair("error", "No connector for currency " + currency));
-        result = error;
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
     }
 
     return json_spirit::write_string(Value(result), true);
@@ -695,8 +725,12 @@ std::string XRouterServer::processConvertTimeToBlockCount(XRouterPacketPtr packe
 std::string XRouterServer::processFetchReply(std::string uuid) {
     if (hashedQueries.count(uuid))
         return hashedQueries[uuid].first;
-    else
-        return "Unknown query ID";
+    else {
+        Object error;
+        error.emplace_back(Pair("error", "Unknown query ID"));
+        error.emplace_back(Pair("errorcode", xrouter::INVALID_PARAMETERS));
+        return json_spirit::write_string(Value(error), true);
+    }
 }
     
 
@@ -715,9 +749,7 @@ std::string XRouterServer::processSendTransaction(XRouterPacketPtr packet, uint3
     }
     else
     {
-        error.emplace_back(Pair("error", "No connector for currency " + currency));
-        error.emplace_back(Pair("errorcode", "-100"));
-        result = error;
+        throw XRouterError("No connector for currency " + currency, xrouter::BAD_CONNECTOR);
     }
     
     return json_spirit::write_string(Value(result), true);

@@ -741,7 +741,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             case xrGetBalanceUpdate:
             case xrGetTransactionsBloomFilter:
                 if (!is_number(param2))
-                    throw XRouterError("Incorrect block number: " + param1, xrouter::INVALID_PARAMETERS);
+                    throw XRouterError("Incorrect block number: " + param2, xrouter::INVALID_PARAMETERS);
                 break;
             default:
                 break;
