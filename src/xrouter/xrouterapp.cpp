@@ -724,19 +724,34 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             throw XRouterError("Minimum block requirement not satisfied. Make sure that your wallet is unlocked.", xrouter::INSUFFICIENT_FUNDS);
         }
 
+        // Check param1
+        switch (command) {
+            case xrGetBlockHash:
+            case xrGetAllBlocks:
+                if (!is_number(param1))
+                    throw XRouterError("Incorrect block number: " + param1, xrouter::INVALID_PARAMETERS);
+                break;
+            default:
+                break;
+        }
+        
+        // Check param2
+        switch (command) {
+            case xrGetAllTransactions:
+            case xrGetBalanceUpdate:
+            case xrGetTransactionsBloomFilter:
+                if (!is_number(param2))
+                    throw XRouterError("Incorrect block number: " + param1, xrouter::INVALID_PARAMETERS);
+                break;
+            default:
+                break;
+        }
+        
         id = generateUUID();
         int confirmations_count = 0;
         if (confirmations != "") {
-            try {
-                std::string::size_type idx;
-                confirmations_count = std::stoi(confirmations, &idx);
-                if (confirmations_count < 1)
-                    throw "";
-                if (idx != confirmations.size())
-                    throw "";
-            } catch(...) {
+            if (!is_number(confirmations))
                 throw XRouterError("Incorrect confirmations number: " + confirmations, xrouter::INVALID_PARAMETERS);
-            }
         }
         if (confirmations_count < 1)
             confirmations_count = xrouter_settings.get<int>("Main.confirmations", 0);

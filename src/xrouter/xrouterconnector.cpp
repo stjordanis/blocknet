@@ -49,6 +49,32 @@ WalletConnectorXRouter::WalletConnectorXRouter()
 
 }
 
+bool is_number(std::string s)
+{
+    try {
+        std::string::size_type idx;
+        int res = std::stoi(s, &idx);
+        if (res < 1)
+            throw "";
+        if (idx != s.size())
+            throw "";
+    } catch(...) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool is_hash(std::string s)
+{
+    return true;
+}
+
+bool is_address(std::string s)
+{
+    return true;
+}
+
 int readHTTP(std::basic_istream<char>& stream, map<string, string>& mapHeadersRet, string& strMessageRet)
 {
     mapHeadersRet.clear();
