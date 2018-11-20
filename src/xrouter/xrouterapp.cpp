@@ -731,6 +731,15 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
                 if (!is_number(param1))
                     throw XRouterError("Incorrect block number: " + param1, xrouter::INVALID_PARAMETERS);
                 break;
+            case xrGetTransactionsBloomFilter:
+                if (!is_hash(param1) || (param1.size() % 10 != 0))
+                    throw XRouterError("Incorrect bloom filter: " + param1, xrouter::INVALID_PARAMETERS);
+                break;
+            case xrGetBlock:
+            case xrGetTransaction:
+                if (!is_hash(param1))
+                    throw XRouterError("Incorrect hash: " + param1, xrouter::INVALID_PARAMETERS);
+                break;
             default:
                 break;
         }

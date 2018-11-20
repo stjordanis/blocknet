@@ -675,6 +675,11 @@ std::string XRouterServer::processGetBalanceUpdate(XRouterPacketPtr packet, uint
 
 std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
     std::string filter((const char *)packet->data()+offset);
+
+    // 10 is a constant for bloom filters currently
+    if (!is_hash(filter) || (filter.size() % 10 != 0))
+        throw XRouterError("Incorrect bloom filter: " + filter, xrouter::INVALID_PARAMETERS);
+    
     CBloomFilter f(filter.size(), 0.1, 5, 0);
     f.from_hex(filter);
     CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);

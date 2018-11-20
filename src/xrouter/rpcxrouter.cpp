@@ -418,7 +418,13 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
     }
     
     Object result;
-    int added = 0;
+    if (params.size() == 0) {
+        result.emplace_back(Pair("error", "No valid addresses"));
+        result.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
+        result.emplace_back(Pair("uuid", ""));
+        return result;
+    }
+    
     CBloomFilter f(10 * params.size(), 0.1, 5, 0);
     
     vector<unsigned char> data;
@@ -431,13 +437,12 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
             data = ParseHex(addr_string);
             CPubKey pubkey(data);
             if (!pubkey.IsValid()) {
-                std::cout << "Ignoring invalid address " << addr_string << std::endl;
+                //LOG() << "Ignoring invalid address " << addr_string << std::endl;
                 invalid.push_back(Value(addr_string));
                 continue;
             }
             
             f.insert(data);
-            added++;
             continue;
         } else {
             // This is a bitcoin address
@@ -445,7 +450,6 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
             address.GetKeyID(keyid);
             data = vector<unsigned char>(keyid.begin(), keyid.end());
             f.insert(data);
-            added++;
         }
     }
     
@@ -453,8 +457,7 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
         result.emplace_back(Pair("skipped-invalid", invalid));
     }
     
-    // added can be 0 if no addresses supplied
-    if ((added == 0) || (invalid.size() == params.size())) {
+    if (invalid.size() == params.size()) {
         result.emplace_back(Pair("error", "No valid addresses"));
         result.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
         result.emplace_back(Pair("uuid", ""));
