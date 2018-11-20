@@ -407,12 +407,7 @@ Value xrGetTransactionsBloomFilter(const Array & params, bool fHelp)
     
     std::string currency = params[0].get_str();
 
-    CBloomFilter f(params[1].get_str().size(), 0.1, 5, 0);
-    f.from_hex(params[1].get_str());
-    CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
-    stream << f;
-
-    std::string reply = xrouter::App::instance().getTransactionsBloomFilter(currency, stream.str(), number, confirmations);
+    std::string reply = xrouter::App::instance().getTransactionsBloomFilter(currency, params[1].get_str(), number, confirmations);
     return form_reply(reply);
 }
 
@@ -425,6 +420,8 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
     if (params.size() == 0)
         return "";
     
+    Object result;
+    int added = 0;
     CBloomFilter f(10 * params.size(), 0.1, 5, 0);
     
     vector<unsigned char> data;
@@ -449,6 +446,12 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
             data = vector<unsigned char>(keyid.begin(), keyid.end());
             f.insert(data);
         }
+    }
+    
+    if (added == 0) {
+        result.emplace_back(Pair("error", "No valid addresses"));
+        result.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
+        result.emplace_back(Pair("uuid", ""));
     }
     
     return f.to_hex();

@@ -675,9 +675,10 @@ std::string XRouterServer::processGetBalanceUpdate(XRouterPacketPtr packet, uint
 
 std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr packet, uint32_t offset, std::string currency) {
     std::string filter((const char *)packet->data()+offset);
+    CBloomFilter f(filter.size(), 0.1, 5, 0);
+    f.from_hex(filter);
     CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
-    stream.resize(filter.size());
-    memcpy(&stream[0], packet->data()+offset, filter.size());
+    stream << f;
     offset += filter.size() + 1;
 
     std::string number_s((const char *)packet->data()+offset);
