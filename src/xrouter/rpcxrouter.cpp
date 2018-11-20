@@ -416,15 +416,13 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
     if (fHelp) {
         throw std::runtime_error("xrGenerateBloomFilter address1 address2 ...\nReturns bloom filter for given base58 addresses or public key hashes.");
     }
-
-    if (params.size() == 0)
-        return "";
     
     Object result;
     int added = 0;
     CBloomFilter f(10 * params.size(), 0.1, 5, 0);
     
     vector<unsigned char> data;
+    Array invalid;
     for (unsigned int i = 0; i < params.size(); i++) {
         std::string addr_string = params[i].get_str();
         UnknownChainAddress address(addr_string);
@@ -434,10 +432,12 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
             CPubKey pubkey(data);
             if (!pubkey.IsValid()) {
                 std::cout << "Ignoring invalid address " << addr_string << std::endl;
+                invalid.push_back(Value(addr_string));
                 continue;
             }
             
             f.insert(data);
+            added++;
             continue;
         } else {
             // This is a bitcoin address
@@ -445,16 +445,26 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
             address.GetKeyID(keyid);
             data = vector<unsigned char>(keyid.begin(), keyid.end());
             f.insert(data);
+            added++;
         }
     }
     
-    if (added == 0) {
+    if (invalid.size() > 0) {
+        result.emplace_back(Pair("skipped-invalid", invalid));
+    }
+    
+    // added can be 0 if no addresses supplied
+    if ((added == 0) || (invalid.size() == params.size())) {
         result.emplace_back(Pair("error", "No valid addresses"));
         result.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
         result.emplace_back(Pair("uuid", ""));
+        return result;
     }
     
-    return f.to_hex();
+    result.emplace_back(Pair("reply", f.to_hex()));
+    result.emplace_back(Pair("code", xrouter::SUCCESS));
+    
+    return result;
 }
 
 Value xrCustomCall(const Array & params, bool fHelp)
