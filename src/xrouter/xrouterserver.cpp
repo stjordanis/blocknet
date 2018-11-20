@@ -503,7 +503,7 @@ std::string XRouterServer::processGetBlockHash(XRouterPacketPtr packet, uint32_t
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
     if (conn)
     {
-        result.push_back(Pair("result", conn->getBlockHash(blockId)));
+        result = conn->getBlockHash(blockId);
     }
     else
     {

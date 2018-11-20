@@ -45,11 +45,15 @@ static Object form_reply(std::string reply)
     Object reply_obj = reply_val.get_obj();
     const Value & result = find_value(reply_obj, "result");
     const Value & error  = find_value(reply_obj, "error");
-
+    const Value & code  = find_value(reply_obj, "code");
     
     if (error.type() != null_type)
     {
-        return reply_obj;
+        ret.emplace_back(Pair("error", error));
+        if (code.type() != null_type)
+            ret.emplace_back(Pair("code", code));
+        else
+            ret.emplace_back(Pair("code", xrouter::INTERNAL_SERVER_ERROR));
     }
     else if (result.type() != null_type)
     {
