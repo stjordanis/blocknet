@@ -760,10 +760,10 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         int confirmations_count = 0;
         if (confirmations != "") {
             if (!is_number(confirmations))
-                throw XRouterError("Incorrect confirmations number: " + confirmations, xrouter::INVALID_PARAMETERS);
+                throw XRouterError("Incorrect number of service nodes for consensus: " + confirmations, xrouter::INVALID_PARAMETERS);
         }
         if (confirmations_count < 1)
-            confirmations_count = xrouter_settings.get<int>("Main.confirmations", 0);
+            confirmations_count = xrouter_settings.get<int>("Main.consensus_nodes", 0);
         if (confirmations_count < 1)
             confirmations_count = XROUTER_DEFAULT_CONFIRMATIONS;
 

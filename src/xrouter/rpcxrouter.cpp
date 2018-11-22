@@ -73,7 +73,7 @@ static Object form_reply(std::string reply)
 Value xrGetBlockCount(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetBlockCount currency\nLookup total number of blocks in a specified blockchain.");
+        throw std::runtime_error("xrGetBlockCount currency [servicenode_consensus_number]\nLookup total number of blocks in a specified blockchain.");
     }
 
     if (params.size() < 1)
@@ -99,7 +99,7 @@ Value xrGetBlockCount(const Array & params, bool fHelp)
 Value xrGetBlockHash(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetBlockHash currency number\nLookup block hash by block number in a specified blockchain.");
+        throw std::runtime_error("xrGetBlockHash currency number [servicenode_consensus_number]\nLookup block hash by block number in a specified blockchain.");
     }
 
     if (params.size() < 1)
@@ -135,7 +135,7 @@ Value xrGetBlockHash(const Array & params, bool fHelp)
 Value xrGetBlock(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetBlock currency hash\nLookup block data by block hash in a specified blockchain.");
+        throw std::runtime_error("xrGetBlock currency hash [servicenode_consensus_number]\nLookup block data by block hash in a specified blockchain.");
     }
 
     if (params.size() < 1)
@@ -170,7 +170,7 @@ Value xrGetBlock(const Array & params, bool fHelp)
 Value xrGetTransaction(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetTransaction currency txid\nLookup transaction data by transaction id in a specified blockchain.");
+        throw std::runtime_error("xrGetTransaction currency txid [servicenode_consensus_number]\nLookup transaction data by transaction id in a specified blockchain.");
     }
 
     if (params.size() < 1)
@@ -205,7 +205,7 @@ Value xrGetTransaction(const Array & params, bool fHelp)
 Value xrGetBlocks(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetBlocks currency [number]\nReturns a list of all blocks starting with n for selected currency.");
+        throw std::runtime_error("xrGetBlocks currency number [servicenode_consensus_number]\nReturns a list of all blocks starting with n for selected currency.");
     }
 
     if (params.size() < 1)
@@ -241,7 +241,7 @@ Value xrGetBlocks(const Array & params, bool fHelp)
 Value xrGetTransactions(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetTransactions currency account [number]\nReturns all transactions to/from account starting from block [number] for selected currency.");
+        throw std::runtime_error("xrGetTransactions currency account [number] [servicenode_consensus_number]\nReturns all transactions to/from account starting from block [number] for selected currency.");
     }
 
     if (params.size() < 1)
@@ -286,7 +286,7 @@ Value xrGetTransactions(const Array & params, bool fHelp)
 Value xrGetBalance(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetBalance currency account\nReturns balance for selected account for selected currency.");
+        throw std::runtime_error("xrGetBalance currency account [servicenode_consensus_number]\nReturns balance for selected account for selected currency.");
     }
 
     if (params.size() < 1)
@@ -322,7 +322,7 @@ Value xrGetBalance(const Array & params, bool fHelp)
 Value xrGetBalanceUpdate(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetBalanceUpdate currency account [number]\nReturns balance update for account starting with block number (default: 0) for selected currency.");
+        throw std::runtime_error("xrGetBalanceUpdate currency account [number] [servicenode_consensus_number]\nReturns balance update for account starting with block number (default: 0) for selected currency.");
     }
 
     if (params.size() < 1)
@@ -368,7 +368,7 @@ Value xrGetBalanceUpdate(const Array & params, bool fHelp)
 Value xrGetTransactionsBloomFilter(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrGetTransactionsBloomFilter currency filter [number]\nReturns transactions fitting bloom filter starting with block number (default: 0) for selected currency.");
+        throw std::runtime_error("xrGetTransactionsBloomFilter currency filter [number] [servicenode_consensus_number]\nReturns transactions fitting bloom filter starting with block number (default: 0) for selected currency.");
     }
 
     if (params.size() < 1)
@@ -604,7 +604,7 @@ Value xrOpenConnections(const Array & params, bool fHelp)
 Value xrTimeToBlockNumber(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrTimeToBlockNumber currency timestamp\nGet the block count at specified time.");
+        throw std::runtime_error("xrTimeToBlockNumber currency timestamp [servicenode_consensus_number]\nGet the block count at specified time.");
     }
 
     if (params.size() < 1)
