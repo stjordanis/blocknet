@@ -11,12 +11,7 @@
 #define ERR()   LOG('E')
 #define TRACE() LOG('T')
 #define TESTLOG() LOG('I',"test_xrouter.log")
-
-#define DEBUG_TRACE() (TRACE() << __FUNCTION__)
-#define DEBUG_TRACE_LOG(str) (TRACE() << str << " " << __FUNCTION__)
-#define DEBUG_TRACE_TODO() (TRACE() << "TODO " << __FUNCTION__)
-// #define DEBUG_TRACE()
-// #define DEBUG_TRACE_TODO()
+#define DEBUG() LOG('D')
 
 #define LOG_KEYPAIR_VALUES
 

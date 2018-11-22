@@ -164,7 +164,7 @@ Object CallRPC(const std::string & rpcuser, const std::string & rpcpasswd,
     // Send request
     string strRequest = JSONRPCRequest(strMethod, params, 1);
 
-    LOG() << "HTTP: req  " << strMethod << " " << strRequest;
+    DEBUG() << "HTTP: req  " << strMethod << " " << strRequest;
 
     string strPost = HTTPPost(strRequest, mapRequestHeaders);
     stream << strPost << std::flush;
@@ -174,7 +174,7 @@ Object CallRPC(const std::string & rpcuser, const std::string & rpcpasswd,
     string strReply;
     int nStatus = readHTTP(stream, mapHeaders, strReply);
 
-    LOG() << "HTTP: resp " << nStatus << " " << strReply;
+    DEBUG() << "HTTP: resp " << nStatus << " " << strReply;
 
     if (nStatus == HTTP_UNAUTHORIZED)
         throw runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");

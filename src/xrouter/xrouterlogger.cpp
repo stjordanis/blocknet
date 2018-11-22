@@ -32,6 +32,11 @@ LOG::LOG(const char reason, std::string filename)
                     boost::pool_allocator<char> >()
     , m_r(reason), filenameOverride("")
 {
+    // 'D' is turned on when debug=1 in blocknetdx.conf
+    if (reason == 'D')
+        if (!GetBoolArg("-debug", false))
+            return;
+        
     *this << "\n" << "[" << (char)std::toupper(m_r) << "] "
           << boost::posix_time::second_clock::local_time()
           << " [0x" << boost::this_thread::get_id() << "] ";
