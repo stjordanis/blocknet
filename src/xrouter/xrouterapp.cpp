@@ -816,7 +816,9 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
                     unlockOutputs(paytx_map[pnode]);
             }
             
-            boost::container::map<std::string, CAmount> addr_map;
+            throw XRouterError("Could not create payments to service nodes. Please check that your wallet is fully unlocked and you have at least " + std::to_string(confirmations_count) + " available unspent transaction outputs.", xrouter::INSUFFICIENT_FUNDS);
+            
+            /*boost::container::map<std::string, CAmount> addr_map;
             cnt = 0;
             paytx_map.clear();
             for (CNode* pnode : selectedNodes) {
@@ -850,7 +852,7 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
             } catch (std::runtime_error e) {
                 LOG() << "Failed to create payment";
                 throw XRouterError("Could not create payments to service nodes", xrouter::INSUFFICIENT_FUNDS);
-            }
+            }*/
         }
             
         for (CNode* pnode : selectedNodes) {
