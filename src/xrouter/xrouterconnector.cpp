@@ -68,7 +68,7 @@ bool is_number(std::string s)
 bool is_hash(std::string s)
 {
     std::string symbols = "0123456789abcdef";
-    for (int i = 0; i < s.size(); i++)
+    for (size_t i = 0; i < s.size(); i++)
         if (symbols.find(s[i]) == std::string::npos)
             return false;
     return true;
@@ -76,7 +76,7 @@ bool is_hash(std::string s)
 
 bool is_address(std::string s)
 {
-    for (int i = 0; i < s.size(); i++)
+    for (size_t i = 0; i < s.size(); i++)
         if (!std::isalnum(s[i]))
             return false;
     if (s.size() < 30)

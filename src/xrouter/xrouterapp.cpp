@@ -740,6 +740,11 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
                 if (!is_hash(param1))
                     throw XRouterError("Incorrect hash: " + param1, xrouter::INVALID_PARAMETERS);
                 break;
+            case xrGetAllTransactions:
+            case xrGetBalanceUpdate:
+                if (!is_address(param1))
+                    throw XRouterError("Incorrect address: " + param1, xrouter::INVALID_PARAMETERS);
+                break;
             default:
                 break;
         }
