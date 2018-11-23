@@ -76,6 +76,11 @@ bool is_hash(std::string s)
 
 bool is_address(std::string s)
 {
+    for (int i = 0; i < s.size(); i++)
+        if (!std::isalnum(s[i]))
+            return false;
+    if (s.size() < 30)
+        return false;
     return true;
 }
 
