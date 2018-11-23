@@ -766,6 +766,9 @@ std::string App::xrouterCall(enum XRouterCommand command, const std::string & cu
         if (confirmations != "") {
             if (!is_number(confirmations))
                 throw XRouterError("Incorrect number of service nodes for consensus: " + confirmations, xrouter::INVALID_PARAMETERS);
+            confirmations_count = std::stoi(confirmations);
+            if (confirmations_count < 1)
+                throw XRouterError("Incorrect number of service nodes for consensus: " + confirmations, xrouter::INVALID_PARAMETERS);
         }
         if (confirmations_count < 1)
             confirmations_count = xrouter_settings.get<int>("Main.consensus_nodes", 0);
