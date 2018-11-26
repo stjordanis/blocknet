@@ -46,23 +46,27 @@ static Object form_reply(std::string reply)
     const Value & result = find_value(reply_obj, "result");
     const Value & error  = find_value(reply_obj, "error");
     const Value & code  = find_value(reply_obj, "code");
+    const Value & uuid  = find_value(reply_obj, "uuid");
     
-    if (error.type() != null_type)
-    {
+    if (error.type() != null_type) {
         ret.emplace_back(Pair("error", error));
         if (code.type() != null_type)
             ret.emplace_back(Pair("code", code));
         else
             ret.emplace_back(Pair("code", xrouter::INTERNAL_SERVER_ERROR));
     }
-    else if (result.type() != null_type)
-    {
+    else if (result.type() != null_type) {
         ret.emplace_back(Pair("reply", result));
         ret.emplace_back(Pair("code", xrouter::SUCCESS));
     }
-    else
-    {
+    else {
         return reply_obj;
+    }
+    
+    if (uuid.type() != null_type) {
+        ret.emplace_back(Pair("uuid", uuid));
+    } else {
+        ret.emplace_back(Pair("uuid", ""));
     }
     
     return ret;
