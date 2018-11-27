@@ -122,13 +122,12 @@ std::string EthWalletConnectorXRouter::getBlockCount() const
     if(!blockNumberVal.is_null())
     {
         std::string hexValue = blockNumberVal.get_str();
-        uint256 bigInt(hexValue);
-
+        std::cout << "ETH CONNECTOR " << hexValue <<std::endl << std::flush;
         std::stringstream ss;
-
-        bigInt.Serialize(ss, 0, 0);
-
-        return ss.str();
+        unsigned int result;
+        ss << std::hex << hexValue;
+        ss >> result;
+        return std::to_string(result);
     }
 
     return std::string();
@@ -136,10 +135,12 @@ std::string EthWalletConnectorXRouter::getBlockCount() const
 
 Object EthWalletConnectorXRouter::getBlockHash(const std::string & blockId) const
 {
-    uint256 blockId256(std::stoi(blockId));
+    std::stringstream ss;
+    ss << std::hex << std::stoi(blockId);
 
     std::string command("eth_getBlockByNumber");
-    Array params { blockId256.ToString(), false };
+      
+    Array params { "0x" + ss.str(), false };
 
     Object resp = rpc::CallRPC(m_ip, m_port, command, params);
 
