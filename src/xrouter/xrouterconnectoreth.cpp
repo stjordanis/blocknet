@@ -179,7 +179,7 @@ Array EthWalletConnectorXRouter::getAllBlocks(const int number, int blocklimit) 
 
     Object blockCountObj = rpc::CallRPC(m_ip, m_port, commandBN, Array());
     std::string hexValueStr = getResult(blockCountObj).get_str();
-    uint256 blockCount(hexValueStr);
+    int blockCount = hex2dec(hexValueStr);
 
     if ((blocklimit > 0) && (blockCount - number > blocklimit)) {
         throw XRouterError("Too many blocks requested", xrouter::INVALID_PARAMETERS);
@@ -187,9 +187,9 @@ Array EthWalletConnectorXRouter::getAllBlocks(const int number, int blocklimit) 
     
     Array result;
 
-    for(uint256 id = number; id <= blockCount; id++)
+    for(int id = number; id <= blockCount; id++)
     {
-        Array params { id.ToString(), true };
+        Array params { dec2hex(std::to_string(id)), true };
 
         Object resp = rpc::CallRPC(m_ip, m_port, commandgGBBN, params);
 
