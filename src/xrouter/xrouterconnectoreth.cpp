@@ -111,6 +111,20 @@ static Value getResult(Object obj) {
     return Value();
 }
 
+static std::string dec2hex(std::string s) {
+    std::stringstream ss;
+    ss << std::hex << std::stoi(s);
+    return "0x" + ss.str();
+}
+
+static int hex2dec(std::string s) {
+    std::stringstream ss;
+    unsigned int result;
+    ss << std::hex << s;
+    ss >> result;
+    return result;
+}
+
 std::string EthWalletConnectorXRouter::getBlockCount() const
 {
     std::string command("eth_blockNumber");
@@ -121,13 +135,7 @@ std::string EthWalletConnectorXRouter::getBlockCount() const
 
     if(!blockNumberVal.is_null())
     {
-        std::string hexValue = blockNumberVal.get_str();
-        std::cout << "ETH CONNECTOR " << hexValue <<std::endl << std::flush;
-        std::stringstream ss;
-        unsigned int result;
-        ss << std::hex << hexValue;
-        ss >> result;
-        return std::to_string(result);
+        return std::to_string(hex2dec(blockNumberVal.get_str()));
     }
 
     return std::string();
@@ -135,12 +143,9 @@ std::string EthWalletConnectorXRouter::getBlockCount() const
 
 Object EthWalletConnectorXRouter::getBlockHash(const std::string & blockId) const
 {
-    std::stringstream ss;
-    ss << std::hex << std::stoi(blockId);
-
     std::string command("eth_getBlockByNumber");
       
-    Array params { "0x" + ss.str(), false };
+    Array params { dec2hex(blockId), false };
 
     Object resp = rpc::CallRPC(m_ip, m_port, command, params);
 
