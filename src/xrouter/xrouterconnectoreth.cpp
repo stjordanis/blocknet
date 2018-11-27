@@ -239,74 +239,7 @@ Array EthWalletConnectorXRouter::getAllTransactions(const std::string & account,
 
 std::string EthWalletConnectorXRouter::getBalance(const std::string & account, const int time, int blocklimit) const
 {
-    std::string commandBN("eth_blockNumber");
-    std::string commandgGBBN("eth_getBlockByNumber");
-
-    Object blockCountObj = rpc::CallRPC(m_ip, m_port, commandBN, Array());
-    std::string hexValueStr = getResult(blockCountObj).get_str();
-    uint256 blockCount(hexValueStr);
-
-    uint256 result;
-    bool isPositive = true;
-
-    for(uint256 id = 0; id <= blockCount; id++)
-    {
-        Array params { id.ToString(), true };
-
-        Object resp = rpc::CallRPC(m_ip, m_port, commandgGBBN, params);
-        Object blockObj = getResult(resp).get_obj();
-
-        const Array & transactionsInBlock = find_value(blockObj, "transactions").get_array();
-
-        for(const Value & transaction : transactionsInBlock)
-        {
-            Object transactionObj = transaction.get_obj();
-
-            std::string from = find_value(transactionObj, "from").get_str();
-            std::string to = find_value(transactionObj, "to").get_str();
-
-            if(from == account)
-            {
-                uint256 value(find_value(transactionObj, "value").get_str());
-
-                if(result < value)
-                {
-                    isPositive = false;
-                    result = value - result;
-                }
-            }
-            else if(to == account)
-            {
-                uint256 value(find_value(transactionObj, "value").get_str());
-
-                if(isPositive)
-                {
-                    result += value;
-                }
-                else
-                {
-                    if(result > value)
-                    {
-                        result -= value;
-                    }
-                    else
-                    {
-                        result = value - result;
-                        isPositive = true;
-                    }
-                }
-            }
-        }
-    }
-
-    std::stringstream ss;
-
-    if(!isPositive)
-        ss << "-";
-
-    result.Serialize(ss, 0, 0);
-
-    return ss.str();
+    return getBalanceUpdate(account, 0, time, blocklimit);
 }
 
 std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & account, const int number, const int time, int blocklimit) const
