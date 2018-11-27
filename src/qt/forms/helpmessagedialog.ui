@@ -30,36 +30,20 @@
   <property name="windowTitle">
    <string notr="true">BlocknetDX Core - Command-line options</string>
   </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
   <layout class="QHBoxLayout" name="horizontalLayout_2">
-   <item>
-    <widget class="QLabel" name="graphic">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>150</width>
-       <height>100</height>
-      </size>
-     </property>
-     <property name="layoutDirection">
-      <enum>Qt::LeftToRight</enum>
-     </property>
-     <property name="pixmap">
-      <pixmap resource="../blocknetdx.qrc">:/images/aboutImage1</pixmap>
-     </property>
-     <property name="scaledContents">
-      <bool>true</bool>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QTextEdit" name="helpMessage">
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="palette">
         <palette>
          <active>
@@ -493,7 +477,7 @@
        </property>
        <property name="maximumSize">
         <size>
-         <width>465</width>
+         <width>600</width>
          <height>385</height>
         </size>
        </property>
@@ -923,8 +907,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>768</width>
-          <height>418</height>
+          <width>609</width>
+          <height>424</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -1374,6 +1358,9 @@
      </item>
      <item>
       <widget class="QDialogButtonBox" name="okButton">
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
