@@ -149,7 +149,12 @@ Object EthWalletConnectorXRouter::getBlockHash(const std::string & blockId) cons
 
     Object resp = rpc::CallRPC(m_ip, m_port, command, params);
 
-    return getResult(resp).get_obj();
+    Object block = getResult(resp).get_obj();
+    std::string hash = find_value(block, "hash").get_str();
+
+    Object result;
+    result.emplace_back(Pair("result", hash));
+    return result;
 }
 
 Object EthWalletConnectorXRouter::getBlock(const std::string & blockHash) const
