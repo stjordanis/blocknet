@@ -249,18 +249,19 @@ std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
 
     Object blockCountObj = rpc::CallRPC(m_ip, m_port, commandBN, Array());
     std::string hexValueStr = getResult(blockCountObj).get_str();
-    uint256 blockCount(hexValueStr);
+    int blockCount = hex2dec(hexValueStr);
 
-    uint256 result;
+
+    int result = 0;
     bool isPositive = true;
 
     if ((blocklimit > 0) && (blockCount - number > blocklimit)) {
         throw XRouterError("Too many blocks requested", xrouter::INVALID_PARAMETERS);
     }
     
-    for(uint256 id = number; id <= blockCount; id++)
+    for(int id = number; id <= blockCount; id++)
     {
-        Array params { id.ToString(), true };
+        Array params { dec2hex(std::to_string(id)), true };
 
         Object resp = rpc::CallRPC(m_ip, m_port, commandgGBBN, params);
         Object blockObj = getResult(resp).get_obj();
@@ -276,7 +277,7 @@ std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
 
             if(from == account)
             {
-                uint256 value(find_value(transactionObj, "value").get_str());
+                int value = hex2dec(find_value(transactionObj, "value").get_str());
 
                 if(result < value)
                 {
@@ -286,7 +287,7 @@ std::string EthWalletConnectorXRouter::getBalanceUpdate(const std::string & acco
             }
             else if(to == account)
             {
-                uint256 value(find_value(transactionObj, "value").get_str());
+                int value = hex2dec(find_value(transactionObj, "value").get_str());
 
                 if(isPositive)
                 {
