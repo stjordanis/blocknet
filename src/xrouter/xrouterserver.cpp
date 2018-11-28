@@ -105,17 +105,16 @@ bool XRouterServer::start()
 
 void XRouterServer::addConnector(const WalletConnectorXRouterPtr & conn)
 {
-    boost::mutex::scoped_lock l(m_connectorsLock);
-    m_connectors.push_back(conn);
-    m_connectorCurrencyMap[conn->currency] = conn;
+    //boost::mutex::scoped_lock l(m_connectorsLock);
+    connectors[conn->currency] = conn;
 }
 
 WalletConnectorXRouterPtr XRouterServer::connectorByCurrency(const std::string & currency) const
 {
-    boost::mutex::scoped_lock l(m_connectorsLock);
-    if (m_connectorCurrencyMap.count(currency))
+    //boost::mutex::scoped_lock l(m_connectorsLock);
+    if (connectors.count(currency))
     {
-        return m_connectorCurrencyMap.at(currency);
+        return connectors.at(currency);
     }
 
     return WalletConnectorXRouterPtr();
@@ -935,7 +934,7 @@ void XRouterServer::closeAllPaymentChannels() {
 void XRouterServer::runPerformanceTests() {
     std::chrono::time_point<std::chrono::system_clock> time;
     std::chrono::system_clock::duration diff;
-    for (const auto& it : this->m_connectorCurrencyMap) {
+    for (const auto& it : this->connectors) {
         std::string currency = it.first;
         WalletConnectorXRouterPtr conn = it.second;
         TESTLOG() << "Testing connector to currency " << currency;

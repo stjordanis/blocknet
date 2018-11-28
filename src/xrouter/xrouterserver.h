@@ -18,20 +18,14 @@ namespace xrouter
 class WalletConnectorXRouter;
 typedef std::shared_ptr<WalletConnectorXRouter> WalletConnectorXRouterPtr;
 
-typedef std::vector<WalletConnectorXRouterPtr> Connectors;
-typedef std::map<std::vector<unsigned char>, WalletConnectorXRouterPtr> ConnectorsAddrMap;
-typedef std::map<std::string, WalletConnectorXRouterPtr> ConnectorsCurrencyMap;
-    
 //*****************************************************************************
 //*****************************************************************************
 class XRouterServer
 {
     friend class App;
 
-    mutable boost::mutex m_connectorsLock;
-    xrouter::Connectors m_connectors;
-    xrouter::ConnectorsAddrMap m_connectorAddressMap;
-    xrouter::ConnectorsCurrencyMap m_connectorCurrencyMap;
+    std::map<std::string, WalletConnectorXRouterPtr> connectors;
+    std::map<std::string, boost::shared_ptr<boost::mutex> > connectorLocks;
 
     boost::container::map<CNode*, boost::container::map<std::string, std::chrono::time_point<std::chrono::system_clock> > > lastPacketsReceived;
     
