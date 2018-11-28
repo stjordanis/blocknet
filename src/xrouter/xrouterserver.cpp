@@ -67,9 +67,11 @@ bool XRouterServer::start()
                 wp.m_user.empty() || wp.m_passwd.empty() ||
                 wp.COIN == 0 || wp.blockTime == 0)
             {
+                LOG() << "Skipping currency " << wp.method << " because of missing credentials, COIN or BlockTime parameters";
                 continue;
             }
 
+            LOG() << "Adding connector to currency " << wp.method;
             xrouter::WalletConnectorXRouterPtr conn;
             if ((wp.method == "ETH") || (wp.method == "ETHER"))
             {
