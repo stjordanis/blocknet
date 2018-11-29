@@ -107,13 +107,12 @@ bool XRouterServer::start()
 
 void XRouterServer::addConnector(const WalletConnectorXRouterPtr & conn)
 {
-    //boost::mutex::scoped_lock l(m_connectorsLock);
     connectors[conn->currency] = conn;
+    connectorLocks[conn->currency] = boost::shared_ptr<boost::mutex>(new boost::mutex());
 }
 
 WalletConnectorXRouterPtr XRouterServer::connectorByCurrency(const std::string & currency) const
 {
-    //boost::mutex::scoped_lock l(m_connectorsLock);
     if (connectors.count(currency))
     {
         return connectors.at(currency);
@@ -486,6 +485,7 @@ std::string XRouterServer::processGetBlockCount(XRouterPacketPtr packet, uint32_
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result.push_back(Pair("result", conn->getBlockCount()));
     }
     else
@@ -509,6 +509,7 @@ std::string XRouterServer::processGetBlockHash(XRouterPacketPtr packet, uint32_t
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->getBlockHash(blockId);
     }
     else
@@ -529,6 +530,7 @@ std::string XRouterServer::processGetBlock(XRouterPacketPtr packet, uint32_t off
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->getBlock(blockHash);
     }
     else
@@ -549,6 +551,7 @@ std::string XRouterServer::processGetTransaction(XRouterPacketPtr packet, uint32
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->getTransaction(hash);
     }
     else
@@ -575,6 +578,7 @@ std::string XRouterServer::processGetAllBlocks(XRouterPacketPtr packet, uint32_t
     Array result;
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->getAllBlocks(number, blocklimit);
     }
     else
@@ -608,6 +612,7 @@ std::string XRouterServer::processGetAllTransactions(XRouterPacketPtr packet, ui
     
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->getAllTransactions(account, number, time, blocklimit);
     }
     else
@@ -636,6 +641,7 @@ std::string XRouterServer::processGetBalance(XRouterPacketPtr packet, uint32_t o
     
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->getBalance(account, time, blocklimit);
     }
     else
@@ -669,6 +675,7 @@ std::string XRouterServer::processGetBalanceUpdate(XRouterPacketPtr packet, uint
     std::string result;
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->getBalanceUpdate(account, number, time, blocklimit);
     }
     else
@@ -705,6 +712,7 @@ std::string XRouterServer::processGetTransactionsBloomFilter(XRouterPacketPtr pa
     Array result;
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->getTransactionsBloomFilter(number, stream, blocklimit);
     }
     else
@@ -725,6 +733,7 @@ std::string XRouterServer::processConvertTimeToBlockCount(XRouterPacketPtr packe
     xrouter::WalletConnectorXRouterPtr conn = connectorByCurrency(currency);
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result.push_back(Pair("result", conn->convertTimeToBlockCount(timestamp)));
     }
     else
@@ -758,6 +767,7 @@ std::string XRouterServer::processSendTransaction(XRouterPacketPtr packet, uint3
     
     if (conn)
     {
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         result = conn->sendTransaction(transaction);
     }
     else
@@ -939,6 +949,7 @@ void XRouterServer::runPerformanceTests() {
     for (const auto& it : this->connectors) {
         std::string currency = it.first;
         WalletConnectorXRouterPtr conn = it.second;
+        boost::mutex::scoped_lock l(*connectorLocks[currency]);
         TESTLOG() << "Testing connector to currency " << currency;
         TESTLOG() << "xrGetBlockCount";
         time = std::chrono::system_clock::now();
