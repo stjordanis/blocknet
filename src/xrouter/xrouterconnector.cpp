@@ -249,7 +249,7 @@ std::string CallCMD(std::string cmd) {
     return result;
 }
 
-// TODO: make this common with xbridge or use xbridge function for storing
+// TODO: check that this variable is static across xbridge and xrouter
 static CCriticalSection cs_rpcBlockchainStore;
 
 bool createAndSignTransaction(Array txparams, std::string & raw_tx)
@@ -403,6 +403,8 @@ void unlockOutputs(std::string tx) {
 
 std::string signTransaction(std::string& raw_tx)
 {
+    LOCK(cs_rpcBlockchainStore);
+    
     std::vector<std::string> params;
     params.push_back(raw_tx);
 
