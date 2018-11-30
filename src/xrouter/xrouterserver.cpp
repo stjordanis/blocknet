@@ -264,6 +264,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             }
         
             if (paymentChannels.count(node)) {
+                verifyChannelTransaction(feetx);
                 CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
                 LOG() << "Got payment via channel; value = " << paid - paymentChannels[node].value << " total value = " << paid << " tx = " << feetx; 
                 if (paid - paymentChannels[node].value < fee_part1) {

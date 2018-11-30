@@ -1,6 +1,7 @@
 #include "xrouterconnector.h"
 #include "xrouterlogger.h"
 #include "xrouterdef.h"
+#include "xroutererror.h"
 
 #include <cstdio>
 #include <iostream>
@@ -597,6 +598,33 @@ bool createAndSignChannelTransaction(PaymentChannel channel, std::string address
     signed_tx.vin.push_back(CTxIn(outp, sigscript));
     
     raw_tx = EncodeHexTx(signed_tx);
+    
+    return true;
+}
+
+bool verifyChannelTransaction(std::string transaction) {
+    CMutableTransaction tx;
+    if (!DecodeHexTx(tx, transaction))
+        throw XRouterError("Channel TX decode failed", xrouter::INSUFFICIENT_FEE);
+    uint256 hashTx = tx.GetHash();
+    
+    LOCK(cs_main);
+
+    CCoinsViewCache& view = *pcoinsTip;
+    const CCoins* existingCoins = view.AccessCoins(hashTx);
+    bool fHaveMempool = mempool.exists(hashTx);
+    bool fHaveChain = existingCoins && existingCoins->nHeight < 1000000000;
+    if (!fHaveMempool && !fHaveChain) {
+        CValidationState state;
+        if (!AcceptToMemoryPool(mempool, state, tx, false, NULL, false)) {
+            if (state.IsInvalid())
+                throw XRouterError("Invalid channel transaction: " + strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason()), xrouter::INSUFFICIENT_FEE);
+            else
+                throw XRouterError("Invalid channel transaction: " + state.GetRejectReason(), xrouter::INSUFFICIENT_FEE);
+        }
+    } else if (fHaveChain) {
+        throw XRouterError("Invalid channel transaction: already in blockchain", xrouter::INSUFFICIENT_FEE);
+    }
     
     return true;
 }
