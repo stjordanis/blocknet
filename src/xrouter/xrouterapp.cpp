@@ -129,6 +129,8 @@ bool App::init(int argc, char *argv[])
     s.parseCmdLine(argc, argv);
     LOG() << "Loading xbridge config from file " << xbridgepath;
     
+    this->loadPaymentChannels();
+    
     return true;
 }
 
@@ -1189,6 +1191,7 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
         
         LOG() << "Payment transaction: " << payment_tx;
         //std::cout << "Payment transaction: " << payment_tx << std::endl << std::flush;
+        savePaymentChannels();
     }
     
     return payment_tx;
@@ -1337,6 +1340,12 @@ void App::closePaymentChannel(std::string id) {
 
 void App::closeAllPaymentChannels() {
     server->closeAllPaymentChannels();
+}
+
+void App::savePaymentChannels() {
+}
+
+void App::loadPaymentChannels() {
 }
 
 void App::runTests() {

@@ -332,6 +332,9 @@ public:
     void closePaymentChannel(std::string id);
     void closeAllPaymentChannels();
     
+    void savePaymentChannels();
+    void loadPaymentChannels();
+    
     void runTests();
     
     bool debug_on_client();
