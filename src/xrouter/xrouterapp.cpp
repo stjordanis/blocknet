@@ -1166,23 +1166,24 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             std::string raw_tx, txid;
             payment_tx = "";
             PaymentChannel channel;
-            if (!this->paymentChannels.count(pnode)) {
+            std::string addr = getPaymentAddress(pnode);
+            if (!this->paymentChannels.count(addr)) {
                 channel = createPaymentChannel(getPaymentPubkey(pnode), deposit, channeldate);
                 if (channel.txid == "")
                     throw std::runtime_error("Failed to create payment channel");
-                this->paymentChannels[pnode] = channel;
+                this->paymentChannels[addr] = channel;
                 payment_tx = channel.raw_tx + ";" + channel.txid + ";" + HexStr(channel.redeemScript.begin(), channel.redeemScript.end()) + ";";
             }
             
             // Submit payment via channel
-            CAmount paid = this->paymentChannels[pnode].value;
+            CAmount paid = this->paymentChannels[addr].value;
             
             std::string paytx;
-            bool res = createAndSignChannelTransaction(this->paymentChannels[pnode], dest, deposit, fee + paid, paytx);
+            bool res = createAndSignChannelTransaction(this->paymentChannels[addr], dest, deposit, fee + paid, paytx);
             if (!res)
                 throw std::runtime_error("Failed to pay to payment channel");
-            this->paymentChannels[pnode].latest_tx = paytx;
-            this->paymentChannels[pnode].value = fee + paid;
+            this->paymentChannels[addr].latest_tx = paytx;
+            this->paymentChannels[addr].value = fee + paid;
             
             // Send channel tx, channel tx id, payment tx in one string
             payment_tx += paytx;
@@ -1236,7 +1237,7 @@ std::string App::printPaymentChannels() {
     
     for (const auto& it : this->paymentChannels) {
         Object val;
-        val.emplace_back("Node id", it.first->id);
+        val.emplace_back("Node id", it.first);
         val.emplace_back("Deposit transaction", it.second.raw_tx);
         val.emplace_back("Deposit transaction id", it.second.txid);
         val.emplace_back("Redeem transaction", it.second.latest_tx);
@@ -1348,7 +1349,7 @@ void App::savePaymentChannels() {
     
     for (const auto& it : this->paymentChannels) {
         Object val;
-        val.emplace_back("id", it.first->id);
+        val.emplace_back("id", it.first);
         val.emplace_back("raw_tx", it.second.raw_tx);
         val.emplace_back("txid", it.second.txid);
         val.emplace_back("vout", it.second.vout);
@@ -1386,7 +1387,7 @@ void App::loadPaymentChannels() {
         
         try {
             Object channel = channels[i].get_obj();
-            const Value & id = find_value(channel, "id");
+            std::string id = find_value(channel, "id").get_str();
             
             PaymentChannel c;
             c.raw_tx = find_value(channel, "raw_tx").get_str();
@@ -1401,6 +1402,7 @@ void App::loadPaymentChannels() {
             addr.GetKeyID(c.keyid);
             pwalletMain->GetKey(c.keyid, c.key);
                 
+            this->paymentChannels[id] = c;
         } catch (...) {
             continue;
         }
