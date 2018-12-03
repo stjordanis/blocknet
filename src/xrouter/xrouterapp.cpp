@@ -1351,8 +1351,12 @@ void App::savePaymentChannels() {
         val.emplace_back("id", it.first->id);
         val.emplace_back("raw_tx", it.second.raw_tx);
         val.emplace_back("txid", it.second.txid);
+        val.emplace_back("vout", it.second.vout);
         val.emplace_back("latest_tx", it.second.latest_tx);
         val.emplace_back("value", it.second.value);
+        val.emplace_back("deposit", it.second.deposit);
+        val.emplace_back("keyid", it.second.keyid.ToString());
+        val.emplace_back("redeemScript", HexStr(it.second.redeemScript.begin(), it.second.redeemScript.end()) );
         client.push_back(Value(val));
     }
     
@@ -1362,6 +1366,45 @@ void App::savePaymentChannels() {
 }
 
 void App::loadPaymentChannels() {
+    std::string path(GetDataDir(true).string() + "/paymentchannels.json");
+    ifstream f(path);
+    std::string config;
+    f >> config;
+    f.close();
+    
+    Value data;
+    read_string(config, data);
+    
+    if (data.type() != array_type)
+        return;
+    
+    Array channels = data.get_array();
+    
+    for (size_t i = 0; i < channels.size(); i++) {
+        if (channels[i].type() != obj_type)
+            continue;
+        
+        try {
+            Object channel = channels[i].get_obj();
+            const Value & id = find_value(channel, "id");
+            
+            PaymentChannel c;
+            c.raw_tx = find_value(channel, "raw_tx").get_str();
+            c.txid = find_value(channel, "txid").get_str();
+            c.vout = find_value(channel, "vout").get_int();
+            c.latest_tx = find_value(channel, "latest_tx").get_str();
+            c.value = to_amount(find_value(channel, "value").get_int());
+            c.deposit = to_amount(find_value(channel, "deposit").get_int());
+            std::vector<unsigned char> script = ParseHex(find_value(channel, "redeemScript").get_str());
+            c.redeemScript = CScript(script.begin(), script.end());
+            CBitcoinAddress addr = CBitcoinAddress(find_value(channel, "keyid").get_str());
+            addr.GetKeyID(c.keyid);
+            pwalletMain->GetKey(c.keyid, c.key);
+                
+        } catch (...) {
+            continue;
+        }
+    }
 }
 
 void App::runTests() {
