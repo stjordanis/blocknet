@@ -1343,6 +1343,22 @@ void App::closeAllPaymentChannels() {
 }
 
 void App::savePaymentChannels() {
+    std::string path(GetDataDir(true).string() + "/paymentchannels.json");
+    Array client;
+    
+    for (const auto& it : this->paymentChannels) {
+        Object val;
+        val.emplace_back("id", it.first->id);
+        val.emplace_back("raw_tx", it.second.raw_tx);
+        val.emplace_back("txid", it.second.txid);
+        val.emplace_back("latest_tx", it.second.latest_tx);
+        val.emplace_back("value", it.second.value);
+        client.push_back(Value(val));
+    }
+    
+    ofstream f(path);
+    f << json_spirit::write_string(Value(client), true);
+    f.close();
 }
 
 void App::loadPaymentChannels() {
