@@ -1154,8 +1154,7 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
     std::string payment_tx = "nofee";
     bool res;
     if (fee > 0) {
-        // Disable payment channels
-        if (true or (deposit == 0)) {
+        if (deposit == 0) {
             res = createAndSignTransaction(dest, fee, payment_tx);
             payment_tx = "single;" + payment_tx;
             if(!res) {

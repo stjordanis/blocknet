@@ -672,7 +672,6 @@ Value xrPaymentChannels(const Array & params, bool fHelp)
         throw std::runtime_error("xrPaymentChannels\nNot implemented yet");
     }
     
-    return "This function is not implemented yet";
     return xrouter::App::instance().printPaymentChannels();
 }
 
@@ -681,8 +680,6 @@ Value xrClosePaymentChannel(const Array& params, bool fHelp)
     if (fHelp) {
         throw std::runtime_error("xrClosePaymentChannel\nNot implemented yet");
     }
-    
-    return "This function is not implemented yet";
     
     if (params.size() < 1)
     {
@@ -703,8 +700,6 @@ Value xrCloseAllPaymentChannels(const Array& params, bool fHelp)
     if (fHelp) {
         throw std::runtime_error("xrClosePaymentChannel\nNot implemented yet");
     }
-    
-    return "This function is not implemented yet";
     
     xrouter::App::instance().closeAllPaymentChannels();
     return "";

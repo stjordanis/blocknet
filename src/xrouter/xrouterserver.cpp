@@ -223,7 +223,6 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             
             LOG() << "Got direct payment; value = " << paid << " tx = " << parts[2]; 
         } else if (parts[1] == "channel") {
-            throw std::runtime_error("Payment channels are not available in this version.");
             if (!paymentChannels.count(node)) {
                 // There is no payment channel with this node
                 if (parts.size() != 5) {
@@ -237,8 +236,6 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                 std::vector<unsigned char> script = ParseHex(parts[4]);
                 paymentChannels[node].redeemScript = CScript(script.begin(), script.end());
                 feetx = parts[5];
-                
-                // TODO: verify the channel's correctness
 
                 int date = getChannelExpiryTime(paymentChannels[node].raw_tx);
                 
