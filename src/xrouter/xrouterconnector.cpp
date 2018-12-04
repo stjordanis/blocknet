@@ -255,8 +255,8 @@ static CCriticalSection cs_rpcBlockchainStore;
 
 bool createAndSignTransaction(Array txparams, std::string & raw_tx)
 {
-    LOCK(cs_rpcBlockchainStore);
-
+    LOCK2(cs_rpcBlockchainStore, pwalletMain->cs_wallet);
+    
     int         errCode = 0;
     std::string errMessage;
     std::string rawtx;
@@ -404,7 +404,7 @@ void unlockOutputs(std::string tx) {
 
 std::string signTransaction(std::string& raw_tx)
 {
-    LOCK(cs_rpcBlockchainStore);
+    LOCK2(cs_rpcBlockchainStore, pwalletMain->cs_wallet);
     
     std::vector<std::string> params;
     params.push_back(raw_tx);
@@ -495,8 +495,12 @@ PaymentChannel createPaymentChannel(CPubKey address, CAmount deposit, int date)
     CScript inner;
     std::string raw_tx, txid;
     
-    int locktime = std::time(0) + date;
-    CPubKey my_pubkey = pwalletMain->GenerateNewKey();
+    int locktime = std::time(0) + date; 
+    CPubKey my_pubkey; 
+    {
+        LOCK(pwalletMain->cs_wallet);
+        my_pubkey = pwalletMain->GenerateNewKey();
+    }
     CKey mykey;
     CKeyID mykeyID = my_pubkey.GetID();
     pwalletMain->GetKey(mykeyID, mykey);
@@ -572,7 +576,11 @@ PaymentChannel createPaymentChannel(CPubKey address, CAmount deposit, int date)
 
 bool createAndSignChannelTransaction(PaymentChannel channel, std::string address, CAmount deposit, CAmount amount, std::string& raw_tx)
 {
-    CPubKey my_pubkey = pwalletMain->GenerateNewKey();
+    CPubKey my_pubkey; 
+    {
+        LOCK(pwalletMain->cs_wallet);
+        my_pubkey = pwalletMain->GenerateNewKey();
+    }
     CKey mykey;
     pwalletMain->GetKey(my_pubkey.GetID(), mykey);
     CKeyID mykeyID = my_pubkey.GetID();
@@ -649,7 +657,11 @@ bool finalizeChannelTransaction(PaymentChannel channel, CKey snodekey, std::stri
 
 std::string createRefundTransaction(PaymentChannel channel)
 {        
-    CPubKey my_pubkey = pwalletMain->GenerateNewKey();
+    CPubKey my_pubkey; 
+    {
+        LOCK(pwalletMain->cs_wallet);
+        my_pubkey = pwalletMain->GenerateNewKey();
+    }
     CKey mykey;
     pwalletMain->GetKey(my_pubkey.GetID(), mykey);
     CKeyID mykeyID = my_pubkey.GetID();

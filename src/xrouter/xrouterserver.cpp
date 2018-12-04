@@ -225,7 +225,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
         } else if (parts[1] == "channel") {
             if (!paymentChannels.count(node)) {
                 // There is no payment channel with this node
-                if (parts.size() != 5) {
+                if (parts.size() != 6) {
                     throw XRouterError("Incorrect channel creation parameters", xrouter::INVALID_PARAMETERS);
                 }
                 
@@ -261,7 +261,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             }
         
             if (paymentChannels.count(node)) {
-                verifyChannelTransaction(feetx);
+                //verifyChannelTransaction(feetx);
                 CAmount paid = to_amount(getTxValue(feetx, getMyPaymentAddress()));
                 LOG() << "Got payment via channel; value = " << paid - paymentChannels[node].value << " total value = " << paid << " tx = " << feetx; 
                 if (paid - paymentChannels[node].value < fee_part1) {
@@ -301,7 +301,7 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
         }
 
         if (!verifyBlockRequirement(packet)) {
-            state.DoS(10, error("XRouter: block requirement not satisfied"), REJECT_INVALID, "xrouter-error");
+            //state.DoS(10, error("XRouter: block requirement not satisfied"), REJECT_INVALID, "xrouter-error");
             throw XRouterError("Block requirement not satisfied", xrouter::INSUFFICIENT_FUNDS);
         }
 
