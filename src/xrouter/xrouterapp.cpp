@@ -1208,7 +1208,7 @@ std::string App::getPaymentAddress(CNode* node)
     }
     
     if (debug_on_client())
-        return "yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt";
+        return "yBW61mwkjuqFK1rVfm2Az2s2WU5Vubrhhw";
     
     return "";
 }
@@ -1224,7 +1224,7 @@ CPubKey App::getPaymentPubkey(CNode* node)
     }
     
     if (debug_on_client()) {
-        std::string test = "0258c89fd899b3a8f08a11fe0de803a7e685127b3b770a10896f97d7371d4c75fa";
+        std::string test = "03872bfe748a5a3868c74c8f820ed1387a58d48c67a7c415c7b3fad1ca61803365";
         return CPubKey(ParseHex(test));
     }
     

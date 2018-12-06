@@ -123,7 +123,7 @@ WalletConnectorXRouterPtr XRouterServer::connectorByCurrency(const std::string &
 
 void XRouterServer::sendPacketToClient(std::string uuid, std::string reply, CNode* pnode)
 {
-    
+    LOG() << "Sending reply to query " << uuid << ": " << reply;
     XRouterPacketPtr rpacket(new XRouterPacket(xrReply));
     rpacket->append(uuid);
     rpacket->append(reply);
@@ -239,12 +239,12 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
 
                 int date = getChannelExpiryTime(paymentChannels[node].raw_tx);
                 
+                int deadline = date - std::time(0) - 5000;
+                LOG() << "Created payment channel date = " << date << " expiry = " << deadline << " ms"; 
+                
                 boost::shared_ptr<boost::mutex> m(new boost::mutex());
                 boost::shared_ptr<boost::condition_variable> cond(new boost::condition_variable());
                 paymentChannelLocks[node] = std::pair<boost::shared_ptr<boost::mutex>, boost::shared_ptr<boost::condition_variable> >(m, cond);
-                
-                int deadline = date - std::time(0) - 5000;
-                LOG() << "Created payment channel date = " << date << " expiry = " << deadline << " ms"; 
                 
                 boost::thread([deadline, this, node]() {
                     // No need to check the result of timed_wait(): if it's true then it means a function to close channel early was called, otherwise it means that the deadline is reached.
@@ -254,10 +254,17 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                     std::string txid;
                     LOG() << "Closing payment channel: " << this->paymentChannels[node].txid << " Value = " << this->paymentChannels[node].value;
                     
-                    sendTransactionBlockchain(this->paymentChannels[node].latest_tx, txid);
+                    try {
+                        bool res = sendTransactionBlockchain(this->paymentChannels[node].latest_tx, txid);
+                        if (!res)
+                            throw "";
+                    } catch (...) {
+                        LOG() << "Failed to submit finalizing transaction";
+                    }
                     this->paymentChannels.erase(node);
-                    this->paymentChannelLocks.erase(node);
                 }).detach();
+            } else {
+                feetx = parts[2];
             }
         
             if (paymentChannels.count(node)) {
@@ -267,9 +274,12 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                 if (paid - paymentChannels[node].value < fee_part1) {
                     throw XRouterError("Fee paid is not enough", xrouter::INSUFFICIENT_FEE);
                 }
-                
-                finalizeChannelTransaction(paymentChannels[node], this->getMyPaymentAddressKey(), feetx, paymentChannels[node].latest_tx);
-                paymentChannels[node].value = paid;
+                    
+                {
+                    boost::mutex::scoped_lock lock(*this->paymentChannelLocks[node].first);
+                    finalizeChannelTransaction(paymentChannels[node], this->getMyPaymentAddressKey(), feetx, paymentChannels[node].latest_tx);
+                    paymentChannels[node].value = paid;
+                }
             }
             
         } else {
@@ -295,6 +305,9 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
             
         }
         
+        uint32_t offset = 36;
+        uuid = std::string((const char *)packet->data()+offset);
+        
         if (packet->version() != static_cast<boost::uint32_t>(XROUTER_PROTOCOL_VERSION))
         {
             throw XRouterError("You are using a different version of XRouter protocol. This node runs version " + std::to_string(XROUTER_PROTOCOL_VERSION), xrouter::BAD_VERSION);
@@ -305,8 +318,6 @@ void XRouterServer::onMessageReceived(CNode* node, XRouterPacketPtr& packet, CVa
             throw XRouterError("Block requirement not satisfied", xrouter::INSUFFICIENT_FUNDS);
         }
 
-        uint32_t offset = 36;
-        uuid = std::string((const char *)packet->data()+offset);
         offset += uuid.size() + 1;
         std::string currency((const char *)packet->data()+offset);
         offset += currency.size() + 1;
@@ -865,11 +876,11 @@ std::string XRouterServer::getMyPaymentAddress()
     try {
         CServicenode* pmn = mnodeman.Find(activeServicenode.vin);
         if (!pmn)
-            return "yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt";
+            return "yBW61mwkjuqFK1rVfm2Az2s2WU5Vubrhhw";
         std::string result = CBitcoinAddress(pmn->pubKeyCollateralAddress.GetID()).ToString();
         return result;
     } catch (...) {
-        return "yKQyDJ2CJLaQfZKdi8yM7nQHZZqGXYNhUt";
+        return "yBW61mwkjuqFK1rVfm2Az2s2WU5Vubrhhw";
     }
 }
 
@@ -931,6 +942,7 @@ void XRouterServer::closePaymentChannel(std::string id) {
     }
     
     if (node) {
+        boost::mutex::scoped_lock lock(*this->paymentChannelLocks[node].first);
         this->paymentChannelLocks[node].second->notify_all();
     }
 }
