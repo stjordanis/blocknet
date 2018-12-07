@@ -777,7 +777,7 @@ std::string generateDomainRegistrationTx(std::string domain) {
     std::string domainstr = sstream.str();
     out.push_back(Pair("data", domainstr));
     Object out2;
-    out2.push_back(Pair("address", mykeyID.ToString()));
+    out2.push_back(Pair("address", CBitcoinAddress(mykeyID).ToString()));
     out2.push_back(Pair("amount", XROUTER_DOMAIN_REGISTRATION_DEPOSIT));
     outputs.push_back(out);
     outputs.push_back(out2);

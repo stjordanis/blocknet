@@ -9,6 +9,7 @@
 
 #include "xrouterapp.h"
 #include "xroutererror.h"
+#include "xrouterconnector.h"
 #include "uint256.h"
 using namespace json_spirit;
 
@@ -648,10 +649,7 @@ Value xrRegisterDomain(const Array & params, bool fHelp)
         throw std::runtime_error("xrRegisterDomain\nNot implemented yet");
     }
     
-    return "This function is not implemented yet";
-    //Object result;
-    //xrouter::App::instance().openConnections();
-    return "";
+    return form_reply(xrouter::generateDomainRegistrationTx(params[0].get_str()));
 }
 
 Value xrQueryDomain(const Array & params, bool fHelp)
