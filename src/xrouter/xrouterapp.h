@@ -339,6 +339,8 @@ public:
     
     bool debug_on_client();
     bool isDebug();
+    
+    std::string getMyPaymentAddress();
 };
 
 } // namespace xrouter

@@ -763,13 +763,9 @@ int getChannelExpiryTime(std::string rawtx)
     return -1;
 }
 
-std::string generateDomainRegistrationTx(std::string domain) {
-    CScript inner;
+std::string generateDomainRegistrationTx(std::string domain, std::string addr) {
     std::string raw_tx, txid;
 
-    CPubKey my_pubkey = pwalletMain->GenerateNewKey();
-    CKeyID mykeyID = my_pubkey.GetID();
-    
     Array outputs;
     Object out;
     std::stringstream sstream;
@@ -777,7 +773,7 @@ std::string generateDomainRegistrationTx(std::string domain) {
     std::string domainstr = sstream.str();
     out.push_back(Pair("data", domainstr));
     Object out2;
-    out2.push_back(Pair("address", CBitcoinAddress(mykeyID).ToString()));
+    out2.push_back(Pair("address", addr));
     out2.push_back(Pair("amount", XROUTER_DOMAIN_REGISTRATION_DEPOSIT));
     outputs.push_back(out);
     outputs.push_back(out2);

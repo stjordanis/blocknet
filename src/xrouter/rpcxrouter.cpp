@@ -649,7 +649,27 @@ Value xrRegisterDomain(const Array & params, bool fHelp)
         throw std::runtime_error("xrRegisterDomain\nNot implemented yet");
     }
     
-    return form_reply(xrouter::generateDomainRegistrationTx(params[0].get_str()));
+    if (params.size() < 1)
+    {
+        Object error;
+        error.emplace_back(Pair("error", "Domain name not specified"));
+        error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
+        error.emplace_back(Pair("uuid", ""));
+        return error;
+    }
+
+    std::string domain = params[0].get_str();
+    std::string addr;
+    if (params.size() < 2)
+    {
+        addr = xrouter::App::instance().getMyPaymentAddress();
+    }
+    else
+    {
+        addr = params[1].get_str();
+    }
+    
+    return form_reply(xrouter::generateDomainRegistrationTx(domain, addr));
 }
 
 Value xrQueryDomain(const Array & params, bool fHelp)
