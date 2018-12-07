@@ -1253,6 +1253,8 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             payment_tx = "";
             PaymentChannel channel;
             std::string addr = getPaymentAddress(pnode);
+            std::string deposit_pubkey_s = snodeConfigs[pnode->addr.ToString()].get<std::string>("depositpubkey", "");
+            CPubKey deposit_pubkey = CPubKey(ParseHex(deposit_pubkey_s));
             
             // Clear expired channel
             if (this->paymentChannels.count(addr)) {
@@ -1262,7 +1264,7 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             }
             
             if (!this->paymentChannels.count(addr)) {
-                channel = createPaymentChannel(getPaymentPubkey(pnode), deposit, channeldate);
+                channel = createPaymentChannel(deposit_pubkey, deposit, channeldate);
                 if (channel.txid == "")
                     throw std::runtime_error("Failed to create payment channel");
                 this->paymentChannels[addr] = channel;

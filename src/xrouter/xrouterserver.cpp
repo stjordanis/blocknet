@@ -886,12 +886,18 @@ std::string XRouterServer::getMyPaymentAddress()
 
 CKey XRouterServer::getMyPaymentAddressKey()
 {
-    CServicenode* pmn = mnodeman.Find(activeServicenode.vin);
     CKeyID keyid;
-    if (!pmn)
-        CBitcoinAddress(getMyPaymentAddress()).GetKeyID(keyid);
-    else 
-        keyid = pmn->pubKeyCollateralAddress.GetID();
+    App& app = App::instance();
+    std::string addr = app.xrouter_settings.get<std::string>("depositaddress", "");
+    if (addr == "") {
+        CServicenode* pmn = mnodeman.Find(activeServicenode.vin);
+        if (!pmn)
+            CBitcoinAddress(getMyPaymentAddress()).GetKeyID(keyid);
+        else 
+            keyid = pmn->pubKeyCollateralAddress.GetID();
+    } else {
+        CBitcoinAddress(addr).GetKeyID(keyid);
+    }
     
     CKey result;
     pwalletMain->GetKey(keyid, result);
