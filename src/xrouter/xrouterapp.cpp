@@ -305,7 +305,7 @@ bool App::stop()
 //*****************************************************************************
 //*****************************************************************************
 
-static bool verifyDomain(std::string tx, std::string domain, std::string addr)
+static bool verifyDomain(std::string tx, std::string domain, std::string addr, int& blockNumber)
 {
     uint256 txHash;
     txHash.SetHex(tx);
@@ -320,6 +320,8 @@ static bool verifyDomain(std::string tx, std::string domain, std::string addr)
     
     GetTransaction(txHash, txval, hashBlock, true);
     vout_list = txval.vout;
+    CBlockIndex* pblockindex = mapBlockIndex[hashBlock];
+    blockNumber = pblockindex->nHeight;
 
     bool has_domain = false;
     bool has_deposit = false;
@@ -338,7 +340,7 @@ static bool verifyDomain(std::string tx, std::string domain, std::string addr)
                 return false;
             
             has_domain = true;
-            LOG() << "Extracted domain: "  << extracted_domain << std::endl << std::flush;
+            LOG() << "Extracted domain: "  << extracted_domain;
         } else if (txOut.nValue == to_amount(XROUTER_DOMAIN_REGISTRATION_DEPOSIT)) {
             // This is the deposit txout, should be to service node payout address
             CTxDestination destination;
@@ -355,7 +357,7 @@ static bool verifyDomain(std::string tx, std::string domain, std::string addr)
             
             std::string extracted_addr = CBitcoinAddress(*keyid).ToString();
             
-            LOG() << "Extracted address: "  << extracted_addr << std::endl << std::flush;
+            LOG() << "Extracted address: "  << extracted_addr;
             if (extracted_addr != addr)
                 continue;
             
@@ -479,7 +481,7 @@ CNode* App::getNodeForService(std::string name)
 {
     std::vector<pair<int, CServicenode> > vServicenodeRanks = getServiceNodes();
     
-    // TODO: this is a temporary solution. We need it to open connections to snodes before XRouter calls in case they re not among peers
+    // TODO: this is a temporary solution. We need it to open connections to snodes before XRouter calls in case they are not among peers
     openConnections();
     updateConfigs();
 
@@ -490,50 +492,75 @@ CNode* App::getNodeForService(std::string name)
     else
         maxfee = -1;
     
+    CNode* res = NULL;
     if (name.find("/") != string::npos) {
         std::vector<std::string> parts;
         boost::split(parts, name, boost::is_any_of("/"));
         std::string domain = parts[0];
         std::string name_part = parts[1];
-        if (snodeDomains.count(domain)) {
+        if (snodeDomains.count(domain) == 0)
+            // Domain not found
+            return NULL;
+        
+        std::vector<CNode*> candidates;
+        for (CNode* pnode : vNodes) {
             XRouterSettings settings = snodeConfigs[snodeDomains[domain]];
             if (!settings.hasPlugin(name_part))
-                return NULL;
+                continue;
             
-            CNode* res = NULL;
-            for (CNode* pnode : vNodes) {
-                if (snodeDomains[domain] == pnode->addr.ToString()) {
-                    // This node is a running xrouter
-                    res = pnode;
-                    break;
+            if (snodeDomains[domain] == pnode->addr.ToString()) {
+                candidates.push_back(pnode);
+            }
+        }
+        
+        if (candidates.size() == 0)
+            return NULL;
+        else if (candidates.size() == 1)
+            res = candidates[0];
+        else {
+            // Perform verification check of domain names
+            int best_block = -1;
+            for (CNode* cand : candidates) {
+                std::string addr = getPaymentAddress(cand);
+                int block;
+                XRouterSettings settings = snodeConfigs[snodeDomains[domain]];
+                std::string tx = settings.get<std::string>("domain_tx", "");
+                if (tx == "")
+                    continue;
+                
+                if (!verifyDomain(tx, domain, addr, block))
+                    continue;
+                if ((best_block < 0) || (block < best_block)) {
+                    // TODO: what if both verification tx are in the same block?
+                    best_block = block;
+                    res = cand;
                 }
             }
             
             if (!res)
                 return NULL;
-            
-            std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
-            double timeout = settings.getPluginSettings(name).get<double>("timeout", -1.0);
-            if (lastPacketsSent.count(res)) {
-                if (lastPacketsSent[res].count(name)) {
-                    std::chrono::time_point<std::chrono::system_clock> prev_time = lastPacketsSent[res][name];
-                    std::chrono::system_clock::duration diff = time - prev_time;
-                    if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(timeout * 1000))) {
-                        return NULL;
-                    }
+        }
+        
+        XRouterSettings settings = snodeConfigs[snodeDomains[domain]];
+        std::chrono::time_point<std::chrono::system_clock> time = std::chrono::system_clock::now();
+        double timeout = settings.getPluginSettings(name).get<double>("timeout", -1.0);
+        if (lastPacketsSent.count(res)) {
+            if (lastPacketsSent[res].count(name)) {
+                std::chrono::time_point<std::chrono::system_clock> prev_time = lastPacketsSent[res][name];
+                std::chrono::system_clock::duration diff = time - prev_time;
+                if (std::chrono::duration_cast<std::chrono::milliseconds>(diff) < std::chrono::milliseconds((int)(timeout * 1000))) {
+                    return NULL;
                 }
             }
-            
-            if (maxfee >= 0) {
-                CAmount fee = to_amount(settings.getPluginSettings(name).getFee());
-                if (fee > maxfee)
-                    return NULL;
-            }
-            
-            return res;
-        } else {
-            return NULL;
         }
+        
+        if (maxfee >= 0) {
+            CAmount fee = to_amount(settings.getPluginSettings(name).getFee());
+            if (fee > maxfee)
+                return NULL;
+        }
+        
+        return res;
     }
     
     LOCK(cs_vNodes);
@@ -542,8 +569,7 @@ CNode* App::getNodeForService(std::string name)
         XRouterSettings settings = snodeConfigs[key];
         if (!settings.hasPlugin(name))
             continue;
-        
-        CNode* res = NULL;
+
         bool found = false;
         for (CNode* pnode : vNodes) {
             if (key == pnode->addr.ToString()) {
@@ -1489,7 +1515,8 @@ bool App::debug_on_client() {
 }
 
 bool App::isDebug() {
-    verifyDomain("98fa59764df5d2022994ca98e8ad3ca795681920bb7cad0af8df07ab48539ac6", "antihype", "yBW61mwkjuqFK1rVfm2Az2s2WU5Vubrhhw");
+    //int b;
+    //verifyDomain("98fa59764df5d2022994ca98e8ad3ca795681920bb7cad0af8df07ab48539ac6", "antihype", "yBW61mwkjuqFK1rVfm2Az2s2WU5Vubrhhw", b);
     return xrouter_settings.get<int>("Main.debug", 0) != 0;
 }
 
