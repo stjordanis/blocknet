@@ -26,6 +26,7 @@ struct PaymentChannel
     CAmount value;
     CAmount deposit;
     std::string latest_tx;
+    int deadline;
 };
     
 std::string CallCMD(std::string cmd);
@@ -49,6 +50,7 @@ bool finalizeChannelTransaction(PaymentChannel channel, CKey snodekey, std::stri
 std::string createRefundTransaction(PaymentChannel channel);
 double getTxValue(std::string rawtx, std::string address, std::string type="address");
 int getChannelExpiryTime(std::string rawtx);
+std::string generateDomainRegistrationTx(std::string domain);
 CAmount to_amount(double val);
 bool is_number(std::string s);
 bool is_hash(std::string s);

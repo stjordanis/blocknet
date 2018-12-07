@@ -1166,6 +1166,14 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             payment_tx = "";
             PaymentChannel channel;
             std::string addr = getPaymentAddress(pnode);
+            
+            // Clear expired channel
+            if (this->paymentChannels.count(addr)) {
+                if (std::time(0) >= this->paymentChannels[addr].deadline) {
+                    this->paymentChannels.erase(this->paymentChannels.find(addr));
+                }
+            }
+            
             if (!this->paymentChannels.count(addr)) {
                 channel = createPaymentChannel(getPaymentPubkey(pnode), deposit, channeldate);
                 if (channel.txid == "")
@@ -1241,6 +1249,7 @@ std::string App::printPaymentChannels() {
         val.emplace_back("Deposit transaction id", it.second.txid);
         val.emplace_back("Redeem transaction", it.second.latest_tx);
         val.emplace_back("Paid amount", it.second.value);
+        val.emplace_back("Expires in (ms):", it.second.deadline - std::time(0));
         client.push_back(Value(val));
     }
     
@@ -1355,6 +1364,7 @@ void App::savePaymentChannels() {
         val.emplace_back("latest_tx", it.second.latest_tx);
         val.emplace_back("value", it.second.value);
         val.emplace_back("deposit", it.second.deposit);
+        val.emplace_back("deadline", it.second.deadline);
         val.emplace_back("keyid", it.second.keyid.ToString());
         val.emplace_back("redeemScript", HexStr(it.second.redeemScript.begin(), it.second.redeemScript.end()) );
         client.push_back(Value(val));
@@ -1395,6 +1405,7 @@ void App::loadPaymentChannels() {
             c.latest_tx = find_value(channel, "latest_tx").get_str();
             c.value = to_amount(find_value(channel, "value").get_int());
             c.deposit = to_amount(find_value(channel, "deposit").get_int());
+            c.deadline = find_value(channel, "deadline").get_int();
             std::vector<unsigned char> script = ParseHex(find_value(channel, "redeemScript").get_str());
             c.redeemScript = CScript(script.begin(), script.end());
             CBitcoinAddress addr = CBitcoinAddress(find_value(channel, "keyid").get_str());

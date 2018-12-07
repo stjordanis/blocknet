@@ -239,8 +239,8 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
 
                 int date = getChannelExpiryTime(paymentChannels[node].raw_tx);
                 
-                int deadline = date - std::time(0) - 5000;
-                LOG() << "Created payment channel date = " << date << " expiry = " << deadline << " ms"; 
+                int deadline = date - std::time(0) - 5;
+                LOG() << "Created payment channel date = " << date << " expiry = " << deadline << " seconds"; 
                 
                 boost::shared_ptr<boost::mutex> m(new boost::mutex());
                 boost::shared_ptr<boost::condition_variable> cond(new boost::condition_variable());
@@ -249,7 +249,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
                 boost::thread([deadline, this, node]() {
                     // No need to check the result of timed_wait(): if it's true then it means a function to close channel early was called, otherwise it means that the deadline is reached.
                     boost::mutex::scoped_lock lock(*this->paymentChannelLocks[node].first);
-                    this->paymentChannelLocks[node].second->timed_wait(lock, boost::posix_time::milliseconds(deadline));
+                    this->paymentChannelLocks[node].second->timed_wait(lock, boost::posix_time::seconds(deadline));
                     
                     std::string txid;
                     LOG() << "Closing payment channel: " << this->paymentChannels[node].txid << " Value = " << this->paymentChannels[node].value;

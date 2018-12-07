@@ -570,6 +570,7 @@ PaymentChannel createPaymentChannel(CPubKey address, CAmount deposit, int date)
     channel.vout = voutn;
     channel.redeemScript = inner;
     channel.deposit = deposit;
+    channel.deadline = locktime;
     
     return channel;
 }
@@ -600,7 +601,7 @@ bool createAndSignChannelTransaction(PaymentChannel channel, std::string address
     signature.push_back((unsigned char)SIGHASH_ALL);
     CScript sigscript;
     sigscript << signature;
-    
+
     CMutableTransaction signed_tx;
     signed_tx.vout = unsigned_tx.vout;
     signed_tx.vin.push_back(CTxIn(outp, sigscript));
@@ -646,9 +647,9 @@ bool finalizeChannelTransaction(PaymentChannel channel, CKey snodekey, std::stri
     signature.push_back((unsigned char)SIGHASH_ALL);
 
     CScript finalScript;
-    // TODO: fix this dirty hack
+    // TODO: script is removed and pushed again because the first byte (size) must be written inside the << operator implementations
     finalScript << vector<unsigned char>(tx.vin[0].scriptSig.begin()+1, tx.vin[0].scriptSig.end());
-    finalScript << signature << OP_TRUE << std::vector<unsigned char>(channel.redeemScript);
+    finalScript << signature << OP_1 << std::vector<unsigned char>(channel.redeemScript);
     tx.vin[0].scriptSig = finalScript;
     //tx.vin[0].scriptSig << signature << OP_TRUE << std::vector<unsigned char>(channel.redeemScript);
     raw_tx = EncodeHexTx(tx);
