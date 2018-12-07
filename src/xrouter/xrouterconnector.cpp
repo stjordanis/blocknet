@@ -768,10 +768,9 @@ std::string generateDomainRegistrationTx(std::string domain, std::string addr) {
 
     Array outputs;
     Object out;
-    std::stringstream sstream;
-    sstream << "blocknet://" + domain;
-    std::string domainstr = sstream.str();
-    out.push_back(Pair("data", domainstr));
+    std::string domainstr = "blocknet://" + domain;
+    vector<unsigned char> domain_enc(domainstr.begin(), domainstr.end());
+    out.push_back(Pair("data", HexStr(domain_enc)));
     Object out2;
     out2.push_back(Pair("address", addr));
     out2.push_back(Pair("amount", XROUTER_DOMAIN_REGISTRATION_DEPOSIT));

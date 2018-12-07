@@ -305,6 +305,67 @@ bool App::stop()
 //*****************************************************************************
 //*****************************************************************************
 
+static bool verifyDomain(std::string tx, std::string domain, std::string addr)
+{
+    uint256 txHash;
+    txHash.SetHex(tx);
+    CTransaction txval;
+    uint256 hashBlock;
+    CCoins coins;
+    std::vector<CTxOut> vout_list;
+    if (!pcoinsTip->GetCoins(txHash, coins)) {
+        LOG() << "Output spent for tx: " << tx;
+        return false;
+    }
+    
+    GetTransaction(txHash, txval, hashBlock, true);
+    vout_list = txval.vout;
+
+    bool has_domain = false;
+    bool has_deposit = false;
+    for (CTxOut txOut : vout_list) {
+        std::string script = HexStr(txOut.scriptPubKey);
+
+        // TODO 6a == OP_RETURN, maybe a more careful check is needed here?
+        if (txOut.nValue == 0) {
+            // This is the txout that stores the domain name
+            if (script.substr(0, 2) != "6a") {
+                return false;
+            }
+            vector<unsigned char> data = ParseHex(script.substr(4));
+            std::string extracted_domain = std::string(data.begin(), data.end());
+            if ("blocknet://" + domain != extracted_domain)
+                return false;
+            
+            has_domain = true;
+            LOG() << "Extracted domain: "  << extracted_domain << std::endl << std::flush;
+        } else if (txOut.nValue == to_amount(XROUTER_DOMAIN_REGISTRATION_DEPOSIT)) {
+            // This is the deposit txout, should be to service node payout address
+            CTxDestination destination;
+            if (!ExtractDestination(txOut.scriptPubKey, destination)) {
+                LOG() << "Unable to extract destination";
+                continue;
+            }
+            
+            auto keyid = boost::get<CKeyID>(&destination);
+            if (!keyid) {
+                LOG() << "Destination must be a single address";
+                continue;
+            }
+            
+            std::string extracted_addr = CBitcoinAddress(*keyid).ToString();
+            
+            LOG() << "Extracted address: "  << extracted_addr << std::endl << std::flush;
+            if (extracted_addr != addr)
+                continue;
+            
+            has_deposit = true;
+        }
+    }
+    
+    return has_domain && has_deposit;
+}
+
 std::vector<CNode*> App::getAvailableNodes(enum XRouterCommand command, std::string wallet, int confirmations)
 {
     // Send only to the service nodes that have the required wallet
@@ -1428,7 +1489,12 @@ bool App::debug_on_client() {
 }
 
 bool App::isDebug() {
+    verifyDomain("98fa59764df5d2022994ca98e8ad3ca795681920bb7cad0af8df07ab48539ac6", "antihype", "yBW61mwkjuqFK1rVfm2Az2s2WU5Vubrhhw");
     return xrouter_settings.get<int>("Main.debug", 0) != 0;
+}
+
+std::string App::getMyPaymentAddress() {
+    return server->getMyPaymentAddress();
 }
 
 } // namespace xrouter
