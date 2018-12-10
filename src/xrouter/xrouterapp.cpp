@@ -1238,10 +1238,11 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
     std::string dest = getPaymentAddress(pnode);
     CAmount deposit = to_amount(xrouter_settings.get<double>("Main.deposit", 0.0));
     int channeldate = xrouter_settings.get<int>("Main.channeldate", 100000);
+    std::string deposit_pubkey_s = snodeConfigs[pnode->addr.ToString()].get<std::string>("depositpubkey", "");
     std::string payment_tx = "nofee";
     bool res;
     if (fee > 0) {
-        if (deposit == 0) {
+        if ((deposit == 0) || (deposit_pubkey_s == "")) {
             res = createAndSignTransaction(dest, fee, payment_tx);
             payment_tx = "single;" + payment_tx;
             if(!res) {
@@ -1253,7 +1254,6 @@ std::string App::generatePayment(CNode* pnode, CAmount fee)
             payment_tx = "";
             PaymentChannel channel;
             std::string addr = getPaymentAddress(pnode);
-            std::string deposit_pubkey_s = snodeConfigs[pnode->addr.ToString()].get<std::string>("depositpubkey", "");
             CPubKey deposit_pubkey = CPubKey(ParseHex(deposit_pubkey_s));
             
             // Clear expired channel
