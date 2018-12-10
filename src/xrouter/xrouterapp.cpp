@@ -1526,4 +1526,28 @@ std::string App::getMyPaymentAddress() {
     return server->getMyPaymentAddress();
 }
 
+bool App::queryDomain(std::string domain) {
+
+    if (snodeDomains.count(domain) == 0)
+        return false;
+    
+    for (CNode* pnode : vNodes) {
+        XRouterSettings settings = snodeConfigs[snodeDomains[domain]];
+        
+        if (snodeDomains[domain] != pnode->addr.ToString())
+            continue;
+        
+        std::string addr = getPaymentAddress(pnode);
+        int block;
+        std::string tx = settings.get<std::string>("domain_tx", "");
+        if (tx == "")
+            continue;
+        
+        if (verifyDomain(tx, domain, addr, block))
+            return true;
+    }
+    
+    return false;
+}
+
 } // namespace xrouter

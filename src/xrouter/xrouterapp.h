@@ -341,6 +341,8 @@ public:
     bool isDebug();
     
     std::string getMyPaymentAddress();
+    
+    bool queryDomain(std::string domain);
 };
 
 } // namespace xrouter

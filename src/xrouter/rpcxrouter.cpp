@@ -678,10 +678,18 @@ Value xrQueryDomain(const Array & params, bool fHelp)
         throw std::runtime_error("xrQueryDomain\nNot implemented yet");
     }
     
-    return "This function is not implemented yet";
-    //Object result;
-    //xrouter::App::instance().openConnections();
-    return "";
+    if (params.size() < 1)
+    {
+        Object error;
+        error.emplace_back(Pair("error", "Domain name not specified"));
+        error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
+        error.emplace_back(Pair("uuid", ""));
+        return error;
+    }
+
+    std::string domain = params[0].get_str();
+    bool res = xrouter::App::instance().queryDomain(domain);
+    return form_reply(res ? "true" : "false");
 }
 
 Value xrPaymentChannels(const Array & params, bool fHelp)
