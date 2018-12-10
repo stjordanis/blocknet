@@ -524,7 +524,7 @@ CNode* App::getNodeForService(std::string name)
                 std::string addr = getPaymentAddress(cand);
                 int block;
                 XRouterSettings settings = snodeConfigs[snodeDomains[domain]];
-                std::string tx = settings.get<std::string>("domain_tx", "");
+                std::string tx = settings.get<std::string>("Main.domain_tx", "");
                 if (tx == "")
                     continue;
                 
@@ -674,7 +674,7 @@ bool App::processConfigReply(XRouterPacketPtr packet)
     
     XRouterSettings settings;
     settings.read(config);
-    
+
     for (Object::size_type i = 0; i != plugins.size(); i++ ) {
         XRouterPluginSettings psettings;
         psettings.read(std::string(plugins[i].value_.get_str()));
@@ -686,8 +686,8 @@ bool App::processConfigReply(XRouterPacketPtr packet)
         
         // Add IP and possibly domain name to table of domains
         snodeDomains[configQueries[uuid]->addr.ToString()] = configQueries[uuid]->addr.ToString();
-        if (settings.get<std::string>("domain", "") != "") {
-            snodeDomains[settings.get<std::string>("domain")] = configQueries[uuid]->addr.ToString();
+        if (settings.get<std::string>("Main.domain", "") != "") {
+            snodeDomains[settings.get<std::string>("Main.domain")] = configQueries[uuid]->addr.ToString();
         }
         return true;
     } else {
@@ -696,8 +696,8 @@ bool App::processConfigReply(XRouterPacketPtr packet)
         std::string addr = find_value(reply_obj, "addr").get_str();
         snodeConfigs[addr] = settings;
         snodeDomains[addr] = addr;
-        if (settings.get<std::string>("domain", "") != "") {
-            snodeDomains[settings.get<std::string>("domain")] = addr;
+        if (settings.get<std::string>("Main.domain", "") != "") {
+            snodeDomains[settings.get<std::string>("Main.domain")] = addr;
         }
         return true;
     }
@@ -1527,7 +1527,6 @@ std::string App::getMyPaymentAddress() {
 }
 
 bool App::queryDomain(std::string domain) {
-
     if (snodeDomains.count(domain) == 0)
         return false;
     
@@ -1539,7 +1538,7 @@ bool App::queryDomain(std::string domain) {
         
         std::string addr = getPaymentAddress(pnode);
         int block;
-        std::string tx = settings.get<std::string>("domain_tx", "");
+        std::string tx = settings.get<std::string>("Main.domain_tx", "");
         if (tx == "")
             continue;
         
