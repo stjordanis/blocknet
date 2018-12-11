@@ -692,6 +692,10 @@ Value xrQueryDomain(const Array & params, bool fHelp)
     return form_reply(res ? "true" : "false");
 }
 
+Value xrCreateDepositAddress(const Array& params, bool fHelp)
+{
+}
+
 Value xrPaymentChannels(const Array & params, bool fHelp)
 {
     if (fHelp) {
