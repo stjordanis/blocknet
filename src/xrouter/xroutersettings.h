@@ -67,7 +67,7 @@ public:
         }
         catch (std::exception & e)
         {
-            LOG() << e.what();
+            //LOG() << e.what();
             return false;
         }
         return true;

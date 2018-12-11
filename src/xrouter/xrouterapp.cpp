@@ -1528,6 +1528,11 @@ std::string App::createDepositAddress(bool update) {
     Object result;
     result.emplace_back(Pair("depositpubkey", HexStr(my_pubkey)));
     result.emplace_back(Pair("depositaddress", addr.ToString()));
+    if (update) {
+        this->xrouter_settings.set("Main.depositaddress", addr.ToString());
+        this->xrouter_settings.set("Main.depositpubkey", HexStr(my_pubkey));
+        this->xrouter_settings.write();
+    }
     return json_spirit::write_string(Value(result), true);
 }
 
