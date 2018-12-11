@@ -24,6 +24,7 @@ public:
     IniConfig() {}
     bool read(const char * fileName = 0);
     bool read(std::string config);
+    bool write(const char * fileName = 0);
     
     std::string rawText() const { return rawtext; }
     
@@ -48,6 +49,28 @@ public:
         }
 
         return tmp;
+    }
+    
+    template <class _T>
+    _T set(const std::string & param, _T def = _T())
+    {
+        return set<_T>(param.c_str(), def);
+    }
+    
+    template <class _T>
+    bool set(const char * param, const _T & val)
+    {
+        try
+        {
+            m_pt.put<_T>(param, val);
+            write();
+        }
+        catch (std::exception & e)
+        {
+            LOG() << e.what();
+            return false;
+        }
+        return true;
     }
     
 protected:

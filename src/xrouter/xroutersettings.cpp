@@ -70,6 +70,35 @@ bool IniConfig::read(std::string config)
     return true;
 }
 
+bool IniConfig::write(const char * fileName)
+{
+    std::string fname = m_fileName;
+    try
+    {
+        if (fileName)
+        {
+            fname = std::string(fileName);
+        }
+
+        if (fname.empty())
+        {
+            return false;
+        }
+
+        boost::property_tree::ini_parser::write_ini(fname, m_pt);
+        std::ostringstream oss;
+        boost::property_tree::ini_parser::write_ini(oss, m_pt);
+        this->rawtext = oss.str();
+    }
+    catch (std::exception & e)
+    {
+        LOG() << e.what();
+        return false;
+    }
+
+    return true;
+}
+
 //******************************************************************************
 //******************************************************************************
 void XRouterSettings::loadPlugins()
