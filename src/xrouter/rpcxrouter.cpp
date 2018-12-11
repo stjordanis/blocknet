@@ -694,6 +694,35 @@ Value xrQueryDomain(const Array & params, bool fHelp)
 
 Value xrCreateDepositAddress(const Array& params, bool fHelp)
 {
+    if (fHelp) {
+        throw std::runtime_error("xrCreateDepositAddres\nNot implemented yet");
+    }
+    
+    bool update = false;
+    if (params.size() > 1)
+    {
+        Object error;
+        error.emplace_back(Pair("error", "Too many parameters"));
+        error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
+        error.emplace_back(Pair("uuid", ""));
+        return error;
+    }
+    
+    if (params.size() == 1)
+        if (params[0].get_str() == "false")
+            update = false;
+        else if (params[0].get_str() == "true")
+            update = true;
+        else {
+            Object error;
+            error.emplace_back(Pair("error", "Invalid parameter: must be true or false"));
+            error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
+            error.emplace_back(Pair("uuid", ""));
+            return error;
+        }
+
+    std::string res = xrouter::App::instance().createDepositAddress(update);
+    return form_reply(res);
 }
 
 Value xrPaymentChannels(const Array & params, bool fHelp)

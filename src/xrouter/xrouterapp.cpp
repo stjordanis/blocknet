@@ -1508,6 +1508,29 @@ void App::loadPaymentChannels() {
     }
 }
 
+std::string App::createDepositAddress(bool update) {
+    CPubKey my_pubkey; 
+    {
+        LOCK(pwalletMain->cs_wallet);
+        my_pubkey = pwalletMain->GenerateNewKey();
+    }
+    
+    if (!my_pubkey.IsValid()) {
+        Object error;
+        error.emplace_back(Pair("error", "Could not generate deposit address. Make sure that your wallet is unlocked."));
+        error.emplace_back(Pair("code", xrouter::INSUFFICIENT_FUNDS));
+        error.emplace_back(Pair("uuid", ""));
+        return json_spirit::write_string(Value(error), true);
+    }
+    
+    CKeyID mykeyID = my_pubkey.GetID();
+    CBitcoinAddress addr(mykeyID);
+    Object result;
+    result.emplace_back(Pair("depositpubkey", HexStr(my_pubkey)));
+    result.emplace_back(Pair("depositaddress", addr.ToString()));
+    return json_spirit::write_string(Value(result), true);
+}
+
 void App::runTests() {
     server->runPerformanceTests();
 }

@@ -343,6 +343,7 @@ public:
     std::string getMyPaymentAddress();
     
     bool queryDomain(std::string domain);
+    std::string createDepositAddress(bool update=false);
 };
 
 } // namespace xrouter
