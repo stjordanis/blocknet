@@ -1554,7 +1554,7 @@ std::string App::getMyPaymentAddress() {
     return server->getMyPaymentAddress();
 }
 
-std::string App::registerDomain(std::string domain, std::string addr, bool update=false) {
+std::string App::registerDomain(std::string domain, std::string addr, bool update) {
     std::string result = generateDomainRegistrationTx(domain, addr);
     
     if (update) {
