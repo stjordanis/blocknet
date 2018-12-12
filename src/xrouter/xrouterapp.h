@@ -342,6 +342,7 @@ public:
     
     std::string getMyPaymentAddress();
     
+    std::string registerDomain(std::string domain, std::string addr, bool update=false);
     bool queryDomain(std::string domain);
     std::string createDepositAddress(bool update=false);
 };

@@ -1554,6 +1554,19 @@ std::string App::getMyPaymentAddress() {
     return server->getMyPaymentAddress();
 }
 
+std::string App::registerDomain(std::string domain, std::string addr, bool update=false) {
+    std::string result = generateDomainRegistrationTx(domain, addr);
+    
+    if (update) {
+        this->xrouter_settings.set("Main.domain", domain);
+        this->xrouter_settings.set("Main.domain_tx", result);
+        this->xrouter_settings.write();
+    }
+    
+    return result;
+}
+    
+
 bool App::queryDomain(std::string domain) {
     if (snodeDomains.count(domain) == 0)
         return false;

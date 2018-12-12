@@ -658,18 +658,41 @@ Value xrRegisterDomain(const Array & params, bool fHelp)
         return error;
     }
 
+    bool update = false;
+    if (params.size() > 3)
+    {
+        Object error;
+        error.emplace_back(Pair("error", "Too many parameters"));
+        error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
+        error.emplace_back(Pair("uuid", ""));
+        return error;
+    }
+    
+    if (params.size() >= 2)
+        if (params[1].get_str() == "false")
+            update = false;
+        else if (params[1].get_str() == "true")
+            update = true;
+        else {
+            Object error;
+            error.emplace_back(Pair("error", "Invalid parameter: must be true or false"));
+            error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
+            error.emplace_back(Pair("uuid", ""));
+            return error;
+        }
+    
     std::string domain = params[0].get_str();
     std::string addr;
-    if (params.size() < 2)
+    if (params.size() <= 2)
     {
         addr = xrouter::App::instance().getMyPaymentAddress();
     }
     else
     {
-        addr = params[1].get_str();
+        addr = params[2].get_str();
     }
     
-    return form_reply(xrouter::generateDomainRegistrationTx(domain, addr));
+    return form_reply(xrouter::App::instance().registerDomain(domain, addr, update));
 }
 
 Value xrQueryDomain(const Array & params, bool fHelp)
