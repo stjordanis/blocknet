@@ -646,7 +646,7 @@ Value xrTimeToBlockNumber(const Array & params, bool fHelp)
 Value xrRegisterDomain(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrRegisterDomain\nNot implemented yet");
+        throw std::runtime_error("xrRegisterDomain domain [true/false] [addr]\nCreate the transactions described above needed to register the domain name. If the second parameter is true, your xrouter.conf is updated automatically. The third parameter is the destination address of hte transaction, leave this parameter blank if you want to use your service node collateral address");
     }
     
     if (params.size() < 1)
@@ -698,7 +698,7 @@ Value xrRegisterDomain(const Array & params, bool fHelp)
 Value xrQueryDomain(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrQueryDomain\nNot implemented yet");
+        throw std::runtime_error("xrQueryDomain domain\nCheck if the domain name is registered and return true if it is found");
     }
     
     if (params.size() < 1)
@@ -718,7 +718,7 @@ Value xrQueryDomain(const Array & params, bool fHelp)
 Value xrCreateDepositAddress(const Array& params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrCreateDepositAddres\nNot implemented yet");
+        throw std::runtime_error("xrCreateDepositAddress [<true/false>]\nSetup deposit pubkey and address on service node. If the first parameters is 'true', xrouter.conf will be updated automatically. ");
     }
     
     bool update = false;
@@ -751,7 +751,7 @@ Value xrCreateDepositAddress(const Array& params, bool fHelp)
 Value xrPaymentChannels(const Array & params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrPaymentChannels\nNot implemented yet");
+        throw std::runtime_error("xrPaymentChannels\nPrint info about currently open payment channels");
     }
     
     return xrouter::App::instance().printPaymentChannels();
@@ -760,7 +760,7 @@ Value xrPaymentChannels(const Array & params, bool fHelp)
 Value xrClosePaymentChannel(const Array& params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrClosePaymentChannel\nNot implemented yet");
+        throw std::runtime_error("xrClosePaymentChannel id\nClose payment channel with the given id");
     }
     
     if (params.size() < 1)
@@ -780,7 +780,7 @@ Value xrClosePaymentChannel(const Array& params, bool fHelp)
 Value xrCloseAllPaymentChannels(const Array& params, bool fHelp)
 {
     if (fHelp) {
-        throw std::runtime_error("xrClosePaymentChannel\nNot implemented yet");
+        throw std::runtime_error("xrClosePaymentChannel\nClose all payment channels");
     }
     
     xrouter::App::instance().closeAllPaymentChannels();
