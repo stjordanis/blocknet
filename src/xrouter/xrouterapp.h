@@ -329,21 +329,68 @@ public:
      */
     void onMessageReceived(CNode* node, const std::vector<unsigned char> & message, CValidationState & state);
     
+    /**
+     * @brief close the payment channel with the given id
+     * @param id channel id
+     */
     void closePaymentChannel(std::string id);
+    
+    /**
+     * @brief close all payment channels
+     */
     void closeAllPaymentChannels();
     
+    /**
+     * @brief save payment channels info to paymentchannels.json
+     */
     void savePaymentChannels();
+    
+    /**
+     * @brief load payment channels from paymentchannels.json
+     */
     void loadPaymentChannels();
     
+    /**
+     * @brief run performance tests (xrTest)
+     */
     void runTests();
     
+    /**
+     * @brief returns true if [Main]debug_on_client=1 is set
+     */
     bool debug_on_client();
+    
+    /**
+     * @brief returns true if [Main]debug=1 is set
+     */
     bool isDebug();
     
+    /**
+     * @brief returns service node collateral address
+     */
     std::string getMyPaymentAddress();
     
+    /**
+     * @brief register domain to given colalteral address
+     * @param domain domain name
+     * @param addr collateral address
+     * @param update if true, write result to xrouter.conf
+     * @return txid of the registered tx
+     */
     std::string registerDomain(std::string domain, std::string addr, bool update=false);
+    
+    /**
+     * @brief check if the given domain is registered
+     * @param domain domain name
+     * @return true if domain is registered
+     */
     bool queryDomain(std::string domain);
+    
+    /**
+     * @brief create deposit pubkey and address on service node
+     * @param update if true, write result to xrouter.conf
+     * @return deposit pubkey and address
+     */
     std::string createDepositAddress(bool update=false);
 };
 
