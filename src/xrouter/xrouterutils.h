@@ -57,6 +57,7 @@ void unlockOutputs(std::string tx);
 std::string signTransaction(std::string& raw_tx);
 bool sendTransactionBlockchain(std::string raw_tx, std::string & txid);
 bool sendTransactionBlockchain(std::string address, CAmount amount, std::string & raw_tx);
+CMutableTransaction decodeTransaction(std::string tx);
 PaymentChannel createPaymentChannel(CPubKey address, CAmount deposit, int date);
 bool createAndSignChannelTransaction(PaymentChannel channel, std::string address, CAmount deposit, CAmount amount, std::string & raw_tx);
 bool verifyChannelTransaction(std::string transaction);
