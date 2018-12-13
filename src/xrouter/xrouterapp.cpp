@@ -1568,6 +1568,9 @@ std::string App::registerDomain(std::string domain, std::string addr, bool updat
     
 
 bool App::queryDomain(std::string domain) {
+    openConnections();
+    updateConfigs();
+    
     if (snodeDomains.count(domain) == 0)
         return false;
     
