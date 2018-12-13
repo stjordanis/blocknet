@@ -4,6 +4,7 @@
 #ifndef XROUTERAPP_H
 #define XROUTERAPP_H
 
+#include "xrouterutils.h"
 #include "xrouterpacket.h"
 #include "xroutersettings.h"
 #include "validationstate.h"

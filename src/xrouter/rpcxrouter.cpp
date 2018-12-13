@@ -9,21 +9,9 @@
 
 #include "xrouterapp.h"
 #include "xroutererror.h"
-#include "xrouterconnector.h"
+#include "xrouterutils.h"
 #include "uint256.h"
 using namespace json_spirit;
-
-class UnknownChainAddress : public CBitcoinAddress {
-public:
-    UnknownChainAddress(std::string s) : CBitcoinAddress(s) { }
-    bool IsValid() const { return vchData.size() == 20; }
-    bool GetKeyID(CKeyID& keyID) const {
-        uint160 id;
-        memcpy(&id, &vchData[0], 20);
-        keyID = CKeyID(id);
-        return true;
-    }
-};
 
 static Object form_reply(std::string reply)
 {
@@ -436,7 +424,7 @@ Value xrGenerateBloomFilter(const Array & params, bool fHelp)
     Array invalid;
     for (unsigned int i = 0; i < params.size(); i++) {
         std::string addr_string = params[i].get_str();
-        UnknownChainAddress address(addr_string);
+        xrouter::UnknownChainAddress address(addr_string);
         if (!address.IsValid()) {
             // This is a hash
             data = ParseHex(addr_string);
@@ -668,18 +656,19 @@ Value xrRegisterDomain(const Array & params, bool fHelp)
         return error;
     }
     
-    if (params.size() >= 2)
-        if (params[1].get_str() == "false")
+    if (params.size() >= 2) {
+        if (params[1].get_str() == "false") {
             update = false;
-        else if (params[1].get_str() == "true")
+        } else if (params[1].get_str() == "true") {
             update = true;
-        else {
+        } else {
             Object error;
             error.emplace_back(Pair("error", "Invalid parameter: must be true or false"));
             error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
             error.emplace_back(Pair("uuid", ""));
             return error;
         }
+    }
     
     std::string domain = params[0].get_str();
     std::string addr;
@@ -731,18 +720,19 @@ Value xrCreateDepositAddress(const Array& params, bool fHelp)
         return error;
     }
     
-    if (params.size() == 1)
-        if (params[0].get_str() == "false")
+    if (params.size() == 1) {
+        if (params[0].get_str() == "false") {
             update = false;
-        else if (params[0].get_str() == "true")
+        } else if (params[0].get_str() == "true") {
             update = true;
-        else {
+        } else {
             Object error;
             error.emplace_back(Pair("error", "Invalid parameter: must be true or false"));
             error.emplace_back(Pair("code", xrouter::INVALID_PARAMETERS));
             error.emplace_back(Pair("uuid", ""));
             return error;
         }
+    }
 
     std::string res = xrouter::App::instance().createDepositAddress(update);
     return form_reply(res);

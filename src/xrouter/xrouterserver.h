@@ -9,6 +9,7 @@
 #include "xrouterconnectorbtc.h"
 #include "xrouterconnectoreth.h"
 #include "xrouterdef.h"
+#include "xrouterutils.h"
 #include <chrono>
 #include <boost/container/map.hpp>
 

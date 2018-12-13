@@ -410,6 +410,7 @@ libxrouter_xrouter_a_SOURCES = \
   xrouter/xrouterlogger.cpp \
   xrouter/xroutersettings.h \
   xrouter/xroutersettings.cpp \
+  xrouter/xrouterutils.h \
   $(BITCOIN_CORE_H)
 
 

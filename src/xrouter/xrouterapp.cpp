@@ -18,9 +18,7 @@
 #include "xbridge/bitcoinrpcconnector.h"
 #include "xrouterlogger.h"
 
-#include "xrouterconnector.h"
-#include "xrouterconnectorbtc.h"
-#include "xrouterconnectoreth.h"
+#include "xrouterutils.h"
 #include "xroutererror.h"
 
 #include "json/json_spirit_reader_template.h"
