@@ -167,7 +167,7 @@ void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
             if (!paymentChannels.count(node)) {
                 // There is no payment channel with this node
                 if (parts.size() != 6) {
-                    throw XRouterError("Incorrect channel creation parameters", xrouter::INVALID_PARAMETERS);
+                    throw XRouterError("Incorrect channel creation parameters or expired channel", xrouter::EXPIRED_PAYMENT_CHANNEL);
                 }
                 
                 paymentChannels[node] = PaymentChannel();
