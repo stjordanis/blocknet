@@ -169,8 +169,13 @@ void App::openConnections(std::string wallet, std::string plugin)
             CAddress addr;
             CNode* res = ConnectNode(addr, s.second.addr.ToString().c_str());
             LOG() << "Trying to connect to " << CBitcoinAddress(s.second.pubKeyCollateralAddress.GetID()).ToString() << "; result=" << ((res == NULL) ? "fail" : "success");
-            if (res)
+            if (res) {
                 this->getXrouterConfig(res);
+                XRouterPeer peer;
+                peer.node = res;
+                peer.serviceNode = s.second;
+                this->peers[res->addr.ToString()] = peer;
+            }
         }
     }
 

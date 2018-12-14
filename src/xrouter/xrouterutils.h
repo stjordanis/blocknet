@@ -29,6 +29,8 @@ struct PaymentChannel
     CAmount deposit;
     std::string latest_tx;
     int deadline;
+    bool isNull() { return deposit == 0; }
+    void setNull() { deposit = 0; }
 };
 
 class UnknownChainAddress : public CBitcoinAddress {
