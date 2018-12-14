@@ -7,9 +7,9 @@
 #include <string>
 #include <cstdint>
 #include "json/json_spirit.h"
-#include "xbridge/xbridgewallet.h"
 #include "streams.h"
 #include "wallet.h"
+#include "xrouterpacket.h"
 #include <boost/container/map.hpp>
 
 using namespace json_spirit;
@@ -70,6 +70,11 @@ CAmount to_amount(double val);
 bool is_number(std::string s);
 bool is_hash(std::string s);
 bool is_address(std::string s);
+
+// Signing & Verification of packets
+bool satisfyBlockRequirement(uint256& txHash, uint32_t& vout, CKey& key);
+bool verifyBlockRequirement(const XRouterPacketPtr& packet);
+
 } // namespace
 
 #endif // XROUTERUTILS_H

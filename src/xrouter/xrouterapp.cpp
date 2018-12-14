@@ -767,34 +767,6 @@ void App::onMessageReceived(CNode* node, const std::vector<unsigned char>& messa
 
 //*****************************************************************************
 //*****************************************************************************
-static bool satisfyBlockRequirement(uint256& txHash, uint32_t& vout, CKey& key)
-{
-    if (!pwalletMain) {
-        return false;
-    }
-    for (auto& addressCoins : pwalletMain->AvailableCoinsByAddress()) {
-        for (auto& output : addressCoins.second) {
-            if (output.Value() >= to_amount(MIN_BLOCK)) {
-                CKeyID keyID;
-                if (!addressCoins.first.GetKeyID(keyID)) {
-                    //std::cerr << "GetKeyID failed\n";
-                    continue;
-                }
-                if (!pwalletMain->GetKey(keyID, key)) {
-                    //std::cerr << "GetKey failed\n";
-                    continue;
-                }
-                txHash = output.tx->GetHash();
-                vout = output.i;
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-//*****************************************************************************
-//*****************************************************************************
 std::string App::xrouterCall(enum XRouterCommand command, const std::string & currency, std::string param1, std::string param2, std::string confirmations)
 {
     std::string id = "";

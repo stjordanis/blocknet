@@ -130,65 +130,6 @@ void XRouterServer::sendPacketToClient(std::string uuid, std::string reply, CNod
     pnode->PushMessage("xrouter", rpacket->body());
 }
 
-//*****************************************************************************
-//*****************************************************************************
-static bool verifyBlockRequirement(const XRouterPacketPtr& packet)
-{
-    if (packet->size() < 36) {
-        LOG() << "Packet not big enough";
-        return false;
-    }
-
-    uint256 txHash(packet->data());
-    CTransaction txval;
-    uint256 hashBlock;
-    int offset = 32;
-    uint32_t vout = *static_cast<uint32_t*>(static_cast<void*>(packet->data() + offset));
-
-    CCoins coins;
-    CTxOut txOut;
-    if (pcoinsTip->GetCoins(txHash, coins)) {
-        if (vout > coins.vout.size()) {
-            LOG() << "Invalid vout index " << vout;
-            return false;
-        }
-
-        txOut = coins.vout[vout];
-    } else if (GetTransaction(txHash, txval, hashBlock, true)) {
-        txOut = txval.vout[vout];
-    } else {
-        LOG() << "Could not find " << txHash.ToString();
-        return false;
-    }
-
-    if (txOut.nValue < to_amount(MIN_BLOCK)) {
-        LOG() << "Insufficient BLOCK " << txOut.nValue;
-        return false;
-    }
-    
-    CTxDestination destination;
-    if (!ExtractDestination(txOut.scriptPubKey, destination)) {
-        LOG() << "Unable to extract destination";
-        return false;
-    }
-
-    auto txKeyID = boost::get<CKeyID>(&destination);
-    if (!txKeyID) {
-        LOG() << "destination must be a single address";
-        return false;
-    }
-
-    CPubKey packetKey(packet->pubkey(),
-        packet->pubkey() + XRouterPacket::pubkeySize);
-
-    if (packetKey.GetID() != *txKeyID) {
-        LOG() << "Public key provided doesn't match UTXO destination.";
-        return false;
-    }
-
-    return true;
-}
-
 void XRouterServer::processPayment(CNode* node, std::string feetx, CAmount fee)
 {
     if (fee > 0) {
