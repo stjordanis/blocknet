@@ -87,6 +87,7 @@ CAmount to_amount(double val);
 bool is_number(std::string s);
 bool is_hash(std::string s);
 bool is_address(std::string s);
+std::string generateUUID();
 
 } // namespace
 
