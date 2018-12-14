@@ -10,6 +10,7 @@
 #include "validationstate.h"
 #include "xrouterserver.h"
 #include "xrouterdef.h"
+#include "xrouterpeer.h"
 #include "net.h"
 #include "servicenode.h"
 
@@ -53,6 +54,8 @@ private:
     boost::container::map<std::string, XRouterSettings > snodeConfigs;
     static boost::container::map<CNode*, double > snodeScore;
     boost::container::map<std::string, std::string > snodeDomains;
+    
+    boost::container::map<std::string, XRouterPeer> peers;
     
     XRouterSettings xrouter_settings;
     std::string xrouterpath;

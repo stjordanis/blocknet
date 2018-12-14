@@ -406,6 +406,7 @@ libxrouter_xrouter_a_SOURCES = \
   xrouter/xrouterconnectoreth.h \
   xrouter/xrouterconnectoreth.cpp \
   xrouter/xroutererror.h \
+  xrouter/xrouterpeer.h \
   xrouter/xrouterlogger.h \
   xrouter/xrouterlogger.cpp \
   xrouter/xroutersettings.h \
