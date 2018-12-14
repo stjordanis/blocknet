@@ -548,6 +548,21 @@ bool App::processReply(XRouterPacketPtr packet, CNode* node)
     if (!queriesLocks.count(uuid))
         return true;
     
+    Object ret;
+    Value reply_val;
+    read_string(reply, reply_val);
+    
+    if (reply_val.type() == obj_type) {
+        Object reply_obj = reply_val.get_obj();
+        const Value & code  = find_value(reply_obj, "code");
+        if (code.get_int() == xrouter::EXPIRED_PAYMENT_CHANNEL) {
+            std::string addr = getPaymentAddress(node);
+            if (paymentChannels.count(addr))
+                paymentChannels.erase(this->paymentChannels.find(addr));
+        }
+    }
+    
+    
     LOG() << reply;
     boost::mutex::scoped_lock l(*queriesLocks[uuid].first);
     if (!queries.count(uuid))
