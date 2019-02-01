@@ -26,6 +26,7 @@
 #include "xbridgewalletconnectorbch.h"
 #include "xbridgewalletconnectordgb.h"
 #include "sync.h"
+#include "xrouter/xrouterapp.h"
 
 #include <algorithm>
 #include <assert.h>
@@ -406,7 +407,8 @@ bool App::disconnectWallets()
 
     std::set<std::string> noWallets;
     xbridge::Exchange::instance().loadWallets(noWallets);
-    sendServicePing();
+    std::vector<std::string> nonWalletServices = xrouter::App::instance().getServicesList();
+    sendServicePing(nonWalletServices);
 
     return true;
 }
@@ -2031,7 +2033,7 @@ void App::unwatchTraderDeposit(TransactionPtr tr) {
  * @return
  */
 //******************************************************************************
-bool App::sendServicePing()
+bool App::sendServicePing(std::vector<std::string> &nonWalletServices)
 {
     CServicenode *pmn = nullptr;
     {
@@ -2053,8 +2055,6 @@ bool App::sendServicePing()
     Exchange & e = Exchange::instance();
     std::map<std::string, bool> nodup;
 
-    // TODO Add xrouter services
-    std::vector<std::string> nonWalletServices;// = xrouter.services() {"xrSendTransaction","xrGetBlock","xrGetTransaction"};
     for (const auto &s : nonWalletServices)
     {
         nodup[s] = true;
