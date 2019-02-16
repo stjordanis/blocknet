@@ -1,4 +1,4 @@
-Welcome to the Blocknet repository. This repo is for the Blocknet Protocol, a 2nd layer blockchain interoperability protocol that enables communication, interaction, and exchange between different blockchains. This allows for the development of multi-chain applications and blockchain microservices, creating exponentially more capabilities and possibilities for the blockchain ecosystem. The repository for Block DX, a decentralized exchange powered by the Blocknet Protocol, can be found [here](https://github.com/BlocknetDX/blockdx-ui).
+Welcome to the Blocknet repository. This repo is for the Blocknet Protocol, a 2nd layer blockchain interoperability protocol that enables communication, interaction, and exchange between different blockchains. This allows for the development of multi-chain applications and blockchain microservices, creating exponentially more capabilities and possibilities for the blockchain ecosystem. The repository for Block DX, a decentralized exchange powered by the Blocknet Protocol, can be found [here](https://github.com/BlocknetDX/block-dx).
 
 [Website](https://blocknet.co) | [API](https://api.blocknet.co) | [Documentation](https://docs.blocknet.co) | [Discord](https://discord.gg/2e6s7H8)
 -------------|-------------|-------------|-------------
@@ -10,9 +10,9 @@ Started in 2014, Blocknet is a decentralized, community-governed, self-funded, o
 The Blocknet Protocol enables decentralized communication and exchange between different blockchains in a permissionless and trustless manner through the use of the TCP/IP networking layer for communication, P2P atomic swaps using BIP65 for exchange, and a DHT overlay network (Service Nodes) to host the full nodes of compatible blockchains, host microservices, audit interactions, and perform anti-spam and anti-DOS measures for the network. 
 
 #### Block DX
-Block DX is a completely decentralized and trustless exchange built on the Blocknet Protocol that mimics a centralized exchange experience and enables traders to conduct exchanges directly from the wallets of the coins being traded. View Repo: [https://github.com/BlocknetDX/blockdx-ui]
+Block DX is a completely decentralized and trustless exchange built on the Blocknet Protocol that mimics a centralized exchange experience and enables traders to conduct exchanges directly from the wallets of the coins being traded. View Repo: [https://github.com/BlocknetDX/block-dx]
 
-[Contributors are welcome!](https://github.com/BlocknetDX/BlockDX/blob/master/CONTRIBUTING.md)
+[Contributors are welcome!](https://github.com/BlocknetDX/blocknet/blob/master/CONTRIBUTING.md)
 
 #### Blocknet Specifications:
 |BLOCK Details 			| 					|

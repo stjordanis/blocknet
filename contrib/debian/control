@@ -23,8 +23,8 @@ Build-Depends: debhelper,
  libprotobuf-dev, protobuf-compiler
 Standards-Version: 3.9.2
 Homepage: https://www.blocknet.co
-Vcs-Git: git://github.com/BlocknetDX/BlockDX.git
-Vcs-Browser: http://github.com/BlocknetDX/BlockDX
+Vcs-Git: git://github.com/BlocknetDX/blocknet.git
+Vcs-Browser: https://github.com/BlocknetDX/blocknet
 
 Package: blocknetdxd
 Architecture: any

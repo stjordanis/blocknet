@@ -29,7 +29,7 @@
   <string>????</string>
 
   <key>CFBundleExecutable</key>
-  <string>BlocknetDX-Qt</string>
+  <string>Blocknet</string>
 
   <key>CFBundleIdentifier</key>
   <string>io.blocknetdx.Blocknetdx-Qt</string>
